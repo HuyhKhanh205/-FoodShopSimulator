@@ -1,0 +1,145 @@
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { newGame, tick } from './engine';
+import { defaultRng } from './helpers';
+import { clearSave, loadGame, saveGame } from './storage';
+import type { GameState, Rng } from './types';
+
+/** Hàm thay đổi state (được phép sửa trực tiếp bản sao). Trả về chuỗi = thông báo lỗi cho người chơi. */
+export type GameMutation = (s: GameState, rng: Rng) => string | null | void | boolean;
+
+interface Store {
+  game: GameState | null;
+  toast: { id: number; text: string } | null;
+}
+
+type Action =
+  | { type: 'set'; game: GameState | null }
+  | { type: 'mutate'; fn: GameMutation }
+  | { type: 'tick'; dt: number }
+  | { type: 'clearToast' };
+
+function clone<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v)) as T;
+}
+
+function reducer(store: Store, action: Action): Store {
+  switch (action.type) {
+    case 'set':
+      return { game: action.game, toast: null };
+    case 'clearToast':
+      return { ...store, toast: null };
+    case 'tick': {
+      if (!store.game) return store;
+      const draft = clone(store.game);
+      tick(draft, action.dt, defaultRng);
+      return { ...store, game: draft };
+    }
+    case 'mutate': {
+      if (!store.game) return store;
+      const draft = clone(store.game);
+      const result = action.fn(draft, defaultRng);
+      const toast = typeof result === 'string' ? { id: Date.now(), text: result } : store.toast;
+      return { game: draft, toast };
+    }
+    default:
+      return store;
+  }
+}
+
+interface GameContextValue {
+  game: GameState | null;
+  toast: Store['toast'];
+  hasSave: boolean;
+  loading: boolean;
+  paused: boolean;
+  setPaused: (p: boolean) => void;
+  act: (fn: GameMutation) => void;
+  startNewGame: () => void;
+  continueGame: () => Promise<boolean>;
+}
+
+const GameContext = createContext<GameContextValue | undefined>(undefined);
+
+const TICK_MS = 200;
+
+export function GameProvider({ children }: { children: React.ReactNode }) {
+  const [store, dispatch] = useReducer(reducer, { game: null, toast: null });
+  const [hasSave, setHasSave] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [paused, setPaused] = useState(false);
+  const game = store.game;
+
+  useEffect(() => {
+    loadGame().then((saved) => {
+      setHasSave(Boolean(saved));
+      setLoading(false);
+    });
+  }, []);
+
+  // Đồng hồ game: chạy khi quán mở cửa, không tạm dừng và không có sự kiện chờ quyết định.
+  const running = game?.phase === 'open' && !game.activeEvent && !paused;
+  useEffect(() => {
+    if (!running) return;
+    let last = Date.now();
+    const id = setInterval(() => {
+      const now = Date.now();
+      const dt = Math.min(now - last, 500);
+      last = now;
+      dispatch({ type: 'tick', dt });
+    }, TICK_MS);
+    return () => clearInterval(id);
+  }, [running]);
+
+  // Tự động lưu (ngoài giờ mở cửa).
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!game || game.phase === 'open') return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveGame(game).then(() => setHasSave(true)).catch(() => {});
+    }, 300);
+  }, [game]);
+
+  // Thông báo tự tắt sau 2.5 giây.
+  useEffect(() => {
+    if (!store.toast) return;
+    const id = setTimeout(() => dispatch({ type: 'clearToast' }), 2500);
+    return () => clearTimeout(id);
+  }, [store.toast]);
+
+  const act = useCallback((fn: GameMutation) => dispatch({ type: 'mutate', fn }), []);
+
+  const startNewGame = useCallback(() => {
+    clearSave().catch(() => {});
+    setPaused(false);
+    dispatch({ type: 'set', game: newGame(defaultRng) });
+  }, []);
+
+  const continueGame = useCallback(async () => {
+    const saved = await loadGame();
+    if (!saved) return false;
+    setPaused(false);
+    dispatch({ type: 'set', game: saved });
+    return true;
+  }, []);
+
+  const value = useMemo(
+    () => ({ game, toast: store.toast, hasSave, loading, paused, setPaused, act, startNewGame, continueGame }),
+    [game, store.toast, hasSave, loading, paused, act, startNewGame, continueGame]
+  );
+
+  return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
+}
+
+export function useGame() {
+  const ctx = useContext(GameContext);
+  if (!ctx) throw new Error('useGame phải được gọi bên trong GameProvider');
+  return ctx;
+}
+
+/** Dùng trong màn hình chỉ hiển thị khi đã có game. */
+export function useGameState(): GameState {
+  const { game } = useGame();
+  if (!game) throw new Error('Chưa bắt đầu game');
+  return game;
+}
