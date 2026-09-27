@@ -5,7 +5,7 @@ import { BURN_FACTOR } from '../../game/data';
 import { MAP_COLS, MAP_ROWS, PASS_ROW } from '../../game/layout';
 import type { MapStation } from '../../game/layout';
 import type { CookJob, Dish } from '../../game/types';
-import { FOOD_COLOR } from './looks';
+import { foodColor } from './looks';
 import DishModel from './Dish';
 import { KayBoard, KayCounter, KayDoor, KayFridge, KayPass, KaySink, KayStove, KayTable } from './KayProps';
 import { checkerTileTexture, wallTileTexture, woodTexture } from './textures';
@@ -180,7 +180,7 @@ function Stove({ job, blocked }: { job: CookJob | null; blocked: boolean }) {
           </mesh>
           <mesh position={[0, 1.07, 0]}>
             <cylinderGeometry args={[0.24, 0.24, 0.02, 16]} />
-            <meshLambertMaterial color={warn ? '#3E2723' : FOOD_COLOR[job.recipeId]} />
+            <meshLambertMaterial color={warn ? '#3E2723' : foodColor(job.recipeId)} />
           </mesh>
           {warn && <Smoke />}
         </group>
@@ -212,7 +212,7 @@ function Counter({ job }: { job: CookJob | null }) {
       {job ? (
         <mesh position={[-0.12, 0.98, 0.1]} castShadow>
           <cylinderGeometry args={[0.1, 0.08, 0.22, 12]} />
-          <meshLambertMaterial color={FOOD_COLOR[job.recipeId]} />
+          <meshLambertMaterial color={foodColor(job.recipeId)} />
         </mesh>
       ) : (
         [-0.25, -0.05].map((x) => (
@@ -356,7 +356,7 @@ function Pass({ st, dishes }: { st: MapStation; dishes: Dish[] }) {
           </mesh>
           <mesh position={[0, 0.05, 0]}>
             <sphereGeometry args={[0.13, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshLambertMaterial color={d.quality === 'burnt' ? '#212121' : FOOD_COLOR[d.recipeId]} />
+            <meshLambertMaterial color={d.quality === 'burnt' ? '#212121' : foodColor(d.recipeId)} />
           </mesh>
         </group>
       ))}

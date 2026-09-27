@@ -4,8 +4,8 @@
  */
 import { DAY_MS, INGREDIENTS, RECIPES } from '../src/game/data';
 import * as E from '../src/game/engine';
-import { experiment, levelOf, mysteryRecipes } from '../src/game/progression';
-import { canMake, seededRng, usableQty } from '../src/game/helpers';
+import { addToMenu, experiment, levelOf, mysteryRecipes } from '../src/game/progression';
+import { canMake, makeStaff, seededRng, usableQty } from '../src/game/helpers';
 import type { GameState, IngredientId, StaffRole } from '../src/game/types';
 
 function stockUp(s: GameState, portions: number) {
@@ -57,7 +57,7 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
   const rng = seededRng(seed);
   const s = E.newGame(rng);
   for (const role of staffRoles) {
-    const st = { ...s.candidates[0], id: 'x' + role + s.staff.length, role, skill: staffSkill, trait: 'steady' as const, wage: 80_000 + staffSkill * 1600 };
+    const st = { ...makeStaff(s, rng, role), id: 'x' + role + s.staff.length, role, skill: staffSkill, trait: 'steady' as const, wage: 80_000 + staffSkill * 1600 };
     s.staff.push(st);
   }
   const rows: string[] = [];
@@ -65,7 +65,11 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
     while (s.activeEvent) E.chooseEventOption(s, 0, rng);
     E.discardExpired(s);
     // Bot tự "sáng tạo" mọi món đã đủ cấp ở Bếp thử món.
-    for (const id of mysteryRecipes(s)) experiment(s, Object.keys(RECIPES[id].ingredients) as IngredientId[]);
+    for (const id of mysteryRecipes(s)) {
+      experiment(s, Object.keys(RECIPES[id].ingredients) as IngredientId[]);
+      addToMenu(s, id, rng);
+    }
+    s.chefQueue = [];
     stockUp(s, Math.max(25, (s.history.at(-1)?.served ?? 12) * 2.2 + 8));
     E.openShop(s, rng);
     let guard = 0;

@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import HelpButton from '../components/kid/HelpButton';
+import { ROLE_LEVEL, unlockedRoles } from '../game/progression';
 import { Button, Panel, ProgressBar, colors } from '../components/ui';
 import { ROLE_EMOJI, ROLE_LABEL, TRAITS } from '../game/data';
 import { MAX_STAFF, fire, hire, raiseWage, toggleDayOff } from '../game/engine';
@@ -25,8 +26,10 @@ function StaffCard({ st, game, children }: { st: Staff; game: GameState; childre
         <Text style={styles.avatar}>{ROLE_EMOJI[st.role]}</Text>
         <View style={styles.flex}>
           <Text style={styles.name}>
+            {st.student ? '🎓 ' : ''}
             {st.name} · {ROLE_LABEL[st.role]}
           </Text>
+          {st.student && <Text style={styles.student}>Sinh viên làm thêm: rẻ nhưng vụng — dễ nhầm món, đổ đồ ăn, vấp té</Text>}
         </View>
       </View>
       <Text style={styles.stat}>🛠️ {st.skill}</Text>
@@ -76,7 +79,18 @@ export default function StaffScreen() {
           </View>
         </Panel>
 
-        <Panel title="🆕"> 
+ <Panel title="🆕">
+          <View style={styles.roles}>
+            {(['prep', 'cook', 'waiter'] as const).map((r) => {
+              const open = unlockedRoles(game).includes(r);
+              return (
+                <Text key={r} style={[styles.role, !open && styles.roleLocked]} accessibilityLabel={`${ROLE_LABEL[r]}: ${open ? 'đã mở' : `mở ở cấp ${ROLE_LEVEL[r]}`}`}>
+                  {ROLE_EMOJI[r]} {open ? '✅' : `🔒 ⭐${ROLE_LEVEL[r]}`}
+                </Text>
+              );
+            })}
+          </View>
+          {game.candidates.length === 0 && <Text style={styles.muted}>🔒 ⭐{ROLE_LEVEL.prep}</Text>}
           <View style={styles.grid}>
             {game.candidates.map((st) => (
               <StaffCard key={st.id} st={st} game={game}>
@@ -91,6 +105,10 @@ export default function StaffScreen() {
 }
 
 const styles = StyleSheet.create({
+  roles: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 },
+  role: { fontSize: 16, fontWeight: '800', backgroundColor: colors.goodBg, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden' },
+  roleLocked: { backgroundColor: '#ECEFF1', color: colors.muted },
+  student: { fontSize: 11, color: colors.bad, fontWeight: '700' },
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: colors.border },
   title: { fontSize: 18, fontWeight: '800', color: colors.text },

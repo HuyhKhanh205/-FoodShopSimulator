@@ -32,7 +32,7 @@ export interface Ingredient {
   group: 'meat' | 'veg' | 'dry' | 'bread';
 }
 
-export type RecipeId =
+export type BaseRecipeId =
   | 'banh_mi_trung'
   | 'pho_bo'
   | 'com_ga'
@@ -47,6 +47,10 @@ export type RecipeId =
   | 'com_tam'
   | 'banh_mi_thit'
   | 'com_chien_tom';
+/** Mã món: món chuẩn (BaseRecipeId) hoặc món sinh từ tổ hợp nguyên liệu (`x_...`). */
+export type RecipeId = string;
+/** Loại món: chuẩn / lạ (hợp lý) / quái dị. */
+export type DishKind = 'chuan' | 'la' | 'quai_di';
 
 export type Station = 'stove' | 'counter';
 
@@ -64,10 +68,29 @@ export interface Recipe {
   burns: boolean;
   /** Nguyên liệu rắc thêm, khách dị ứng dặn bỏ. */
   garnish?: IngredientId;
+  /** Loại món (không có = chuẩn). */
+  kind?: DishKind;
+  /** Màu thức ăn (món sinh ra). */
+  color?: string;
 }
 
 /** Lời đầu bếp dẫn đường đang chờ nói (lên cấp, món mới...). */
-export type ChefNote = { kind: 'levelUp'; level: number } | { kind: 'newDish'; recipeId: RecipeId } | { kind: 'lab' };
+export type ChefNote =
+  | { kind: 'levelUp'; level: number }
+  | { kind: 'newDish'; recipeId: RecipeId }
+  | { kind: 'lab' }
+  | { kind: 'trend'; recipeId: RecipeId; source: TrendSource }
+  | { kind: 'role'; role: StaffRole };
+
+export type TrendSource = 'viral' | 'reviewer' | 'launch';
+
+/** Món đang hot: tác dụng giảm dần trong 3 ngày. */
+export interface Trend {
+  recipeId: RecipeId;
+  /** Thời điểm bắt đầu tính bằng "ngày" (day + elapsed / DAY_MS). */
+  start: number;
+  source: TrendSource;
+}
 
 export interface StockBatch {
   ingredientId: IngredientId;
@@ -80,7 +103,7 @@ export type StaffRole = 'cook' | 'prep' | 'waiter';
 
 export type StaffTrait = 'fast_sloppy' | 'slow_careful' | 'late' | 'charming' | 'lazy' | 'steady';
 
-export type StaffTaskKind = 'prep' | 'serve' | 'clean' | 'cook_start';
+export type StaffTaskKind = 'prep' | 'serve' | 'clean' | 'cook_start' | 'fallen';
 
 export interface StaffTask {
   kind: StaffTaskKind;
@@ -96,7 +119,20 @@ export interface StaffTask {
   error?: StaffErrorKind;
 }
 
-export type StaffErrorKind = 'wrong_recipe' | 'burn' | 'forgot_note' | 'wrong_table' | 'waste';
+export type StaffErrorKind = 'wrong_recipe' | 'burn' | 'forgot_note' | 'wrong_table' | 'waste' | 'spill' | 'trip';
+
+/** Sự cố của phục vụ (để vẽ hoạt ảnh): vấp té, đổ thức ăn lên khách, mang nhầm bàn. */
+export interface Incident {
+  id: string;
+  kind: 'trip' | 'spill' | 'wrong';
+  staffId: string;
+  customerId?: string;
+  /** Bàn nơi xảy ra sự cố (không có = cửa). */
+  tableIndex?: number;
+  /** Mã món (để vẽ đĩa bay). */
+  dish: string;
+  at: number;
+}
 
 export interface Staff {
   id: string;
@@ -112,6 +148,8 @@ export interface Staff {
   absent: boolean;
   lateUntil: number;
   task: StaffTask | null;
+  /** Sinh viên làm thêm: lương rẻ, dễ làm sai, vụng về. */
+  student?: boolean;
 }
 
 export type CustomerKind =
@@ -204,6 +242,11 @@ export interface Review {
 
 export interface DayReport {
   day: number;
+  /** Khách phàn nàn món quái dị. */
+  complaints?: number;
+  /** Nhân viên vấp té / đổ thức ăn lên khách. */
+  trips?: number;
+  spills?: number;
   revenue: number;
   tips: number;
   ingredientCost: number;
@@ -253,6 +296,8 @@ export interface ActiveEvent {
 /** Trạng thái trong giờ mở cửa — không lưu xuống máy. */
 export interface DayRuntime {
   elapsed: number;
+  /** Sự cố đang diễn ra (hoạt ảnh). */
+  incidents?: Incident[];
   /** Thời gian kể từ khách gần nhất — tránh quán vắng quá lâu. */
   sinceLastCustomer: number;
   customers: Customer[];
@@ -331,6 +376,14 @@ export interface GameState {
   labFails: number;
   /** Gợi ý đã lộ: số nguyên liệu đã lộ của từng món bí ẩn. */
   labHints: Partial<Record<RecipeId, number>>;
+  /** Món sinh từ tổ hợp đã tạo (lưu lại để nạp vào RECIPES). */
+  dishes: Record<RecipeId, Recipe>;
+  /** Món đã khám phá (sổ món). Menu = unlockedRecipes. */
+  discovered: RecipeId[];
+  /** Ngày món được thêm vào menu (khách gọi nhiều hơn ngày bán đầu tiên). */
+  launched: Record<RecipeId, number>;
+  /** Món đang trend. */
+  trend: Trend | null;
   mods: DayModifiers;
   report: DayReport;
   history: DayReport[];

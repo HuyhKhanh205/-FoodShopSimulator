@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RECIPES } from './data';
 import { DEFAULT_PROFILE } from './profile';
+import { syncDishes } from './dishes';
 import { xpForRecipes } from './progression';
 import type { GameState } from './types';
 
@@ -25,6 +26,7 @@ export async function loadGame(): Promise<GameState | null> {
     // Bản lưu cũ chưa có nhân vật: dùng nhân vật mặc định.
     const profile = { ...DEFAULT_PROFILE, ...(data.profile ?? {}) };
     // Bản lưu trước khi có cấp độ: mở đủ cấp cho các món đã có, bỏ qua hướng dẫn ngày đầu.
+    syncDishes({ dishes: data.dishes ?? {} } as GameState);
     const unlockedRecipes = (data.unlockedRecipes ?? []).filter((id) => RECIPES[id]);
     const old = data.xp === undefined;
     return {
@@ -36,6 +38,10 @@ export async function loadGame(): Promise<GameState | null> {
       tutorial: data.tutorial ?? { step: 0, done: old },
       labFails: data.labFails ?? 0,
       labHints: data.labHints ?? {},
+      dishes: data.dishes ?? {},
+      discovered: data.discovered ?? [...unlockedRecipes],
+      launched: data.launched ?? {},
+      trend: data.trend ?? null,
       run: null,
       phase: data.phase === 'open' ? 'market' : data.phase,
     };

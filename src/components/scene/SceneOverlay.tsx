@@ -173,6 +173,15 @@ export default function SceneOverlay({
     }
   }
 
+  // Chữ nổi 💥 chỗ nhân viên vấp té.
+  for (const inc of run.incidents ?? []) {
+    if (inc.kind !== 'trip') continue;
+    const table = inc.tableIndex !== undefined ? layout.stations.find((x) => x.id === `table${inc.tableIndex}`) : layout.stations.find((x) => x.id === 'door');
+    const acc = table?.access[0];
+    if (!acc) continue;
+    place(`inc-${inc.id}`, p(acc.x + 0.5, 1.4, acc.y + 0.5), <Text style={{ fontSize: font * 1.6 }}>💥</Text>, 60);
+  }
+
   return (
     <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
       <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { transform: [{ translateX: pan.x }, { translateY: pan.y }] }]}>{items}</Animated.View>

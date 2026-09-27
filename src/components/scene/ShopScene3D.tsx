@@ -12,6 +12,7 @@ import { followCamera } from './camera';
 import type { CameraCam, CameraFrame } from './camera';
 import Character from './Character';
 import ModelCharacter from './ModelCharacter';
+import IncidentFx from './IncidentFx';
 import { dishKey } from './Dish';
 import { Decor, HangingLamp, ShopSign } from './KayProps';
 import { STAFF_MODEL, customerLook, customerModel, profileLook, staffLook } from './looks';
@@ -116,14 +117,26 @@ function Player({ walker, carrying, profile }: { walker: React.MutableRefObject<
   );
 }
 
-function StaffPerson({ staff, to, carrying }: { staff: Staff; to: Tile; carrying: string[] }) {
+/** Mũ lưỡi trai xanh của sinh viên làm thêm. */
+const STUDENT_HAT: Look = { skin: '#F2C9A0', hair: '#3E2723', shirt: '#1E88E5', pants: '#263238', hat: 'cap', hatColor: '#1E88E5' };
+
+function StaffPerson({ staff, to, carrying, fallen }: { staff: Staff; to: Tile; carrying: string[]; fallen: boolean }) {
   const ref = useRef<Group>(null);
+  const body = useRef<Group>(null);
   const moving = useRef(false);
   const target = useRef(to);
   target.current = to;
   useFrame((_, dt) => {
     const g = ref.current;
     if (!g) return;
+    // Vấp té: chúi về trước nằm sấp, rồi từ từ đứng dậy.
+    const b = body.current;
+    if (b) {
+      const want = fallen ? -1.4 : 0;
+      b.rotation.x += (want - b.rotation.x) * Math.min(1, dt * (fallen ? 14 : 5));
+      b.position.y = fallen ? 0.12 : b.position.y * (1 - Math.min(1, dt * 5));
+    }
+    if (fallen) return;
     const tx = target.current.x + 0.5;
     const tz = target.current.y + 0.5;
     const dx = tx - g.position.x;
@@ -142,14 +155,16 @@ function StaffPerson({ staff, to, carrying }: { staff: Staff; to: Tile; carrying
   });
   return (
     <group ref={ref} position={[to.x + 0.5, 0, to.y + 0.5]}>
-      <ModelCharacter
-        model={STAFF_MODEL[staff.role]}
-        fallback={staffLook(staff.role, staff.id)}
-        hat={staff.role === 'waiter' ? undefined : staffLook(staff.role, staff.id)}
-        isMoving={() => moving.current}
-        carrying={carrying}
-        shadows={SHADOWS}
-      />
+      <group ref={body}>
+        <ModelCharacter
+          model={STAFF_MODEL[staff.role]}
+          fallback={staffLook(staff.role, staff.id)}
+          hat={staff.student ? STUDENT_HAT : staff.role === 'waiter' ? undefined : staffLook(staff.role, staff.id)}
+          isMoving={() => moving.current && !fallen}
+          carrying={fallen ? [] : carrying}
+          shadows={SHADOWS}
+        />
+      </group>
     </group>
   );
 }
@@ -270,7 +285,17 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
         const to = staffTarget(st, game, layout);
         if (!to) return null;
         const holding = st.task?.kind === 'serve' && st.task.dishId ? [dishColor(st.task.dishId)] : [];
-        return <StaffPerson key={st.id} staff={st} to={to} carrying={holding} />;
+        return <StaffPerson key={st.id} staff={st} to={to} carrying={holding} fallen={st.task?.kind === 'fallen'} />;
+      })}
+
+      {/* Sự cố của phục vụ: vấp té, đổ thức ăn lên khách */}
+      {(run.incidents ?? []).map((inc) => {
+        const table = inc.tableIndex !== undefined ? layout.stations.find((x) => x.id === `table${inc.tableIndex}`) : layout.stations.find((x) => x.id === 'door');
+        if (!table) return null;
+        const acc = table.access[0];
+        const from: [number, number] = [acc.x + 0.5, acc.y + 0.5];
+        const to: [number, number] = [table.x + table.w / 2, table.y + table.h / 2];
+        return <IncidentFx key={inc.id} incident={inc} from={from} to={to} />;
       })}
 
       <Player walker={walker} carrying={carried} profile={game.profile} />

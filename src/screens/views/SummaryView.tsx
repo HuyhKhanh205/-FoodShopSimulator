@@ -113,6 +113,8 @@ export default function SummaryView() {
               <Line label="Mang nhầm món" value={String(r.wrongDishes)} />
               <Line label="Món bị cháy" value={String(r.burnt)} />
               <Line label="Lỗi của nhân viên" value={String(r.staffErrors)} />
+              {(r.trips ?? 0) + (r.spills ?? 0) > 0 && <Line label="💥 Vấp té / 💦 đổ đồ ăn lên khách" value={`${r.trips ?? 0} / ${r.spills ?? 0}`} color={colors.bad} />}
+              {(r.complaints ?? 0) > 0 && <Line label="🤢 Khách chê món quái dị" value={String(r.complaints)} color={colors.bad} />}
               <Line label="Khách bị dị ứng" value={String(r.allergic)} />
               <Line label="Khách bùng tiền" value={String(r.dashers)} />
               <Line

@@ -1,5 +1,8 @@
 import { answerEffect, tickChat } from './chat';
 import { introFactor } from './customers';
+import { registerDish, resolveCombo } from './dishes';
+import { unlockedRoles } from './progression';
+import { expireTrend, trendSpawnMult } from './trend';
 import {
   BANKRUPT_AT,
   BURN_FACTOR,
@@ -34,6 +37,7 @@ import {
   log,
   makeStaff,
   menuRecipes,
+  changeRep,
   nextId,
   note,
   pick,
@@ -118,6 +122,10 @@ export function newGame(rng: Rng): GameState {
     tutorial: { step: 0, done: false },
     labFails: 0,
     labHints: {},
+    dishes: {},
+    discovered: [...START_RECIPES],
+    launched: {},
+    trend: null,
     mods: emptyMods(),
     report: emptyReport({ day: 1, reputation: 3 }),
     history: [],
@@ -137,6 +145,7 @@ function beginMarket(s: GameState, rng: Rng) {
   s.mods = emptyMods();
   s.report = emptyReport(s);
   s.boughtToday = {};
+  expireTrend(s);
   for (const st of s.staff) {
     st.absent = false;
     st.task = null;
@@ -146,7 +155,8 @@ function beginMarket(s: GameState, rng: Rng) {
     const base = INGREDIENTS[id].basePrice * (0.8 + rng() * 0.4) * (s.mods.priceMult[id] ?? 1);
     s.prices[id] = Math.max(100, Math.round(base / 100) * 100);
   }
-  s.candidates = Array.from({ length: 3 }, () => makeStaff(s, rng));
+  // Ứng viên chỉ ở vị trí đã mở theo cấp; mỗi vị trí có 1 người thường + 1 sinh viên giá rẻ.
+  s.candidates = unlockedRoles(s).flatMap((role) => [makeStaff(s, rng, role), makeStaff(s, rng, role, true)]);
 }
 
 // ================= Chợ / quản lý (ngoài giờ mở cửa) =================
@@ -204,7 +214,7 @@ export function discardExpired(s: GameState) {
 
 export function hire(s: GameState, candidateId: string): boolean {
   const c = s.candidates.find((x) => x.id === candidateId);
-  if (!c || s.staff.length >= MAX_STAFF) return false;
+  if (!c || s.staff.length >= MAX_STAFF || !unlockedRoles(s).includes(c.role)) return false;
   s.candidates = s.candidates.filter((x) => x.id !== candidateId);
   s.staff.push(c);
   return true;
@@ -323,6 +333,20 @@ export function playerCook(s: GameState, recipeId: RecipeId, noGarnish: boolean,
   consumeFor(s, recipeId, garnishOff);
   slot.job = { recipeId, noGarnish: garnishOff, progress: 0, cookTime: recipe.cookTime, by: 'player' };
   return null;
+}
+
+/**
+ * Nấu theo nồi tự chọn: tổ hợp nguyên liệu → món (chuẩn / lạ / quái dị). Món lạ được ghi vào sổ món
+ * (không tự vào menu). Thiếu hành so với món có hành rắc thêm → nấu dạng "không hành".
+ */
+export function playerCookCombo(s: GameState, ids: IngredientId[], slotId?: string): string | null {
+  if (ids.length === 0) return 'Nồi đang trống';
+  const { recipe, noGarnish } = resolveCombo(s, ids);
+  const slot = slotId ? s.run?.slots.find((x) => x.id === slotId) : undefined;
+  if (slot && slot.station !== recipe.station) return recipe.station === 'counter' ? 'Món này làm ở quầy pha chế' : 'Món này phải nấu trên bếp';
+  registerDish(s, recipe);
+  if (!s.discovered.includes(recipe.id)) s.discovered.push(recipe.id);
+  return playerCook(s, recipe.id, noGarnish, slotId);
 }
 
 /** Nhấc món khỏi bếp: chưa đủ thời gian → sống. `toHand`: cầm luôn trên tay nếu còn tay trống. */
@@ -524,10 +548,17 @@ function startStaffTask(s: GameState, st: Staff, rng: Rng) {
       ?? waiting.find((c) => c.items.some((i) => !i.served && i.recipeId === dish.recipeId));
     if (!target) continue;
     let customerId = target.id;
-    let error: 'wrong_table' | undefined;
-    if (staffError(s, st, rng) && waiting.length > 1) {
-      error = 'wrong_table';
-      customerId = pick(rng, waiting.filter((c) => c.id !== target.id)).id;
+    let error: 'wrong_table' | 'spill' | 'trip' | undefined;
+    if (staffError(s, st, rng)) {
+      // Sinh viên vụng về hay vấp té / đổ thức ăn; người có kinh nghiệm thường chỉ nhầm bàn.
+      const roll = rng();
+      const [trip, spill] = st.student ? [0.4, 0.3] : [0.15, 0.15];
+      if (roll < trip) error = 'trip';
+      else if (roll < trip + spill) error = 'spill';
+      else if (waiting.length > 1) {
+        error = 'wrong_table';
+        customerId = pick(rng, waiting.filter((c) => c.id !== target.id)).id;
+      }
     }
     st.task = { kind: 'serve', endsAt: t + 1_500 / speed, dishId: dish.id, customerId, error };
     return;
@@ -596,7 +627,45 @@ function finishStaffTask(s: GameState, st: Staff, rng: Rng) {
   }
 
   if (task.kind === 'serve' && task.dishId && task.customerId) {
-    if (task.error === 'wrong_table') s.report.staffErrors += 1;
+    const c = run.customers.find((x) => x.id === task.customerId);
+    const dish = run.pass.find((d) => d.id === task.dishId);
+    const incident = (kind: 'trip' | 'spill' | 'wrong') =>
+      (run.incidents ??= []).push({
+        id: nextId(s, 'inc'),
+        kind,
+        staffId: st.id,
+        customerId: c?.id,
+        tableIndex: c?.tableIndex,
+        dish: dish ? dish.recipeId : '',
+        at: run.elapsed,
+      });
+    if ((task.error === 'trip' || task.error === 'spill') && dish) {
+      // Món rơi mất: phải nấu lại.
+      run.pass = run.pass.filter((d) => d.id !== dish.id);
+      s.report.staffErrors += 1;
+      if (task.error === 'trip') {
+        s.report.trips = (s.report.trips ?? 0) + 1;
+        incident('trip');
+        log(s, `💥 ${st.name}${st.student ? ' (sinh viên)' : ''} vấp té, làm rơi vỡ ${RECIPES[dish.recipeId]?.name ?? 'món'}!`, 'bad');
+        // Nằm dưới đất 1,5 giây rồi mới đứng dậy.
+        st.task = { kind: 'fallen', endsAt: run.elapsed + 1_500, customerId: task.customerId };
+      } else if (c) {
+        s.report.spills = (s.report.spills ?? 0) + 1;
+        incident('spill');
+        c.patience -= c.maxPatience * 0.5;
+        c.chat = { icon: '😡', text: 'Ướt hết áo tôi rồi!! 💦', until: run.elapsed + 4000 };
+        changeRep(s, -0.1);
+        log(s, `💦 ${st.name}${st.student ? ' (sinh viên)' : ''} đổ ${RECIPES[dish.recipeId]?.name ?? 'món'} lên người ${c.name}!`, 'bad');
+      }
+      return;
+    }
+    if (task.error === 'wrong_table') {
+      s.report.staffErrors += 1;
+      if (c) {
+        incident('wrong');
+        c.chat = { icon: '🤨', text: 'Tôi đâu có gọi món này?', until: run.elapsed + 3500 };
+      }
+    }
     serveDish(s, task.dishId, task.customerId, rng, st);
     return;
   }
@@ -673,7 +742,7 @@ function spawnCustomers(s: GameState, dt: number, rng: Rng) {
   run.sinceLastCustomer += dt;
   const intro = introFactor(s.day);
   const rate =
-    0.14 * trafficCurve(hourAt(run.elapsed)) * (0.4 + s.reputation * 0.25) * (1 + 0.15 * s.upgrades.sign) * s.mods.spawnMult * intro;
+    0.14 * trafficCurve(hourAt(run.elapsed)) * (0.4 + s.reputation * 0.25) * (1 + 0.15 * s.upgrades.sign) * s.mods.spawnMult * intro * trendSpawnMult(s);
   // Đang hướng dẫn ngày đầu: khách đầu tiên tới sớm (~10 giây) để kịp học mang món.
   const tutorialWait = s.day === 1 && !s.tutorial?.done ? 10_000 : 15_000 / intro;
   const force = run.sinceLastCustomer > tutorialWait && run.customers.length === 0;
@@ -777,6 +846,7 @@ export function tick(s: GameState, dt: number, rng: Rng) {
 
   spawnCustomers(s, dt, rng);
   tickChat(s, dt, rng);
+  if (run.incidents?.length) run.incidents = run.incidents.filter((i) => t - i.at < 3_000);
   maybeDayEvent(s, rng);
 
   if (t >= DAY_MS) closeDay(s);

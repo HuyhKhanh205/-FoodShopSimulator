@@ -35,7 +35,7 @@ const servedSomething = (s: GameState) =>
 export const TUTORIAL: TutorialStep[] = [
   {
     id: 'hello',
-    say: 'Chào chủ quán mới! Mình là bếp trưởng Tư 👨‍🍳. Mình sẽ chỉ bạn bán món đầu tiên nhé!',
+    say: 'Chào chủ quán mới! Chú là Chú Tư bếp trưởng 👨‍🍳. Chú sẽ chỉ con bán món đầu tiên nhé!',
     at: 'bottom',
     tapToContinue: true,
     targets: () => [],
@@ -71,9 +71,9 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     id: 'cook',
-    say: 'Giỏi! Giờ chọn 🥪 để nấu trên bếp.',
+    say: 'Giỏi! Chạm 🥪 để bỏ nguyên liệu vào nồi, rồi bấm 🔥 Nấu.',
     at: 'top',
-    targets: () => ['kitchen.recipe:banh_mi_trung'],
+    targets: () => ['kitchen.recipe:banh_mi_trung', 'kitchen.cook'],
     done: (s) => cookingOrHolding(s) || servedSomething(s),
   },
   {
@@ -124,11 +124,20 @@ export function skipTutorial(s: GameState) {
 export function noteText(n: ChefNote): string {
   if (n.kind === 'levelUp') {
     const items = ingredientsOfLevel(n.level).map((i) => INGREDIENTS[i].emoji).join(' ');
-    return `⭐ Lên cấp ${n.level}! Mở khoá ${items}. Vào 🧪 Bếp thử món để sáng tạo món mới nhé!`;
+    return `⭐ Lên cấp ${n.level}! Mở khoá ${items}. Vào 📖 Sổ món thử kết hợp nguyên liệu tạo món mới nhé!`;
   }
   if (n.kind === 'newDish') {
     const r = RECIPES[n.recipeId];
-    return `🎉 Món mới: ${r.emoji} ${r.name}! Mình đã thêm vào menu, khách sẽ bắt đầu gọi đó.`;
+    return `🎉 ${r.emoji} ${r.name} lên menu rồi! Hôm nay khách sẽ gọi món mới nhiều hơn đó.`;
+  }
+  if (n.kind === 'trend') {
+    const r = RECIPES[n.recipeId];
+    const why = n.source === 'viral' ? 'Khách quay clip lên mạng' : n.source === 'reviewer' ? 'Food reviewer khen' : 'Món mới ra mắt gây sốt';
+    return `🔥 ${why}: ${r.emoji} ${r.name} thành TREND! 3 ngày tới giá +20%, khách đông gấp rưỡi. Nấu nhiều vào nhé!`;
+  }
+  if (n.kind === 'role') {
+    const role = n.role === 'prep' ? '🔪 phụ bếp' : n.role === 'cook' ? '👨‍🍳 đầu bếp' : '🍽️ phục vụ';
+    return `👥 Giờ con thuê được ${role} rồi! Có cả 🎓 sinh viên giá rẻ — nhưng coi chừng các em vụng về nha.`;
   }
   return 'Chọn 2–4 nguyên liệu bỏ vào nồi rồi bấm 🧪 Nấu thử!';
 }

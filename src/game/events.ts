@@ -1,3 +1,4 @@
+import { startTrend, trendHeat } from './trend';
 import { INGREDIENTS, RECIPES } from './data';
 import { makeCustomer } from './customers';
 import {
@@ -383,6 +384,27 @@ export const EVENTS: EventDef[] = [
           changeRep(s, -0.1);
           log(s, '🐀 Khách thấy chuột chạy qua... danh tiếng giảm', 'bad');
         },
+      },
+    ],
+  },
+  {
+    id: 'reviewer_clip',
+    phase: 'day',
+    emoji: '📱',
+    title: 'Food reviewer đăng clip',
+    weight: 6,
+    setup: (s, rng) => {
+      if (s.trend && trendHeat(s) > 0.3) return null;
+      const menu = menuRecipes(s);
+      if (!menu.length) return null;
+      return { recipeId: pick(rng, menu).id };
+    },
+    body: (ctx) =>
+      `Một food reviewer nổi tiếng vừa đăng clip khen ${RECIPES[ctx.recipeId as RecipeId].emoji} ${RECIPES[ctx.recipeId as RecipeId].name} của quán! Món này sắp thành trend: giá +20%, khách đông gấp rưỡi trong 3 ngày.`,
+    choices: [
+      {
+        label: '🔥 Tuyệt vời!',
+        apply: (s, ctx) => startTrend(s, ctx.recipeId as RecipeId, 'reviewer'),
       },
     ],
   },

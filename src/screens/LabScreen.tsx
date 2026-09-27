@@ -7,15 +7,18 @@ import IconTile from '../components/kid/IconTile';
 import { Button, ProgressBar, colors } from '../components/ui';
 import { INGREDIENTS, INGREDIENT_TIER, RECIPES, RECIPE_IDS, recipeLevel } from '../game/data';
 import { useGame } from '../game/GameContext';
-import { experiment, levelOf, levelProgress, mysteryRecipes, unlockedIngredients } from '../game/progression';
+import { chefComment, DISH_KIND_LABEL } from '../game/dishes';
+import { formatMoney } from '../game/helpers';
+import { addToMenu, experiment, levelOf, levelProgress, mysteryRecipes, removeFromMenu, unlockedIngredients } from '../game/progression';
+import { trendHeat } from '../game/trend';
 import type { LabResult } from '../game/progression';
 import type { IngredientId } from '../game/types';
 
 const MAX_POT = 4;
 
 /**
- * Bếp thử món: chọn 2–4 nguyên liệu bỏ vào nồi thử rồi bấm Nấu thử.
- * Đúng công thức → món mới vào menu; thiếu / thừa một thứ → "gần đúng rồi!".
+ * Sổ món & Menu: thử kết hợp 2–4 nguyên liệu (mọi tổ hợp đều ra món — chuẩn, lạ hoặc quái dị),
+ * thêm món vào menu, bật / tắt món trong menu, xem món đang trend.
  */
 export default function LabScreen() {
   const navigation = useNavigation();
@@ -55,38 +58,37 @@ export default function LabScreen() {
   };
 
   let resultView: React.ReactNode = null;
-  if (result) {
-    const body =
-      result.kind === 'new' ? (
-        <>
-          <Text style={styles.resultBig}>🎉 {RECIPES[result.recipeId].emoji}</Text>
-          <Text style={styles.resultTitle}>{RECIPES[result.recipeId].name}!</Text>
-          <Text style={styles.resultText}>✅ Đã thêm vào menu</Text>
-        </>
-      ) : result.kind === 'known' ? (
-        <>
-          <Text style={styles.resultBig}>{RECIPES[result.recipeId].emoji}</Text>
-          <Text style={styles.resultText}>Món này có trong menu rồi 👍</Text>
-        </>
-      ) : result.kind === 'near' ? (
-        <>
-          <Text style={styles.resultBig}>🤏</Text>
-          <Text style={styles.resultTitle}>Gần đúng rồi!</Text>
-          <Text style={styles.resultText}>Thử thêm hoặc bớt 1 thứ</Text>
-        </>
-      ) : (
-        <>
-          <Text style={styles.resultBig}>🤔</Text>
-          <Text style={styles.resultText}>Chưa ra món gì, thử cách khác nhé</Text>
-        </>
-      );
+  if (result && result.kind !== 'nothing') {
+    const r = RECIPES[result.recipeId];
+    const kind = r.kind ?? 'chuan';
+    const inMenu = game.unlockedRecipes.includes(r.id);
     resultView = (
       <Animated.View
-        style={[styles.result, result.kind === 'new' && styles.resultNew, { transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }]}
+        style={[styles.result, kind === 'quai_di' ? styles.resultMonster : kind === 'chuan' ? styles.resultNew : null, { transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }]}
         accessibilityLabel="Kết quả thử món"
       >
-        {body}
+        <Text style={styles.resultBig}>
+          {result.kind === 'new' ? '🎉 ' : ''}
+          {r.emoji}
+        </Text>
+        <Text style={styles.resultTitle}>{r.name}</Text>
+        <Text style={styles.resultText}>
+          {DISH_KIND_LABEL[kind]} · 💰 {formatMoney(r.price)} · {r.station === 'counter' ? '🧋 quầy' : '🔥 bếp'}
+        </Text>
+        <Text style={styles.comment}>👨‍🍳 {chefComment(r)}</Text>
+        {inMenu ? (
+          <Text style={styles.resultText}>✅ Đang có trong menu</Text>
+        ) : (
+          <IconTile icon="➕" label="Thêm vào menu" name="Thêm vào menu" tone="good" onPress={() => act((s, rng) => void addToMenu(s, r.id, rng))} />
+        )}
       </Animated.View>
+    );
+  } else if (result) {
+    resultView = (
+      <View style={styles.result} accessibilityLabel="Kết quả thử món">
+        <Text style={styles.resultBig}>🤔</Text>
+        <Text style={styles.resultText}>Chọn 2–4 nguyên liệu nhé</Text>
+      </View>
     );
   }
 
@@ -94,10 +96,15 @@ export default function LabScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Button small variant="ghost" label="⬅" onPress={() => navigation.goBack()} />
-        <Text style={styles.title}>🧪 Bếp thử món</Text>
+        <Text style={styles.title}>📖 Sổ món & Menu</Text>
         <HelpButton topic="lab" />
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        {game.trend && trendHeat(game) > 0 && (
+          <Text style={styles.trend}>
+            🔥 Trend: {RECIPES[game.trend.recipeId]?.emoji} {RECIPES[game.trend.recipeId]?.name} · {Math.round(trendHeat(game) * 100)}%
+          </Text>
+        )}
         {/* Cấp độ */}
         <View style={styles.levelBox}>
           <Text style={styles.levelText}>⭐ Cấp {level}</Text>
@@ -153,20 +160,32 @@ export default function LabScreen() {
           ))}
         </View>
 
-        {/* Sổ công thức */}
-        <Text style={styles.section}>📖</Text>
+        {/* Sổ món & menu: chạm để bật / tắt trong menu */}
+        <Text style={styles.section}>📖 Sổ món · chạm để đưa vào / bỏ khỏi menu</Text>
         <View style={styles.grid}>
-          {game.unlockedRecipes.map((id) => (
-            <View key={id} style={styles.recipe} accessibilityLabel={`${RECIPES[id].name}: ${Object.keys(RECIPES[id].ingredients).map((i) => INGREDIENTS[i as IngredientId].name).join(', ')}`}>
-              <Text style={styles.recipeEmoji}>{RECIPES[id].emoji}</Text>
-              <Text style={styles.recipeIngr}>{Object.keys(RECIPES[id].ingredients).map((i) => INGREDIENTS[i as IngredientId].emoji).join('')}</Text>
-            </View>
-          ))}
+          {game.discovered.filter((id) => RECIPES[id]).map((id) => {
+            const r = RECIPES[id];
+            const inMenu = game.unlockedRecipes.includes(id);
+            const hot = trendHeat(game, id);
+            return (
+              <IconTile
+                key={id}
+                icon={r.emoji}
+                label={r.name.length > 12 ? r.name.slice(0, 11) + '…' : r.name}
+                name={`${r.name} (${inMenu ? 'trong menu' : 'ngoài menu'})`}
+                sub={inMenu ? '✅ menu' : '➕'}
+                badge={hot > 0 ? '🔥' : game.launched[id] === game.day ? '🆕' : r.kind === 'quai_di' ? '🧟' : undefined}
+                selected={inMenu}
+                size="sm"
+                onPress={() => act((s, rng) => void (inMenu ? removeFromMenu(s, id) : addToMenu(s, id, rng)))}
+              />
+            );
+          })}
           {mysteries.map((id) => {
             const n = Object.keys(RECIPES[id].ingredients).length;
             const shown = (Object.keys(RECIPES[id].ingredients) as IngredientId[]).slice(0, game.labHints[id] ?? 0);
             return (
-              <View key={id} style={[styles.recipe, styles.mystery]} accessibilityLabel={`Món bí ẩn: ${n} nguyên liệu`}>
+              <View key={id} style={[styles.recipe, styles.mystery]} accessibilityLabel={`Món chuẩn bí ẩn: ${n} nguyên liệu`}>
                 <Text style={styles.recipeEmoji}>❓</Text>
                 <Text style={styles.recipeIngr}>
                   {shown.map((i) => INGREDIENTS[i].emoji).join('')}
@@ -176,7 +195,7 @@ export default function LabScreen() {
             );
           })}
           {locked.length > 0 && (
-            <View style={[styles.recipe, styles.locked]} accessibilityLabel={`${locked.length} món mở ở cấp cao hơn`}>
+            <View style={[styles.recipe, styles.locked]} accessibilityLabel={`${locked.length} món chuẩn mở ở cấp cao hơn`}>
               <Text style={styles.recipeEmoji}>🔒</Text>
               <Text style={styles.recipeIngr}>×{locked.length}</Text>
             </View>
@@ -220,12 +239,15 @@ const styles = StyleSheet.create({
   slotText: { fontSize: 28, color: '#fff' },
   cookBtn: { alignSelf: 'stretch', minHeight: 90 },
   result: { backgroundColor: '#fff', borderRadius: 20, padding: 16, alignItems: 'center', borderWidth: 2, borderColor: colors.border },
+  resultMonster: { borderColor: '#8E24AA', backgroundColor: '#F3E5F5' },
+  comment: { fontSize: 15, fontWeight: '700', color: colors.text, textAlign: 'center', marginVertical: 6 },
+  trend: { fontSize: 16, fontWeight: '900', color: colors.bad, backgroundColor: '#FFEBEE', borderRadius: 12, padding: 8 },
   resultNew: { borderColor: colors.good, backgroundColor: colors.goodBg },
   resultBig: { fontSize: 52 },
   resultTitle: { fontSize: 22, fontWeight: '900', color: colors.text },
   resultText: { fontSize: 16, fontWeight: '700', color: colors.muted },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingTop: 6 },
-  section: { fontSize: 24, marginTop: 6 },
+  section: { fontSize: 15, fontWeight: '900', color: colors.text, marginTop: 6 },
   recipe: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 2, borderColor: colors.border, padding: 8, alignItems: 'center', minWidth: 76 },
   mystery: { borderStyle: 'dashed', backgroundColor: '#FFF8E1' },
   locked: { opacity: 0.5 },

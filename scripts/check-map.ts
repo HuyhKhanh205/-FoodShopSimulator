@@ -1,7 +1,15 @@
 /** Kiểm tra nhanh chế độ bản đồ (không cần giao diện): `npx tsx scripts/check-map.ts` */
 import { QUESTIONS } from '../src/game/chat';
+import { RECIPES } from '../src/game/data';
+import { dishFromCombo, registerDish, resolveCombo } from '../src/game/dishes';
+import { makeCustomer } from '../src/game/customers';
+import { errorRate, makeStaff, usableQty as uq } from '../src/game/helpers';
+import { addToMenu, unlockedRoles } from '../src/game/progression';
+import { orderWeight, startTrend, trendHeat, trendPriceMult, trendRepMult, trendSpawnMult } from '../src/game/trend';
+import type { IngredientId } from '../src/game/types';
 import { TUTORIAL, advanceTutorial, currentStep, tutorialTargets } from '../src/game/tutorial';
 import { addXp, experiment, levelOf, unlockedIngredients } from '../src/game/progression';
+const usableQty = uq;
 import { START_UPGRADES } from '../src/game/data';
 import * as E from '../src/game/engine';
 import { seededRng } from '../src/game/helpers';
@@ -215,17 +223,20 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   const g = E.newGame(r10);
   check(g.unlockedRecipes.length === 2 && levelOf(g.xp) === 1, 'bắt đầu cấp 1 với 2 món');
   check(unlockedIngredients(g).length === 6 && !unlockedIngredients(g).includes('gao'), 'cấp 1 chỉ có 6 nguyên liệu');
-  check(experiment(g, ['pate', 'banh_mi']).kind === 'new' && g.unlockedRecipes.includes('banh_mi_pate'), 'bánh mì + pate → Bánh mì pate');
+  check(experiment(g, ['pate', 'banh_mi']).kind === 'new' && g.discovered.includes('banh_mi_pate'), 'bánh mì + pate → Bánh mì pate vào sổ món');
+  check(!g.unlockedRecipes.includes('banh_mi_pate'), 'thử ra món chưa tự vào menu');
+  check(addToMenu(g, 'banh_mi_pate', () => 0.9) && g.unlockedRecipes.includes('banh_mi_pate'), 'thêm vào menu');
   check(experiment(g, ['banh_mi', 'pate']).kind === 'known', 'thử lại món đã có → đã có');
   check(experiment(g, ['gao', 'trung']).kind === 'nothing', 'chưa mở gạo thì không thử được');
   addXp(g, 60);
   check(levelOf(g.xp) === 2 && g.chefQueue.some((n) => n.kind === 'levelUp' && n.level === 2), 'đủ 60 XP lên cấp 2 và báo đầu bếp');
-  check(experiment(g, ['gao', 'trung']).kind === 'near', 'gạo + trứng (thiếu hành) → gần đúng');
-  check(experiment(g, ['gao', 'trung', 'hanh']).kind === 'new', 'gạo + trứng + hành → Cơm chiên trứng');
+  const r3 = experiment(g, ['gao', 'trung', 'hanh']);
+  check(r3.kind === 'new' && r3.recipeId === 'com_chien_trung', 'gạo + trứng + hành → Cơm chiên trứng');
+  addToMenu(g, 'com_chien_trung', () => 0.9);
   const menuBefore = g.unlockedRecipes.length;
-  for (let i = 0; i < 3; i += 1) experiment(g, ['tra', 'pate']);
-  check(Object.values(g.labHints).some((n) => (n ?? 0) > 0), 'thử sai 3 lần lộ gợi ý');
-  check(g.unlockedRecipes.length === menuBefore, 'thử sai không thêm món');
+  for (const combo of [['tra', 'pate'], ['da', 'pate'], ['tra', 'trung']] as IngredientId[][]) experiment(g, combo);
+  check(Object.values(g.labHints).some((n) => (n ?? 0) > 0), '3 món không chuẩn → lộ gợi ý');
+  check(g.unlockedRecipes.length === menuBefore, 'thử món không tự thêm vào menu');
   // Món mới xuất hiện trong đơn khách
   g.activeEvent = null;
   E.openShop(g, r10);
@@ -287,6 +298,125 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check(stepId() === 'great', 'mang món → bước khen');
   advanceTutorial(g);
   check(g.tutorial.done, 'hoàn thành hướng dẫn');
+}
+
+// Mọi tổ hợp đều ra món
+{
+  const all = ['banh_mi', 'trung', 'pate', 'hanh', 'tra', 'da', 'gao', 'ga', 'thit_bo', 'rau', 'bun', 'tom'] as IngredientId[];
+  let ok = true;
+  let n = 0;
+  for (let a = 0; a < all.length; a += 1)
+    for (let b = a + 1; b < all.length; b += 1)
+      for (let c = b; c < all.length; c += 1) {
+        const combo = c === b ? [all[a], all[b]] : [all[a], all[b], all[c]];
+        const d = dishFromCombo(combo);
+        n += 1;
+        if (!d.name || !(d.price > 0) || !d.emoji) ok = false;
+      }
+  check(ok, `mọi tổ hợp (${n}) đều ra món có tên, giá, hình`);
+  check(dishFromCombo(['banh_pho', 'thit_bo', 'hanh', 'rau']).id === 'pho_bo', 'tổ hợp chuẩn vẫn ra Phở bò');
+  const monster = dishFromCombo(['tra', 'da', 'thit_bo']);
+  check(monster.kind === 'quai_di', `trà + đá + bò là món quái dị (${monster.name})`);
+  check(dishFromCombo(['gao', 'thit_bo', 'hanh']).kind === 'la', `cơm + bò + hành là món lạ (${dishFromCombo(['gao', 'thit_bo', 'hanh']).name})`);
+  const g = E.newGame(seededRng(1));
+  const noH = resolveCombo(g, ['banh_mi', 'trung', 'pate']);
+  check(noH.recipe.id === 'banh_mi_trung' && noH.noGarnish, 'bỏ hành ra khỏi nồi → Bánh mì trứng không hành');
+  // Nấu theo nồi tự chọn
+  const r = seededRng(3);
+  g.activeEvent = null;
+  for (const id of ['banh_mi', 'trung', 'pate', 'tra', 'da'] as const) E.buy(g, id, 3);
+  E.openShop(g, r);
+  g.run!.slots.forEach((sl) => (sl.job = null));
+  const stove = g.run!.slots.find((sl) => sl.station === 'stove')!;
+  const before = usableQty(g, 'trung');
+  check(E.playerCookCombo(g, ['banh_mi', 'trung', 'pate'], stove.id) === null && stove.job?.recipeId === 'banh_mi_trung' && stove.job.noGarnish, 'nồi bánh mì + trứng + pate → nấu bánh mì trứng không hành');
+  check(usableQty(g, 'trung') === before - 1, 'nấu nồi trừ đúng nguyên liệu');
+  const counter = g.run!.slots.find((sl) => sl.station === 'counter')!;
+  check(E.playerCookCombo(g, ['tra', 'da', 'pate'], counter.id) === null && RECIPES[counter.job!.recipeId].kind === 'quai_di', 'nấu ra món quái dị trà đá pate');
+  check(g.discovered.includes(counter.job!.recipeId) && !g.unlockedRecipes.includes(counter.job!.recipeId), 'món quái dị vào sổ, không vào menu');
+}
+
+// Trend
+{
+  const g = E.newGame(seededRng(4));
+  startTrend(g, 'banh_mi_trung', 'reviewer');
+  check(Math.abs(trendHeat(g) - 1) < 1e-9, 'trend mới: độ hot 100%');
+  check(Math.abs(trendPriceMult(g, 'banh_mi_trung') - 1.2) < 1e-9 && Math.abs(trendSpawnMult(g) - 2.5) < 1e-9, 'giá +20%, khách +150%');
+  check(Math.abs(trendRepMult(g, 'banh_mi_trung') - 1.2) < 1e-9 && trendPriceMult(g, 'tra_da') === 1, 'danh tiếng +20%, món khác không đổi');
+  g.day += 1;
+  check(Math.abs(trendHeat(g) - 2 / 3) < 1e-6, 'sau 1 ngày còn 67%');
+  g.day += 2;
+  check(trendHeat(g) === 0, 'sau 3 ngày hết hot');
+  const g2 = E.newGame(seededRng(4));
+  addToMenu(g2, 'banh_mi_pate', () => 0.9);
+  check(orderWeight(g2, 'banh_mi_pate') === 3 && orderWeight(g2, 'tra_da') === 1, 'món mới ra mắt được gọi × 3 ngày đầu');
+  // Món quái dị: có phàn nàn và có lúc thành trend
+  let complaints = 0;
+  let trends = 0;
+  for (let seed = 1; seed <= 60; seed += 1) {
+    const r = seededRng(seed);
+    const g3 = E.newGame(r);
+    g3.activeEvent = null;
+    for (const id of ['tra', 'da', 'pate'] as const) E.buy(g3, id, 2);
+    E.openShop(g3, r);
+    const m = dishFromCombo(['tra', 'da', 'pate']);
+    registerDish(g3, m);
+    g3.unlockedRecipes.push(m.id);
+    const c = makeCustomer(g3, r)!;
+    c.items = [{ recipeId: m.id, noGarnish: false, served: false, quality: 0 }];
+    g3.run!.customers.push(c);
+    g3.run!.pass.push({ id: 'dq', recipeId: m.id, quality: 'perfect', noGarnish: false, by: 'Bạn' });
+    E.playerServe(g3, 'dq', c.id, r);
+    if ((g3.report.complaints ?? 0) > 0) complaints += 1;
+    if (g3.trend?.source === 'viral') trends += 1;
+  }
+  check(complaints > 20 && trends > 0, `món quái dị: ${complaints}/60 lần bị chê, ${trends} lần thành trend`);
+}
+
+// Nhân viên theo cấp + sinh viên + sự cố
+{
+  const r = seededRng(6);
+  const g = E.newGame(r);
+  check(g.candidates.length === 0 && unlockedRoles(g).length === 0, 'cấp 1 chưa thuê được ai');
+  g.xp = 160;
+  E.closeDay?.(g);
+  g.phase = 'summary';
+  E.nextDay(g, r);
+  check(unlockedRoles(g).join() === 'prep' && g.candidates.every((c) => c.role === 'prep'), 'cấp 3: chỉ phụ bếp');
+  const student = g.candidates.find((c) => c.student)!;
+  const normal = g.candidates.find((c) => !c.student)!;
+  check(Boolean(student) && student.wage < normal.wage && student.skill <= 30, 'có sinh viên lương rẻ, tay nghề thấp');
+  check(errorRate(g, { ...student, skill: 50, mood: 70, trait: 'steady' }) > errorRate(g, { ...student, student: undefined, skill: 50, mood: 70, trait: 'steady' }), 'sinh viên dễ sai hơn');
+  g.xp = 540;
+  g.phase = 'summary';
+  E.nextDay(g, r);
+  check(unlockedRoles(g).includes('waiter') && g.candidates.some((c) => c.role === 'waiter' && c.student), 'cấp 5: thuê được phục vụ, có sinh viên');
+  // Sinh viên phục vụ vụng về: ép tỉ lệ sai cao, đếm sự cố
+  let trips = 0;
+  let spills = 0;
+  for (let seed = 1; seed <= 40; seed += 1) {
+    const rr = seededRng(seed);
+    const h = E.newGame(rr);
+    h.activeEvent = null;
+    h.xp = 540;
+    const w = makeStaff(h, rr, 'waiter', true);
+    w.skill = 0;
+    w.mood = 10;
+    h.staff.push(w);
+    E.openShop(h, rr);
+    const c = makeCustomer(h, rr)!;
+    c.tableIndex = 0;
+    c.items = [{ recipeId: 'banh_mi_trung', noGarnish: false, served: false, quality: 0 }];
+    h.run!.customers = [c];
+    h.run!.pass.push({ id: 'dw', recipeId: 'banh_mi_trung', quality: 'perfect', noGarnish: false, by: 'Bạn' });
+    for (let i = 0; i < 30; i += 1) {
+      E.tick(h, 200, rr);
+      if (h.activeEvent) h.activeEvent = null;
+    }
+    trips += h.report.trips ?? 0;
+    spills += h.report.spills ?? 0;
+  }
+  check(trips > 0 && spills > 0, `sinh viên phục vụ có vấp té (${trips}) và đổ đồ ăn (${spills})`);
 }
 
 process.exit(failed ? 1 : 0);

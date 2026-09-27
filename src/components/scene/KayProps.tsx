@@ -5,7 +5,7 @@ import { useFrame } from '../../three/fiber';
 import { useProp } from '../../three/models';
 import { BURN_FACTOR } from '../../game/data';
 import type { CookJob, Dish } from '../../game/types';
-import { FOOD_COLOR } from './looks';
+import { foodColor } from './looks';
 import DishModel, { dishKey } from './Dish';
 
 /** KayKit dùng ô lưới 2 đơn vị; game dùng ô 1 đơn vị. */
@@ -125,7 +125,7 @@ export function KayStove({ job, blocked, fallback }: { job: CookJob | null; bloc
           <Prop name={job.recipeId === 'banh_mi_trung' ? 'pan_A' : 'pot_A_stew'} position={[0, top, 0.02]} scale={KAY * 0.7} />
           <mesh position={[0, top + 0.22, 0.02]} rotation-x={-Math.PI / 2}>
             <circleGeometry args={[0.2, 20]} />
-            <meshStandardMaterial color={warn ? '#2B1B12' : FOOD_COLOR[job.recipeId]} roughness={0.5} />
+            <meshStandardMaterial color={warn ? '#2B1B12' : foodColor(job.recipeId)} roughness={0.5} />
           </mesh>
           <Puffs color={warn ? '#212121' : '#FFFFFF'} y={top + 0.3} count={warn ? 6 : 4} active={!blocked} />
           {done && !warn && <DoneGlow y={top + 0.5} />}
@@ -151,7 +151,7 @@ export function KayCounter({ job, fallback }: { job: CookJob | null; fallback: R
           </mesh>
           <mesh position={[0, 0.02 + Math.min(1, job.progress / job.cookTime) * 0.1, 0]}>
             <cylinderGeometry args={[0.085, 0.075, 0.02 + Math.min(1, job.progress / job.cookTime) * 0.2, 20]} />
-            <meshStandardMaterial color={FOOD_COLOR[job.recipeId]} roughness={0.2} />
+            <meshStandardMaterial color={foodColor(job.recipeId)} roughness={0.2} />
           </mesh>
           {done && <DoneGlow y={0.4} color="#80DEEA" />}
         </group>

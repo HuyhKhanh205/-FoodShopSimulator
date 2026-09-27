@@ -7,6 +7,7 @@ import IconTile from '../../components/kid/IconTile';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
 import { Button, ProgressBar, colors } from '../../components/ui';
 import { levelOf, levelProgress, mysteryRecipes, unlockedIngredients } from '../../game/progression';
+import { trendHeat } from '../../game/trend';
 import { INGREDIENTS, RECIPES, CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
 import { buy, discardExpired, openShop, payDebt, returnToShop, returnableQty, shopClosed, unbuy } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
@@ -48,7 +49,16 @@ export default function MarketView() {
       {game.unlockedRecipes.map((id) => {
         const r = RECIPES[id];
         const n = portionsFromStock(game, id);
-        return <IconTile key={id} size="sm" icon={r.emoji} name={`${r.name}: đủ ${n} phần`} badge={n} style={n === 0 ? styles.tileEmpty : undefined} />;
+        return (
+          <IconTile
+            key={id}
+            size="sm"
+            icon={r.emoji}
+            name={`${r.name}: đủ ${n} phần`}
+            badge={trendHeat(game, id) > 0 ? `🔥${n}` : n}
+            style={n === 0 ? styles.tileEmpty : undefined}
+          />
+        );
       })}
     </View>
   );
@@ -75,6 +85,16 @@ export default function MarketView() {
             <Text style={styles.introText}>🐣 Ngày làm quen {game.day}/3 · 👤 {game.day === 1 ? '·' : game.day === 2 ? '··' : '···'}</Text>
           </View>
         )}
+        {game.trend && trendHeat(game) > 0 && RECIPES[game.trend.recipeId] && (
+          <View style={styles.trend} accessibilityLabel={`Món đang trend: ${RECIPES[game.trend.recipeId].name}`}>
+            <Text style={styles.trendText}>
+              🔥 Trend: {RECIPES[game.trend.recipeId].emoji} {RECIPES[game.trend.recipeId].name}
+            </Text>
+            <View style={{ flex: 1 }}>
+              <ProgressBar value={trendHeat(game)} color={colors.bad} height={10} />
+            </View>
+          </View>
+        )}
         {game.mods.labels.length > 0 && (
           <View style={styles.tags}>
             {game.mods.labels.map((l) => (
@@ -92,9 +112,9 @@ export default function MarketView() {
             <ProgressBar value={levelProgress(game.xp)} color={colors.accent} height={10} />
           </View>
           <IconTile
-            icon="🧪"
-            label="Thử món"
-            name="Bếp thử món"
+            icon="📖"
+            label="Sổ món"
+            name="Sổ món và menu"
             size="sm"
             badge={mysteryRecipes(game).length || undefined}
             onPress={() => navigation.navigate('Lab')}
@@ -230,6 +250,8 @@ const styles = StyleSheet.create({
   cardWide: { width: 170, flexGrow: 0 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cardEmoji: { fontSize: 40 },
+  trend: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFEBEE', borderRadius: 14, borderWidth: 2, borderColor: colors.bad, padding: 10 },
+  trendText: { fontSize: 16, fontWeight: '900', color: colors.bad },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 6 },
   levelText: { fontSize: 20, fontWeight: '900', color: colors.primaryDark },
   unusedMark: { fontSize: 14, marginTop: -18 },

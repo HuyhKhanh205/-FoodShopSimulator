@@ -1,3 +1,4 @@
+import { RECIPES } from '../../game/data';
 import type { Customer, HairStyle, PlayerProfile, RecipeId, StaffRole } from '../../game/types';
 import type { CharacterModel } from '../../three/models';
 
@@ -112,3 +113,8 @@ export const FOOD_COLOR: Record<RecipeId, string> = {
   banh_mi_thit: '#C77B5A',
   com_chien_tom: '#F4A261',
 };
+
+/** Màu thức ăn của món (món sinh từ tổ hợp dùng màu tự tính). */
+export function foodColor(id: RecipeId): string {
+  return FOOD_COLOR[id] ?? RECIPES[id]?.color ?? '#BCAAA4';
+}

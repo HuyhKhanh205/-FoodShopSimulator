@@ -11,7 +11,7 @@ import { colors } from '../ui';
 import { canSpeak, speak } from './HelpButton';
 import { tutorialUi, useTutorialUi } from './tutorialUi';
 
-/** Ngoại hình bếp trưởng Tư: áo trắng, khăn đỏ, mũ đầu bếp. */
+/** Ngoại hình Chú Tư bếp trưởng: áo trắng, khăn đỏ, mũ đầu bếp. */
 const CHEF_LOOK: Look = {
   skin: '#E0AC7E',
   hair: '#3E2723',
@@ -151,7 +151,7 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
 
   if (mini) {
     return (
-      <Pressable style={[styles.mini, top ? { top: 92 } : { bottom: 16 }]} onPress={() => setMini(false)} accessibilityRole="button" accessibilityLabel="Mở lại bếp trưởng">
+      <Pressable style={[styles.mini, top ? { top: 92 } : { bottom: 16 }]} onPress={() => setMini(false)} accessibilityRole="button" accessibilityLabel="Mở lại Chú Tư bếp trưởng">
         <Text style={{ fontSize: 30 }}>👨‍🍳</Text>
         <Text style={styles.miniDot}>💬</Text>
       </Pressable>
@@ -167,11 +167,11 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
         { transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [top ? -260 : 260, 0] }) }] },
       ]}
     >
-      <Pressable onPress={() => setMini(true)} accessibilityRole="button" accessibilityLabel="Bếp trưởng Tư (chạm để thu nhỏ)">
+      <Pressable onPress={() => setMini(true)} accessibilityRole="button" accessibilityLabel="Chú Tư bếp trưởng (chạm để thu nhỏ)">
         <ChefAvatar talkKey={say.key} size={avatar} />
       </Pressable>
-      <Animated.View style={[styles.bubble, { transform: [{ scale: bounce }] }]} accessibilityLabel={`Bếp trưởng: ${say.text}`}>
-        <Text style={styles.name}>👨‍🍳 Bếp trưởng Tư</Text>
+      <Animated.View style={[styles.bubble, { transform: [{ scale: bounce }] }]} accessibilityLabel={`Chú Tư bếp trưởng: ${say.text}`}>
+        <Text style={styles.name}>👨‍🍳 Chú Tư bếp trưởng</Text>
         <Text style={styles.text}>{say.text}</Text>
         <View style={styles.row}>
           {canSpeak() && (

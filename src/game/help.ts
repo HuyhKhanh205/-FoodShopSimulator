@@ -70,7 +70,7 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
     steps: [
       { icon: '🥩', text: 'Chọn đồ để thái.' },
       { icon: '👆', text: 'Chạm thớt thật nhiều để thái nhanh.' },
-      { icon: '🍜', text: 'Chọn món để nấu.' },
+      { icon: '🍲', text: 'Chạm nguyên liệu (hoặc chạm món) để bỏ vào nồi, rồi bấm 🔥 Nấu.' },
       { icon: '🥄', text: 'Chạm vào nồi để khuấy.' },
       { icon: '✅', text: 'Chín rồi thì bấm 🍽️ để lấy ra.' },
       { icon: '⚠️', text: 'Để lâu quá sẽ cháy!' },
@@ -80,7 +80,7 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
   counter: {
     title: 'Pha đồ uống',
     steps: [
-      { icon: '🧋', text: 'Chọn đồ uống.' },
+      { icon: '🧋', text: 'Bỏ nguyên liệu vào ly rồi bấm 🔥 Nấu.' },
       { icon: '👆', text: 'Chạm để lắc cho nhanh.' },
       { icon: '🍽️', text: 'Xong thì lấy ra mang cho khách.' },
     ],
@@ -110,13 +110,13 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
     ],
   },
   lab: {
-    title: 'Bếp thử món',
+    title: 'Sổ món & Menu',
     steps: [
-      { icon: '🥚', text: 'Chạm vào 2–4 nguyên liệu để bỏ vào nồi.' },
-      { icon: '🧪', text: 'Bấm Nấu thử.' },
-      { icon: '🎉', text: 'Đúng công thức thì có món mới trong menu!' },
-      { icon: '🤏', text: '"Gần đúng rồi" là thiếu hoặc thừa 1 thứ.' },
-      { icon: '❓', text: 'Ô ❓ là món bí ẩn — thử sai nhiều sẽ lộ gợi ý.' },
+      { icon: '🥚', text: 'Chạm 2–4 nguyên liệu để bỏ vào nồi thử rồi bấm Nấu thử.' },
+      { icon: '🍽️', text: 'Tổ hợp nào cũng ra món: 😋 ngon, 🤔 lạ hoặc 🧟 quái dị.' },
+      { icon: '➕', text: 'Thích món nào thì bấm Thêm vào menu — khách sẽ gọi món mới nhiều hơn trong ngày đầu.' },
+      { icon: '🧟', text: 'Món quái dị dễ bị khách chê, nhưng biết đâu thành trend 🔥!' },
+      { icon: '📖', text: 'Chạm vào món trong sổ để đưa vào hoặc bỏ khỏi menu.' },
     ],
   },
   upgrades: {

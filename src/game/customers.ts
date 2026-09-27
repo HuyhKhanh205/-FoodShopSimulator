@@ -1,4 +1,5 @@
 import { addXp } from './progression';
+import { orderWeight, startTrend, trendPriceMult, trendRepMult } from './trend';
 import { CUSTOMER_EMOJI, FIRST_NAMES, RECIPES, REGULARS, REVIEW_TEXTS } from './data';
 import { changeRep, clamp, formatMoney, log, menuRecipes, nextId, pick, weightedPick } from './helpers';
 import type { Customer, CustomerKind, GameState, OrderItem, RecipeId, Rng, Staff } from './types';
@@ -24,6 +25,17 @@ function repWeight(c: Customer): number {
   if (c.kind === 'reviewer') return 3;
   if (c.kind === 'group') return 2;
   return 1;
+}
+
+/** Chọn món theo trọng số: món trend và món mới ra mắt được gọi nhiều hơn. */
+function pickMenu<T extends { id: RecipeId }>(s: GameState, rng: Rng, list: T[]): T {
+  const weights = list.map((r) => orderWeight(s, r.id));
+  let x = rng() * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < list.length; i += 1) {
+    x -= weights[i];
+    if (x <= 0) return list[i];
+  }
+  return list[list.length - 1];
 }
 
 /** Ngày làm quen: lượng khách ngày 1 ≈ 1/3, ngày 2 ≈ 1/2, ngày 3 ≈ 3/4, từ ngày 4 bình thường. */
@@ -73,25 +85,25 @@ export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, grou
     name = reg.name;
     emoji = '😊';
     items.push(item(reg.favorite));
-    if (drinks.length && rng() < 0.7) items.push(item(pick(rng, drinks).id));
+    if (drinks.length && rng() < 0.7) items.push(item(pickMenu(s, rng, drinks).id));
   } else if (kind === 'delivery') {
     name = 'Shipper (đơn của ' + name + ')';
     emoji = '🛵';
     const count = rng() < 0.4 ? 2 : 1;
-    for (let i = 0; i < count; i += 1) items.push(item(pick(rng, mains).id));
-    if (drinks.length && rng() < 0.4) items.push(item(pick(rng, drinks).id));
+    for (let i = 0; i < count; i += 1) items.push(item(pickMenu(s, rng, mains).id));
+    if (drinks.length && rng() < 0.4) items.push(item(pickMenu(s, rng, drinks).id));
   } else {
     // Khách đi theo nhóm 1–3 người, mỗi người một món chính và có thể gọi thêm nước.
     size = easy ? 1 : Number(weightedPick(rng, { '1': 45, '2': 40, '3': 15 }));
     for (let p = 0; p < size; p += 1) {
       if (kind === 'allergic' && p === 0) {
         const withGarnish = mains.filter((r) => r.garnish);
-        const main = withGarnish.length ? pick(rng, withGarnish) : pick(rng, mains);
+        const main = withGarnish.length ? pick(rng, withGarnish) : pickMenu(s, rng, mains);
         items.push(item(main.id, Boolean(main.garnish)));
       } else {
-        items.push(item(pick(rng, mains).id));
+        items.push(item(pickMenu(s, rng, mains).id));
       }
-      if (drinks.length && rng() < (easy ? (s.day === 3 ? 0.3 : 0) : 0.6)) items.push(item(pick(rng, drinks).id));
+      if (drinks.length && rng() < (easy ? (s.day === 3 ? 0.3 : 0) : 0.6)) items.push(item(pickMenu(s, rng, drinks).id));
     }
   }
 
@@ -115,12 +127,50 @@ function addReview(s: GameState, c: Customer, stars: number, rng: Rng, text?: st
   if (s.report.reviews.length > 60) s.report.reviews.shift();
 }
 
+/**
+ * Khách ăn món lạ / quái dị: có thể phàn nàn (trả ít tiền, danh tiếng giảm),
+ * khen lạ miệng, hoặc quay clip lên mạng → món thành trend.
+ */
+function reactToOddDish(s: GameState, c: Customer, item: OrderItem, rng: Rng) {
+  const kind = RECIPES[item.recipeId]?.kind;
+  if (!kind || kind === 'chuan') return;
+  const r = rng();
+  const t = s.run!.elapsed;
+  const say = (icon: string, text: string) => (c.chat = { icon, text, until: t + 4500 });
+  const name = RECIPES[item.recipeId].name;
+  if (kind === 'quai_di') {
+    if (r < 0.55) {
+      item.quality = Math.min(item.quality, 0.3);
+      changeRep(s, -0.05 * repWeight(c));
+      s.report.complaints = (s.report.complaints ?? 0) + 1;
+      say('🤢', pick(rng, ['Món gì kỳ vậy trời!', 'Ăn không nổi luôn...', 'Ai nghĩ ra món này vậy?!']));
+      addReview(s, c, 1, rng, `${name}?? Quái dị hết sức!`);
+      log(s, `🤢 ${c.name} phàn nàn về món quái dị ${name}`, 'bad');
+    } else if (r < 0.85) {
+      say('😐', 'Ờ... cũng ăn được.');
+    } else {
+      say('📱', 'Món này độc lạ quá, quay clip mới được!');
+      c.tipBonus = (c.tipBonus ?? 0) + 0.3;
+      startTrend(s, item.recipeId, 'viral');
+    }
+  } else if (r < 0.1) {
+    item.quality = Math.min(item.quality, 0.6);
+    say('😕', 'Hơi lạ miệng quá...');
+  } else if (r < 0.3) {
+    c.tipBonus = (c.tipBonus ?? 0) + 0.2;
+    say('😋', 'Lạ miệng mà ngon ghê!');
+  } else if (r < 0.33) {
+    say('📱', 'Ngon lạ quá, phải đăng lên mạng!');
+    startTrend(s, item.recipeId, 'viral');
+  }
+}
+
 function removeCustomer(s: GameState, c: Customer) {
   s.run!.customers = s.run!.customers.filter((x) => x.id !== c.id);
 }
 
 function priceOf(s: GameState, recipeId: RecipeId) {
-  return Math.round(RECIPES[recipeId].price * s.mods.sellPriceMult);
+  return Math.round(RECIPES[recipeId].price * s.mods.sellPriceMult * trendPriceMult(s, recipeId));
 }
 
 /** Khách hết kiên nhẫn bỏ về: chỉ trả tiền món đã nhận. */
@@ -183,7 +233,10 @@ function completeCustomer(s: GameState, c: Customer, rng: Rng) {
   s.report.served += 1;
   if (c.kind !== 'delivery') s.cleanliness = clamp(s.cleanliness - 2.5, 0, 100);
 
-  changeRep(s, (score - 0.55) * 0.06 * repWeight(c));
+  // Món trend: danh tiếng cộng thêm tới 20%.
+  const trendBoost = Math.max(...c.items.map((i) => trendRepMult(s, i.recipeId)));
+  const repDelta = (score - 0.55) * 0.06 * repWeight(c);
+  changeRep(s, repDelta > 0 ? repDelta * trendBoost : repDelta);
   const stars = clamp(Math.round(1 + 4 * score), 1, 5);
   addReview(s, c, stars, rng);
   if (c.kind === 'reviewer') {
@@ -234,6 +287,7 @@ export function serveDish(s: GameState, dishId: string, customerId: string, rng:
 
   target.served = true;
   target.quality = QUALITY_SCORE[dish.quality];
+  reactToOddDish(s, c, target, rng);
   addXp(s, dish.quality === 'perfect' ? 10 : 4);
   if (dish.quality === 'raw') log(s, `😖 ${c.name}: "${recipe.name} còn sống!"`, 'bad');
   if (dish.quality === 'burnt') log(s, `🤮 ${c.name}: "${recipe.name} cháy khét!"`, 'bad');

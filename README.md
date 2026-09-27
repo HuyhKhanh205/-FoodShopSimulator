@@ -72,7 +72,8 @@ Hết nguyên liệu giữa ngày? Bấm **🛒** trên màn chơi để chạy 
 ### 👀 Bếp của tôi — góc nhìn thứ nhất (bếp + thớt chung một cảnh)
 Tới **thớt** hoặc **bếp** là vào màn **Bếp của tôi**: nhìn qua mắt chủ quán (kiểu Kebab Chefs, không vẽ tay) một cảnh 3D duy nhất — **dãy bếp ở phía trên (xa)**, **thớt ở phía dưới (gần)**, không phải chuyển trang:
 - **Chạm vào nồi / chảo** để chọn bếp đó (vòng vàng) và khuấy; **chạm vào thớt** để thái. Bếp sắp cháy có vòng đỏ. Trên máy tính: Space / E thái (khi đang thái) hoặc khuấy bếp đang chọn, phím 1–9 chọn bếp.
-- Bảng điều khiển bên dưới: phần **🔥 Bếp** (chọn bếp, chọn món, nhấc ra) ở trên, phần **🔪 Sơ chế** ở dưới — vừa thái rau vừa canh được nồi phở.
+- Bảng điều khiển bên dưới: phần **🔥 Bếp** (chọn bếp, **nồi tự chọn**, nhấc ra) ở trên, phần **🔪 Sơ chế** ở dưới — vừa thái rau vừa canh được nồi phở.
+- **Nồi tự chọn**: chạm nguyên liệu để bỏ vào nồi (tối đa 4, chạm lại để lấy ra), xem trước món sẽ ra (😋 Ngon / 🤔 Lạ / 🧟 Quái dị, có trong menu chưa, thiếu gì) rồi bấm **🔥 Nấu**. Ô món trong menu là nút điền nhanh đủ nguyên liệu. Bỏ 🧅 ra khỏi nồi = món "không hành". Quầy pha chế dùng cùng kiểu nồi.
 - **Quầy pha chế** (trà đá, cà phê, gỏi cuốn) vẫn là màn riêng khi đi tới quầy.
 - **Thanh phiếu order** dưới tiêu đề (cả ở bếp và quầy): ô 🔥 cho biết còn phải nấu bao nhiêu món mỗi loại (đã trừ món đang nấu, trên quầy ra món và trên tay), tiếp theo là phiếu từng bàn 🪑 / cửa 🚪 / shipper 🛵 với món gọi (🚫 = không hành, ✅ = đã mang), thanh kiên nhẫn; bàn gấp nhất xếp trước và viền đỏ.
 - Thớt: chọn nguyên liệu rồi **chạm liên tục** để thái nhanh hơn (mỗi nhát rút 0,35 giây). Nguyên liệu vẽ chi tiết: miếng bò bít tết, ba chỉ heo nhiều lớp nạc – mỡ – bì, đùi gà, hành lá gốc trắng có rễ, xà lách, tôm có đốt – đuôi – râu; thái tới đâu nguyên liệu ngắn lại tới đó, đống thịt thái / hành cắt khoanh / tôm bóc vỏ to dần, xong thì vào bát.
@@ -82,13 +83,18 @@ Tới **thớt** hoặc **bếp** là vào màn **Bếp của tôi**: nhìn qua 
 
 Trên điện thoại cảnh quán được phóng to 30% và camera đi theo nhân vật.
 
-### 👨‍🍳 Bếp trưởng Tư dẫn đường
-Chơi mới là **bếp trưởng Tư** (nhân vật 3D KayKit có hoạt ảnh vẫy tay, giải thích) trượt lên màn hình và dẫn từng bước ngày đầu: mua 🥖🥚🥫🧅 → 🏮 mở cửa → vào 🔪 thớt → thái hành → nấu 🥪 → lấy món → mang cho khách. Mỗi bước chỉ vào đúng nút cần bấm (viền vàng nhấp nháy + 👆), làm xong tự sang bước sau; có ⏭️ bỏ qua, chạm vào bếp trưởng để thu nhỏ, 🔊 để nghe đọc. Sau đó bếp trưởng chỉ xuất hiện khi có tin mới (lên cấp, món mới) hoặc khi bấm ❗ ở bất kỳ màn nào.
+### 👨‍🍳 Chú Tư bếp trưởng dẫn đường
+Chơi mới là **Chú Tư bếp trưởng** (nhân vật 3D KayKit có hoạt ảnh vẫy tay, giải thích) trượt lên màn hình và dẫn từng bước ngày đầu: mua 🥖🥚🥫🧅 → 🏮 mở cửa → vào 🔪 thớt → thái hành → bỏ 🥪 vào nồi và nấu → lấy món → mang cho khách. Mỗi bước chỉ vào đúng nút cần bấm (viền vàng nhấp nháy + 👆), làm xong tự sang bước sau; có ⏭️ bỏ qua, chạm vào bếp trưởng để thu nhỏ, 🔊 để nghe đọc. Sau đó Chú Tư chỉ xuất hiện khi có tin mới (lên cấp, món mới, trend, mở vị trí nhân viên) hoặc khi bấm ❗ ở bất kỳ màn nào.
 
-### ⭐ Cấp độ & 🧪 Bếp thử món
+### ⭐ Cấp độ & 📖 Sổ món & Menu
 - Mỗi món mang cho khách được điểm kinh nghiệm; **lên cấp mở khoá nguyên liệu mới**: cấp 1 🥖🥚🥫🧅🍵🧊 · cấp 2 🍚🍗 · cấp 3 🍜🥩🥬 · cấp 4 🫘🥛 · cấp 5 🍝🥓 · cấp 6 🫓🦐.
-- Menu **không có sẵn**: bắt đầu chỉ có 🥪 Bánh mì trứng và 🧋 Trà đá. Vào **🧪 Bếp thử món** (ở chợ hoặc màn nâng cấp), chọn 2–4 nguyên liệu bỏ vào nồi rồi bấm **Nấu thử**: đúng công thức thì phát hiện món mới và món vào menu ngay (khách bắt đầu gọi); thiếu / thừa đúng 1 thứ thì "Gần đúng rồi!"; thử sai nhiều lần sẽ lộ gợi ý trong 📖 sổ công thức.
-- 15 món để khám phá: bánh mì trứng / pate / bò / thịt, cơm gà, cơm chiên trứng, cơm tấm, cơm chiên tôm, phở bò, bún chả, gỏi cuốn, trà đá, trà sữa, cà phê sữa đá.
+- Menu **không có sẵn**: bắt đầu chỉ có 🥪 Bánh mì trứng và 🧋 Trà đá. Vào **📖 Sổ món & Menu** (ở chợ hoặc màn nâng cấp), chọn 2–4 nguyên liệu rồi bấm **🧪 Nấu thử**: **mọi tổ hợp đều ra món**, được ghi vào sổ; bấm **➕ Thêm vào menu** để khách bắt đầu gọi. Chạm món trong sổ để bật / tắt trong menu (menu luôn còn ít nhất 1 món).
+  - **😋 Món chuẩn** (15 món: bánh mì trứng / pate / bò / thịt, cơm gà, cơm chiên trứng, cơm tấm, cơm chiên tôm, phở bò, bún chả, gỏi cuốn, trà đá, trà sữa, cà phê sữa đá): khách thích.
+  - **🤔 Món lạ** (ví dụ Cơm bò hành, Bún tôm, Sữa đá): tên và giá tự sinh; khách thỉnh thoảng khen (+boa) hoặc chê nhẹ.
+  - **🧟 Món quái dị** (trộn đồ uống với đồ ăn, hai loại tinh bột… ví dụ Bò xào trà đá): giá rẻ hơn, hình bát "nhớt" xanh sủi bọt; khách hay **phàn nàn** 🤢 (trả ít tiền, trừ danh tiếng, chê trong đánh giá) — nhưng có khi **quay clip lên mạng** và món thành trend.
+  - Thử ra món không chuẩn nhiều lần sẽ lộ gợi ý món chuẩn còn bí ẩn.
+- **🔥 Trend**: một món hot trong **3 ngày**, độ hot giảm dần: giá **+20%**, danh tiếng từ món đó **+20%**, lượng khách **+150%**, khách gọi món đó nhiều hơn hẳn. Nguồn: món lạ / quái dị gây sốt, sự kiện **📱 Food reviewer đăng clip**, món mới ra mắt (30%). Dải 🔥 Trend hiện ở chợ và HUD quán, huy hiệu 🔥 trên ô món và phiếu order.
+- **🆕 Món mới** thêm vào menu được khách gọi **gấp 3** trong ngày bán đầu tiên.
 
 ### 🐣 3 ngày làm quen
 Ngày 1 chỉ khoảng 1/3 lượng khách, ngày 2 một nửa, ngày 3 khoảng 3/4; khách đi một mình, gọi 1 món, kiên nhẫn hơn; ngày 1–2 không có sự cố, ngày 3 rất ít; tiền mặt bằng giảm theo. Từ ngày 4 quán đông bình thường.
@@ -107,7 +113,9 @@ Luồng chơi giữ nguyên (chợ → mở cửa → thái → nấu → mang m
 Khi bấm **Chơi mới**, bạn tạo chủ quán (xem trước 3D xoay tròn): tên chủ quán, tên quán, giới tính, kiểu tóc (ngắn, dựng, dài, búi, trọc), màu tóc, màu da, màu áo / tạp dề (khăn – viền áo) / quần — **tô được lên cả 4 nhân vật KayKit**, mũ (mũ đầu bếp, lưỡi trai, nón lá, khăn trùm) và kính; có nút 🎲 Ngẫu nhiên. Sửa lại được mỗi buổi sáng bằng nút **🧑‍🍳 Nhân vật** ở màn chợ.
 
 ### Nhân viên (có tỉ lệ làm sai)
-- **Đầu bếp** tự nấu, **phụ bếp** tự sơ chế, **phục vụ** tự mang món, lau dọn, chặn khách bùng tiền.
+- **Mở dần theo cấp**: 🔪 **phụ bếp** từ cấp 3 (tự sơ chế), 👨‍🍳 **đầu bếp** từ cấp 4 (tự nấu), 🍽️ **phục vụ** từ cấp 5 (tự mang món, lau dọn, chặn khách bùng tiền). Vị trí chưa mở hiện 🔒 ⭐N.
+- **🎓 Sinh viên làm thêm**: mỗi ngày mỗi vị trí có 1 ứng viên sinh viên, lương khoảng 45%, tay nghề thấp, sai gấp 1,8 lần; đội mũ lưỡi trai xanh trên cảnh 3D.
+- **Sự cố của phục vụ** (có hoạt ảnh): **vấp té** — ngã sấp, đĩa bay vòng cung rồi vỡ, mảnh văng và vệt thức ăn trên sàn, chữ 💥; **đổ thức ăn lên khách** — thức ăn bắn lên người khách, vết bẩn trên áo, khách 😡💦 mất kiên nhẫn, trừ danh tiếng; **mang nhầm bàn** — khách 🤨. Tổng kết ngày đếm số lần vấp / đổ và số lời phàn nàn.
 - Tỉ lệ sai = gốc theo vị trí × (1 − 0.9 × tay nghề) × tâm trạng × giờ cao điểm × tính cách.
 - Lỗi có thể xảy ra: nấu nhầm món, để cháy, quên ghi chú "không hành", mang nhầm bàn, sơ chế làm hỏng nguyên liệu.
 - Tính cách: Nhanh nhưng ẩu, Chậm mà chắc, Hay đi trễ, Khéo miệng (+tip), Lười.
@@ -131,6 +139,9 @@ src/game/          Logic thuần (không phụ thuộc React) — dễ kiểm th
   engine.ts        Vòng lặp tick, hành động người chơi, AI nhân viên, đóng/mở ngày
   customers.ts     Sinh khách, phục vụ, thanh toán, đánh giá
   events.ts        Các tình huống ngẫu nhiên và lựa chọn
+  dishes.ts        Tổ hợp nguyên liệu → món (chuẩn / lạ / quái dị), tên, giá, hình
+  trend.ts         Trend: độ hot giảm dần, hệ số giá / khách / danh tiếng
+  progression.ts   Cấp độ, mở khoá nguyên liệu / vị trí nhân viên, thử món, menu
   layout.ts        Bố cục bản đồ quán + tìm đường (BFS) cho chế độ góc nhìn nhân vật
   staffTarget.ts   Nhân viên đứng ở đâu trên bản đồ theo việc đang làm
   storage.ts       Lưu/tải bằng AsyncStorage (tự lưu ngoài giờ mở cửa)

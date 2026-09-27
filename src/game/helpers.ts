@@ -185,7 +185,8 @@ export function errorRate(s: GameState, st: Staff): number {
   const skillFactor = 1 - (st.skill / 100) * 0.9;
   const moodFactor = st.mood < 30 ? 1.6 : st.mood < 50 ? 1.25 : st.mood > 80 ? 0.8 : 1;
   const rushFactor = isRush(s) ? 1.3 : 1;
-  return clamp(BASE_ERROR[st.role] * skillFactor * moodFactor * rushFactor * TRAITS[st.trait].error, 0, 0.9);
+  const studentFactor = st.student ? 1.8 : 1;
+  return clamp(BASE_ERROR[st.role] * skillFactor * moodFactor * rushFactor * TRAITS[st.trait].error * studentFactor, 0, 0.9);
 }
 
 const TRAIT_WEIGHTS: Record<StaffTrait, number> = {
@@ -197,10 +198,11 @@ const TRAIT_WEIGHTS: Record<StaffTrait, number> = {
   lazy: 10,
 };
 
-export function makeStaff(s: GameState, rng: Rng, role?: StaffRole): Staff {
+/** Ứng viên; `student` = sinh viên làm thêm: tay nghề thấp, lương khoảng 45% mức thường. */
+export function makeStaff(s: GameState, rng: Rng, role?: StaffRole, student = false): Staff {
   const r: StaffRole = role ?? pick(rng, ['cook', 'prep', 'waiter'] as const);
-  const skill = Math.round(10 + rng() * 70);
-  const wage = Math.round((fairWage(skill) * (0.85 + rng() * 0.3)) / 10_000) * 10_000;
+  const skill = student ? Math.round(10 + rng() * 20) : Math.round(10 + rng() * 70);
+  const wage = Math.round((fairWage(skill) * (student ? 0.45 : 0.85 + rng() * 0.3)) / 10_000) * 10_000;
   return {
     id: nextId(s, 'st'),
     name: pick(rng, FIRST_NAMES),
@@ -215,5 +217,6 @@ export function makeStaff(s: GameState, rng: Rng, role?: StaffRole): Staff {
     absent: false,
     lateUntil: 0,
     task: null,
+    student: student || undefined,
   };
 }

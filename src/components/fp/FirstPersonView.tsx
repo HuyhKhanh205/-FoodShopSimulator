@@ -10,6 +10,7 @@ import { Canvas } from '../../three/fiber';
 import type { ThreeEvent } from '../../three/fiber';
 import HelpButton from '../kid/HelpButton';
 import OrderRail from './OrderRail';
+import PotBuilder from './PotBuilder';
 import TutorialGlow, { useTutorialTarget, useTutorialTargets } from '../kid/TutorialGlow';
 import IconTile from '../kid/IconTile';
 import { ProgressBar, colors } from '../ui';
@@ -262,32 +263,9 @@ function KitchenView({ station: initial, stations, game, act, onExit, noGarnish,
       })}
       <View style={styles.divider} />
       {selSlot && !selInfo.job && (
-        <>
-          <IconTile
-            size="sm"
-            icon="🚫🧅"
-            name={`Không hành: ${noGarnish ? 'bật' : 'tắt'}`}
-            selected={noGarnish}
-            tone={noGarnish ? 'danger' : 'plain'}
-            onPress={() => setNoGarnish(!noGarnish)}
-          />
-          {recipes.map((r) => {
-            const off = noGarnish && Boolean(r.garnish);
-            const ok = canMake(game, r.id, off);
-            return (
-              <TutorialGlow key={r.id} on={targets.includes(`kitchen.recipe:${r.id}`)}>
-                <IconTile
-                  icon={r.emoji}
-                  name={r.name}
-                  disabled={!ok}
-                  missing={ok ? undefined : missingFor(game, r.id, off).map((m) => INGREDIENTS[m].emoji)}
-                  tone={ok ? 'primary' : 'plain'}
-                  onPress={() => act((s) => playerCook(s, r.id, noGarnish, selSlot.id))}
-                />
-              </TutorialGlow>
-            );
-          })}
-        </>
+        <View style={{ width: '100%' }}>
+          <PotBuilder key={selSlot.id} game={game} station="stove" slotId={selSlot.id} act={act} targets={targets} />
+        </View>
       )}
       {selSlot && selInfo.mine && (
         <TutorialGlow on={targets.includes('kitchen.takeout') && selInfo.done}>
@@ -428,24 +406,7 @@ function CounterView({ station, game, act, onExit, noGarnish }: Props) {
   const recipes = game.unlockedRecipes.map((id) => RECIPES[id]).filter((r) => r.station === 'counter');
   let controls: React.ReactNode = null;
   if (slot && !info.job) {
-    controls = (
-      <View style={styles.wrap}>
-        {recipes.map((r) => {
-          const ok = canMake(game, r.id, false);
-          return (
-            <IconTile
-              key={r.id}
-              icon={r.emoji}
-              name={r.name}
-              disabled={!ok}
-              missing={ok ? undefined : missingFor(game, r.id, false).map((m) => INGREDIENTS[m].emoji)}
-              tone={ok ? 'primary' : 'plain'}
-              onPress={() => act((s) => playerCook(s, r.id, noGarnish, slot.id))}
-            />
-          );
-        })}
-      </View>
-    );
+    controls = <PotBuilder key={slot.id} game={game} station="counter" slotId={slot.id} act={act} targets={[]} />;
   } else if (slot && info.mine) {
     controls = (
       <View style={styles.wrap}>

@@ -54,7 +54,7 @@ export default function UpgradeScreen() {
               <Text style={styles.name}>Bếp thử món</Text>
               <Text style={styles.ingr}>{game.unlockedRecipes.map((id) => RECIPES[id].emoji).join(' ')}</Text>
             </View>
-            <Button small label="🧪 Thử món" onPress={() => navigation.navigate('Lab')} />
+            <Button small label="📖 Sổ món" onPress={() => navigation.navigate('Lab')} />
           </View>
         </Panel>
       </ScrollView>

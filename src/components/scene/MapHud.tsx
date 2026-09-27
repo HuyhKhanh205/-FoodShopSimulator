@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
+import { CLOSE_HOUR, DAY_MS, OPEN_HOUR, RECIPES } from '../../game/data';
+import { trendHeat } from '../../game/trend';
 import { isPeak, playerClean } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
 import { formatClock, formatMoney } from '../../game/helpers';
@@ -36,6 +37,9 @@ export default function MapHud({ compact }: { compact: boolean }) {
     isPeak(run.elapsed) ? { text: '🔥 Đông khách', tone: 'warn' as const } : null,
     run.elapsed < run.powerOutUntil ? { text: '🔌 Cúp điện', tone: 'bad' as const } : null,
     run.elapsed < run.gasOutUntil ? { text: '🛢️ Hết gas', tone: 'bad' as const } : null,
+    game.trend && trendHeat(game) > 0 && RECIPES[game.trend.recipeId]
+      ? { text: `🔥 ${RECIPES[game.trend.recipeId].emoji} ${Math.round(trendHeat(game) * 100)}%`, tone: 'warn' as const }
+      : null,
   ].filter(Boolean) as { text: string; tone: 'warn' | 'bad' }[];
   // Hai tin mới nhất, hiện trong 6 giây.
   const fresh = run.log.filter((l) => run.elapsed - l.t < 6000).slice(0, 2);

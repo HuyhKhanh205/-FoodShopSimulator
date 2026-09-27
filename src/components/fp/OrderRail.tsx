@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RECIPES } from '../../game/data';
 import type { GameState, RecipeId } from '../../game/types';
+import { trendHeat } from '../../game/trend';
 import { colors, patienceColor } from '../ui';
 
 /**
@@ -58,8 +59,9 @@ export default function OrderRail({ game }: { game: GameState }) {
             <View style={styles.items}>
               {c.items.map((i, k) => (
                 <Text key={k} style={[styles.item, i.served && styles.served]}>
-                  {i.served ? '✅' : RECIPES[i.recipeId].emoji}
+                  {i.served ? '✅' : RECIPES[i.recipeId]?.emoji ?? '🍽️'}
                   {i.noGarnish && !i.served ? '🚫' : ''}
+                  {!i.served && trendHeat(game, i.recipeId) > 0 ? '🔥' : ''}
                 </Text>
               ))}
             </View>

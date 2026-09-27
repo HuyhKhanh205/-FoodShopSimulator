@@ -3,7 +3,8 @@ import { Color, DoubleSide, Vector3 } from 'three';
 import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three';
 import { useFrame, useThree } from '../../three/fiber';
 import type { IngredientId, RecipeId } from '../../game/types';
-import { FOOD_COLOR } from '../scene/looks';
+import { foodColor } from '../scene/looks';
+import { RECIPES } from '../../game/data';
 import { wallTileTexture } from '../scene/textures';
 import { Prop } from '../scene/KayProps';
 
@@ -781,10 +782,26 @@ function PotFood({ recipeId, cook, burn }: { recipeId: RecipeId; cook: number; b
         </group>
       );
     default:
+      if (RECIPES[recipeId]?.kind === 'quai_di')
+        // Món quái dị sôi sùng sục màu xanh tím.
+        return (
+          <group>
+            <mesh>
+              <cylinderGeometry args={[0.285, 0.285, 0.02, 36]} />
+              <Std color={cookColor('#9C27B0', '#8BC34A', cook, burn)} rough={0.2} />
+            </mesh>
+            {Array.from({ length: 8 }, (_, i) => (
+              <mesh key={i} position={[Math.cos(i * 2.4) * 0.15 * ((i % 3) / 3 + 0.3), 0.02, Math.sin(i * 2.4) * 0.15 * ((i % 3) / 3 + 0.3)]}>
+                <sphereGeometry args={[0.02 + (i % 3) * 0.01, 10, 8]} />
+                <Std color={i % 2 ? '#CDDC39' : '#7E57C2'} rough={0.2} />
+              </mesh>
+            ))}
+          </group>
+        );
       return (
         <mesh>
           <cylinderGeometry args={[0.285, 0.285, 0.02, 36]} />
-          <Std color={cookColor(FOOD_COLOR[recipeId], FOOD_COLOR[recipeId], cook, burn)} rough={0.45} />
+          <Std color={cookColor(foodColor(recipeId), foodColor(recipeId), cook, burn)} rough={0.45} />
         </mesh>
       );
   }
@@ -816,7 +833,7 @@ export function StoveScene({
   const pan = recipeId ? PAN_RECIPES.includes(recipeId) : false;
   const surface = pan ? 0.99 : 1.07;
   const burning = burnRatio > 0.45;
-  const steamColor = recipeId ? cookColor(FOOD_COLOR[recipeId], FOOD_COLOR[recipeId], 1, burnRatio) : '#FFFFFF';
+  const steamColor = recipeId ? cookColor(foodColor(recipeId), foodColor(recipeId), 1, burnRatio) : '#FFFFFF';
 
   useFrame((_, dt) => {
     const since = now() - pulse.current;
@@ -939,7 +956,7 @@ export function CounterScene({
       jug.current.position.x = 0.2 + shake * 0.3;
     }
   });
-  const color = recipeId ? FOOD_COLOR[recipeId] : '#FFFFFF';
+  const color = recipeId ? foodColor(recipeId) : '#FFFFFF';
   const level = Math.max(0.005, Math.min(1, progress)) * 0.24;
   return (
     <group>

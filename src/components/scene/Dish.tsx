@@ -1,4 +1,5 @@
 import { DoubleSide } from 'three';
+import { RECIPES } from '../../game/data';
 import type { RecipeId } from '../../game/types';
 
 /**
@@ -163,6 +164,83 @@ function FriedEgg({ position }: { position: [number, number, number] }) {
         <sphereGeometry args={[0.016, 10, 8]} />
         <M c="#FFB300" r={0.3} />
       </mesh>
+    </group>
+  );
+}
+
+/** Bát "nhớt" xanh tím sủi bọt của món quái dị. */
+function MonsterBowl({ burnt }: { burnt?: boolean }) {
+  return (
+    <group>
+      <Bowl rim="#7E57C2" />
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[0.125, 0.1, 0.012, 24]} />
+        <M c="#8BC34A" r={0.15} burnt={burnt} />
+      </mesh>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <mesh key={i} position={[Math.cos(i * 1.3) * 0.06, 0.09 + (i % 2) * 0.01, Math.sin(i * 1.3) * 0.06]}>
+          <sphereGeometry args={[0.014 + (i % 3) * 0.006, 10, 8]} />
+          <M c={i % 2 ? '#9C27B0' : '#CDDC39'} r={0.2} burnt={burnt} />
+        </mesh>
+      ))}
+      {/* Con mắt trôi nổi */}
+      <mesh position={[0.03, 0.1, -0.02]}>
+        <sphereGeometry args={[0.018, 12, 10]} />
+        <M c="#FFFFFF" r={0.3} />
+      </mesh>
+      <mesh position={[0.03, 0.108, -0.006]}>
+        <sphereGeometry args={[0.007, 8, 6]} />
+        <M c="#212121" r={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Món sinh từ tổ hợp: hình theo tinh bột chính, màu theo nguyên liệu. */
+function GeneratedDish({ recipeId, burnt }: { recipeId: RecipeId; burnt?: boolean }) {
+  const r = RECIPES[recipeId];
+  if (!r) return <Plate />;
+  if (r.kind === 'quai_di') return <MonsterBowl burnt={burnt} />;
+  const ing = Object.keys(r.ingredients);
+  const color = r.color ?? '#BCAAA4';
+  if (r.drink) return <Glass fill={color === '#E1F5FE' ? '#CFD8DC' : color} burnt={burnt} />;
+  if (ing.includes('banh_mi')) return <Baguette fill={color} greens={ing.includes('rau') || ing.includes('hanh')} burnt={burnt} />;
+  if (ing.includes('gao'))
+    return (
+      <RicePlate rice="#FFFBEF" burnt={burnt}>
+        <mesh position={[0.07, 0.04, 0]} scale={[1.2, 0.45, 0.9]} castShadow>
+          <sphereGeometry args={[0.045, 12, 8]} />
+          <M c={color} r={0.6} burnt={burnt} />
+        </mesh>
+        {ing.includes('hanh') && <Scallion n={5} spread={0.05} y={0.06} />}
+      </RicePlate>
+    );
+  if (ing.includes('banh_pho') || ing.includes('bun'))
+    return (
+      <group>
+        <Bowl />
+        <mesh position={[0, 0.075, 0]}>
+          <cylinderGeometry args={[0.125, 0.1, 0.01, 24]} />
+          <M c="#E8C27A" r={0.15} o={0.92} burnt={burnt} />
+        </mesh>
+        {[0, 1, 2].map((i) => (
+          <mesh key={i} position={[Math.cos(i * 2.1) * 0.06, 0.088, Math.sin(i * 2.1) * 0.06]} rotation-x={-Math.PI / 2}>
+            <circleGeometry args={[0.03, 12]} />
+            <M c={color} r={0.55} burnt={burnt} />
+          </mesh>
+        ))}
+        {ing.includes('hanh') && <Scallion y={0.092} />}
+      </group>
+    );
+  return (
+    <group>
+      <Plate />
+      {[0, 1, 2, 3].map((i) => (
+        <mesh key={i} position={[Math.cos(i * 1.7) * 0.06, 0.035, Math.sin(i * 1.7) * 0.06]} scale={[1, 0.6, 1]} castShadow>
+          <sphereGeometry args={[0.035, 12, 8]} />
+          <M c={i % 2 && ing.includes('rau') ? '#66BB6A' : color} r={0.6} burnt={burnt} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -373,15 +451,7 @@ export default function DishModel({ dish, scale = 1 }: { dish: DishKey; scale?: 
       );
       break;
     default:
-      body = (
-        <group>
-          <Plate />
-          <mesh position={[0, 0.03, 0]}>
-            <sphereGeometry args={[0.1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <M c="#BCAAA4" burnt={burnt} />
-          </mesh>
-        </group>
-      );
+      body = <GeneratedDish recipeId={recipeId} burnt={burnt} />;
   }
   return <group scale={scale}>{body}</group>;
 }

@@ -11,7 +11,7 @@ export function staffTarget(st: Staff, game: GameState, layout: MapLayout): Tile
   if (slotId) return byId(slotId)?.access[0] ?? layout.restSpot;
   const t = st.task;
   if (t?.kind === 'prep') return { x: 10, y: 2 };
-  if (t?.kind === 'serve') {
+  if (t?.kind === 'serve' || t?.kind === 'fallen') {
     const c = run.customers.find((x) => x.id === t.customerId);
     const table = c?.tableIndex !== undefined ? byId(`table${c.tableIndex}`) : byId('door');
     return table?.access[0] ?? { x: 5, y: 5 };
