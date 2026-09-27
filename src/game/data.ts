@@ -18,6 +18,10 @@ export const PLAYER_PREP_MS = 2_500;
 export const PREP_BATCH = 4;
 export const CLEAN_COOLDOWN_MS = 4_000;
 export const BURN_FACTOR = 1.8;
+/** Chín rồi còn bao lâu mới cháy: ít nhất 8 giây để kịp lấy ra. */
+export const burnGrace = (cookTime: number) => Math.max(8_000, cookTime * (BURN_FACTOR - 1));
+/** Tiến độ lúc món cháy. */
+export const burnAt = (cookTime: number) => cookTime + burnGrace(cookTime);
 
 export const INGREDIENTS: Record<IngredientId, Ingredient> = {
   banh_mi: { id: 'banh_mi', name: 'Bánh mì', emoji: '🥖', basePrice: 2_500, shelfLife: 2, needsPrep: false, perishable: true, group: 'bread' },

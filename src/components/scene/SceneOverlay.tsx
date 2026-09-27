@@ -1,8 +1,9 @@
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { questionOf } from '../../game/chat';
+import { handledCustomers } from '../../game/helpers';
 import { tutorialTargets } from '../../game/tutorial';
 import TutorialGlow from '../kid/TutorialGlow';
-import { BURN_FACTOR, PLAYER_PREP_MS, RECIPES } from '../../game/data';
+import { burnGrace, PLAYER_PREP_MS, RECIPES } from '../../game/data';
 import type { MapLayout, MapStation } from '../../game/layout';
 import type { Customer, GameState } from '../../game/types';
 import { colors, patienceColor } from '../ui';
@@ -44,18 +45,25 @@ function ChatBubble({ c, font, onQuestion }: { c: Customer; font: number; onQues
   );
 }
 
-function OrderBubble({ c, font, onQuestion }: { c: Customer; font: number; onQuestion?: (id: string) => void }) {
+/**
+ * Món khách gọi + thanh kiên nhẫn. `handled`: món đang nấu / đã xong (thanh xanh dương, ⏳ — khách chờ thong thả);
+ * `wanted`: chủ quán đang cầm đúng món bàn này chờ (bong bóng to, viền xanh lá, 👇).
+ */
+function OrderBubble({ c, font, onQuestion, handled, wanted }: { c: Customer; font: number; onQuestion?: (id: string) => void; handled?: boolean; wanted?: boolean }) {
   const open = c.items.filter((i) => !i.served);
   const ratio = c.patience / c.maxPatience;
+  const f = wanted ? font * 1.3 : font;
   return (
     <View style={styles.stack} pointerEvents="box-none">
     <ChatBubble c={c} font={font} onQuestion={onQuestion} />
-    <View pointerEvents="none" style={styles.bubble}>
-      <Text style={{ fontSize: font }} numberOfLines={2}>
+    <View pointerEvents="none" style={[styles.bubble, wanted && styles.bubbleWanted]}>
+      <Text style={{ fontSize: f }} numberOfLines={2}>
         {open.map((i) => RECIPES[i.recipeId].emoji + (i.noGarnish ? '🚫' : '')).join('')}
+        {handled && !wanted ? <Text style={{ fontSize: font * 0.6 }}>⏳</Text> : null}
       </Text>
-      <Bar value={ratio} color={patienceColor(ratio)} width={Math.max(30, font * 2.6)} />
+      <Bar value={ratio} color={handled ? colors.info : patienceColor(ratio)} width={Math.max(30, f * 2.6)} />
     </View>
+    {wanted && <Text style={{ fontSize: font }}>👇</Text>}
     </View>
   );
 }
@@ -94,6 +102,8 @@ export default function SceneOverlay({
   const font = Math.max(11, Math.min(22, unit * 0.34));
   const center = (st: MapStation): [number, number] => [st.x + st.w / 2, st.y + st.h / 2];
   const targets = tutorialTargets(game);
+  const handled = handledCustomers(run);
+  const carried = new Set(run.carrying.map((id) => run.pass.find((d) => d.id === id)?.recipeId).filter(Boolean));
 
   const items: React.ReactNode[] = [];
   const place = (key: string, pt: { x: number; y: number }, node: React.ReactNode, width = 90) =>
@@ -116,7 +126,13 @@ export default function SceneOverlay({
           `bubble-${st.id}`,
           p(cx, 1.8, cz),
           <TutorialGlow on={targets.includes('shop.table') && cust.items.some((i) => !i.served)} radius={12}>
-            <OrderBubble c={cust} font={font} onQuestion={onQuestion} />
+            <OrderBubble
+              c={cust}
+              font={font}
+              onQuestion={onQuestion}
+              handled={handled.has(cust.id)}
+              wanted={cust.items.some((i) => !i.served && carried.has(i.recipeId))}
+            />
           </TutorialGlow>,
           150
         );
@@ -127,7 +143,7 @@ export default function SceneOverlay({
       if (!job) continue;
       const r = RECIPES[job.recipeId];
       const done = job.progress >= job.cookTime;
-      const burnRatio = (job.progress - job.cookTime) / (job.cookTime * (BURN_FACTOR - 1));
+      const burnRatio = (job.progress - job.cookTime) / burnGrace(job.cookTime);
       const color = !done ? colors.accent : r.burns && burnRatio > 0.5 ? colors.bad : colors.good;
       const value = done && r.burns ? 1 - burnRatio : job.progress / job.cookTime;
       place(
@@ -169,7 +185,7 @@ export default function SceneOverlay({
     }
     if (st.kind === 'door') {
       const waiting = run.customers.filter((x) => x.tableIndex === undefined);
-      waiting.slice(0, 2).forEach((cust, i) => place(`door-${cust.id}`, p(11 - i * 0.9, 2.1, 8.1), <OrderBubble c={cust} font={font * 0.85} onQuestion={onQuestion} />, 150));
+      waiting.slice(0, 2).forEach((cust, i) => place(`door-${cust.id}`, p(11 - i * 0.9, 2.1, 8.1), <OrderBubble c={cust} font={font * 0.85} onQuestion={onQuestion} handled={handled.has(cust.id)} wanted={cust.items.some((i) => !i.served && carried.has(i.recipeId))} />, 150));
     }
   }
 
@@ -218,6 +234,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
+  bubbleWanted: { borderWidth: 3, borderColor: colors.good, backgroundColor: '#F1F8E9' },
   bubble: {
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 10,

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
-import { BURN_FACTOR, PLAYER_PREP_MS, RECIPES, ROLE_EMOJI } from '../../game/data';
+import { burnGrace, PLAYER_PREP_MS, RECIPES, ROLE_EMOJI } from '../../game/data';
 import type { MapStation, Tile } from '../../game/layout';
 import type { CookSlot, Customer, Dish, GameState, Staff } from '../../game/types';
 import { colors, patienceColor } from '../ui';
@@ -30,7 +30,7 @@ function slotState(slot: CookSlot | undefined) {
   if (!job) return null;
   const r = RECIPES[job.recipeId];
   const done = job.progress >= job.cookTime;
-  const burnRatio = (job.progress - job.cookTime) / (job.cookTime * (BURN_FACTOR - 1));
+  const burnRatio = (job.progress - job.cookTime) / burnGrace(job.cookTime);
   const color = !done ? colors.accent : r.burns && burnRatio > 0.5 ? colors.bad : colors.good;
   const value = done && r.burns ? 1 - burnRatio : job.progress / job.cookTime;
   return { r, done, color, value, mine: job.by === 'player', warn: done && r.burns && burnRatio > 0.5 };

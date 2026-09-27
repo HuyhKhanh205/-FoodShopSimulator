@@ -7,7 +7,9 @@ import type { Customer, CustomerKind, GameState, OrderItem, RecipeId, Rng, Staff
 const QUALITY_SCORE = { perfect: 1, raw: 0.35, burnt: 0.05 } as const;
 
 /** Hệ số kéo dài thời gian chờ của mọi khách. */
-const PATIENCE_BONUS = 1.3;
+const PATIENCE_BONUS = 1.95;
+/** Mỗi món mang ra hồi lại chừng này kiên nhẫn. */
+export const SERVE_REFILL = 0.15;
 
 /** Thời gian khách chịu chờ (ms) trước khi bỏ về (trước khi nhân PATIENCE_BONUS). */
 const BASE_PATIENCE: Record<CustomerKind, number> = {
@@ -108,7 +110,7 @@ export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, grou
   }
 
   const patience =
-    (BASE_PATIENCE[kind] + 12_000 * (size - 1)) * PATIENCE_BONUS * (1 + 0.2 * s.upgrades.aircon) * (1 + 0.5 * (1 - introFactor(s.day)));
+    (BASE_PATIENCE[kind] + 15_000 * Math.min(5, items.length - 1)) * PATIENCE_BONUS * (1 + 0.2 * s.upgrades.aircon) * (1 + 0.5 * (1 - introFactor(s.day)));
   return {
     id: nextId(s, 'c'),
     name,
@@ -287,6 +289,8 @@ export function serveDish(s: GameState, dishId: string, customerId: string, rng:
 
   target.served = true;
   target.quality = QUALITY_SCORE[dish.quality];
+  // Nhận được món thì khách vui lên một chút.
+  c.patience = Math.min(c.maxPatience, c.patience + c.maxPatience * SERVE_REFILL);
   reactToOddDish(s, c, target, rng);
   addXp(s, dish.quality === 'perfect' ? 10 : 4);
   if (dish.quality === 'raw') log(s, `😖 ${c.name}: "${recipe.name} còn sống!"`, 'bad');

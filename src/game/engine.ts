@@ -5,7 +5,7 @@ import { unlockedRoles } from './progression';
 import { expireTrend, trendSpawnMult } from './trend';
 import {
   BANKRUPT_AT,
-  BURN_FACTOR,
+  burnAt,
   CLEAN_COOLDOWN_MS,
   CLOSE_HOUR,
   DAY_MS,
@@ -34,6 +34,7 @@ import {
   errorRate,
   fairWage,
   formatMoney,
+  handledCustomers,
   log,
   makeStaff,
   menuRecipes,
@@ -65,6 +66,8 @@ import type {
 
 export const MAX_STAFF = 6;
 export const MAX_CARRY = 2;
+/** Khách có món đang nấu / đã xong: kiên nhẫn giảm chậm lại còn chừng này. */
+export const HANDLED_DECAY = 0.5;
 
 // ================= Khởi tạo =================
 
@@ -799,7 +802,7 @@ export function tick(s: GameState, dt: number, rng: Rng) {
       if (!recipe.burns && job.progress >= job.cookTime) {
         pushDish(s, job.recipeId, 'perfect', job.noGarnish, 'Bạn');
         slot.job = null;
-      } else if (recipe.burns && job.progress >= job.cookTime * BURN_FACTOR) {
+      } else if (recipe.burns && job.progress >= burnAt(job.cookTime)) {
         s.report.burnt += 1;
         log(s, `🔥 ${recipe.name} để quá lâu, cháy khét phải bỏ!`, 'bad');
         slot.job = null;
@@ -808,7 +811,7 @@ export function tick(s: GameState, dt: number, rng: Rng) {
     }
     const cook = s.staff.find((x) => x.id === job.by);
     const byName = cook?.name ?? 'Nhân viên';
-    if (job.burnError && job.progress >= job.cookTime * BURN_FACTOR) {
+    if (job.burnError && job.progress >= burnAt(job.cookTime)) {
       s.report.burnt += 1;
       s.report.staffErrors += 1;
       pushDish(s, job.recipeId, 'burnt', job.noGarnish, byName);
@@ -838,9 +841,11 @@ export function tick(s: GameState, dt: number, rng: Rng) {
   }
 
   // Khách mất kiên nhẫn (quán bẩn thì nhanh chán hơn)
+  // Món của khách đang nấu / đã xong thì khách chờ thong thả hơn (giảm một nửa).
   const decay = dt * (s.cleanliness < 40 ? 1.3 : 1);
+  const handled = handledCustomers(run);
   for (const c of [...run.customers]) {
-    c.patience -= decay;
+    c.patience -= handled.has(c.id) ? decay * HANDLED_DECAY : decay;
     if (c.patience <= 0) customerLeavesAngry(s, c, rng);
   }
 

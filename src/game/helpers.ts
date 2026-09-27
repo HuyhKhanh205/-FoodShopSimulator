@@ -6,6 +6,7 @@ import {
   TRAITS,
 } from './data';
 import type {
+  DayRuntime,
   GameState,
   IngredientId,
   Recipe,
@@ -219,4 +220,38 @@ export function makeStaff(s: GameState, rng: Rng, role?: StaffRole, student = fa
     task: null,
     student: student || undefined,
   };
+}
+
+/** Số phần mỗi món khách còn chờ (chưa mang), trừ phần đang nấu và đã xong (quầy ra món + trên tay). */
+export function dishNeeds(run: DayRuntime): Map<RecipeId, number> {
+  const need = new Map<RecipeId, number>();
+  for (const c of run.customers) for (const i of c.items) if (!i.served) need.set(i.recipeId, (need.get(i.recipeId) ?? 0) + 1);
+  for (const sl of run.slots) if (sl.job) need.set(sl.job.recipeId, (need.get(sl.job.recipeId) ?? 0) - 1);
+  for (const d of run.pass) if (d.quality !== 'burnt') need.set(d.recipeId, (need.get(d.recipeId) ?? 0) - 1);
+  return need;
+}
+
+/**
+ * Khách "đang được lo": mọi món chưa mang đều đang nấu hoặc đã sẵn sàng.
+ * Chia phần đang nấu / đã xong cho khách gấp nhất trước.
+ */
+export function handledCustomers(run: DayRuntime): Set<string> {
+  const supply = new Map<RecipeId, number>();
+  const add = (id: RecipeId) => supply.set(id, (supply.get(id) ?? 0) + 1);
+  for (const sl of run.slots) if (sl.job) add(sl.job.recipeId);
+  for (const d of run.pass) if (d.quality !== 'burnt') add(d.recipeId);
+  const out = new Set<string>();
+  if (supply.size === 0) return out;
+  const order = [...run.customers].sort((a, b) => a.patience / a.maxPatience - b.patience / b.maxPatience);
+  for (const c of order) {
+    const open = c.items.filter((i) => !i.served);
+    if (!open.length) continue;
+    const want = new Map<RecipeId, number>();
+    for (const i of open) want.set(i.recipeId, (want.get(i.recipeId) ?? 0) + 1);
+    if ([...want].every(([id, n]) => (supply.get(id) ?? 0) >= n)) {
+      for (const [id, n] of want) supply.set(id, supply.get(id)! - n);
+      out.add(c.id);
+    }
+  }
+  return out;
 }

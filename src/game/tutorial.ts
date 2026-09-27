@@ -64,7 +64,7 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     id: 'prep',
-    say: 'Hành 🧅 phải thái trước. Chọn 🧅 rồi chạm thớt thật nhanh!',
+    say: 'Hành 🧅 phải thái trước. Chạm ô 🧅 có 🔪 rồi chạm thớt thật nhanh!',
     at: 'top',
     targets: (s) => (s.run?.playerPrep ? ['kitchen.board'] : ['kitchen.prep:hanh']),
     done: (s) => (s.run?.prepped.hanh ?? 0) > 0 || cookingOrHolding(s) || servedSomething(s),
@@ -78,7 +78,7 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     id: 'take',
-    say: 'Chạm vào chảo để đảo cho nhanh. Chín ✅ thì bấm 🍽️ Lấy ra!',
+    say: 'Chạm vào chảo để đảo cho nhanh. Chín ✅ thì bấm 🍽️ Lấy (hoặc chạm chảo)!',
     at: 'top',
     targets: () => ['kitchen.takeout'],
     done: (s) => Boolean(s.run && s.run.carrying.length > 0) || servedSomething(s),

@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RECIPES } from '../../game/data';
-import type { GameState, RecipeId } from '../../game/types';
+import type { GameState } from '../../game/types';
+import { dishNeeds, handledCustomers } from '../../game/helpers';
 import { trendHeat } from '../../game/trend';
 import { colors, patienceColor } from '../ui';
 
@@ -15,10 +16,8 @@ export default function OrderRail({ game }: { game: GameState }) {
     .sort((a, b) => a.patience / a.maxPatience - b.patience / b.maxPatience);
 
   // Cần nấu thêm = món khách chưa nhận − món đang nấu − món đã xong (quầy + tay).
-  const need = new Map<RecipeId, number>();
-  for (const c of customers) for (const i of c.items) if (!i.served) need.set(i.recipeId, (need.get(i.recipeId) ?? 0) + 1);
-  for (const sl of run.slots) if (sl.job) need.set(sl.job.recipeId, (need.get(sl.job.recipeId) ?? 0) - 1);
-  for (const d of run.pass) if (d.quality !== 'burnt') need.set(d.recipeId, (need.get(d.recipeId) ?? 0) - 1);
+  const need = dishNeeds(run);
+  const handled = handledCustomers(run);
   const todo = [...need.entries()].filter(([, n]) => n > 0);
 
   if (customers.length === 0) {
@@ -55,6 +54,7 @@ export default function OrderRail({ game }: { game: GameState }) {
           >
             <Text style={styles.where}>
               {where} {c.emoji}
+              {handled.has(c.id) ? ' ⏳🍳' : ''}
             </Text>
             <View style={styles.items}>
               {c.items.map((i, k) => (
@@ -66,7 +66,7 @@ export default function OrderRail({ game }: { game: GameState }) {
               ))}
             </View>
             <View style={styles.track}>
-              <View style={{ width: `${ratio * 100}%`, height: '100%', backgroundColor: patienceColor(ratio) }} />
+              <View style={{ width: `${ratio * 100}%`, height: '100%', backgroundColor: handled.has(c.id) ? colors.info : patienceColor(ratio) }} />
             </View>
           </View>
         );

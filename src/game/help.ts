@@ -68,14 +68,14 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
   kitchen: {
     title: 'Trong bếp',
     steps: [
-      { icon: '🥩', text: 'Chọn đồ để thái.' },
+      { icon: '🔪', text: 'Ô nguyên liệu có 🔪 là phải thái: chạm vào để thái.' },
       { icon: '👆', text: 'Chạm thớt thật nhiều để thái nhanh.' },
-      { icon: '🍲', text: 'Chạm nguyên liệu (hoặc chạm món) để bỏ vào nồi, rồi bấm 🔥 Nấu.' },
+      { icon: '🍲', text: 'Chạm món khách gọi (có ×số) để bỏ vào nồi, rồi bấm 🔥 Nấu. Bếp trống tự được chọn.' },
       { icon: '🥄', text: 'Chạm vào nồi để khuấy.' },
-      { icon: '✅', text: 'Chín rồi thì bấm 🍽️ để lấy ra.' },
+      { icon: '✅', text: 'Chín rồi thì bấm 🍽️ Lấy trên thẻ bếp, hoặc chạm vào nồi.' },
       { icon: '⚠️', text: 'Để lâu quá sẽ cháy!' },
     ],
-    more: [{ icon: '1️⃣', text: 'Chạm vào nồi khác (hoặc phím 1, 2...) để đổi bếp.' }],
+    more: [{ icon: '⏳', text: 'Món của khách đang nấu thì khách chờ thong thả hơn.' }, { icon: '1️⃣', text: 'Phím 1, 2... khuấy hoặc lấy món ở bếp tương ứng.' }],
   },
   counter: {
     title: 'Pha đồ uống',

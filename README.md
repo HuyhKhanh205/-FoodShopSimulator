@@ -71,13 +71,13 @@ Hết nguyên liệu giữa ngày? Bấm **🛒** trên màn chơi để chạy 
 
 ### 👀 Bếp của tôi — góc nhìn thứ nhất (bếp + thớt chung một cảnh)
 Tới **thớt** hoặc **bếp** là vào màn **Bếp của tôi**: nhìn qua mắt chủ quán (kiểu Kebab Chefs, không vẽ tay) một cảnh 3D duy nhất — **dãy bếp ở phía trên (xa)**, **thớt ở phía dưới (gần)**, không phải chuyển trang:
-- **Chạm vào nồi / chảo** để chọn bếp đó (vòng vàng) và khuấy; **chạm vào thớt** để thái. Bếp sắp cháy có vòng đỏ. Trên máy tính: Space / E thái (khi đang thái) hoặc khuấy bếp đang chọn, phím 1–9 chọn bếp.
-- Bảng điều khiển bên dưới: phần **🔥 Bếp** (chọn bếp, **nồi tự chọn**, nhấc ra) ở trên, phần **🔪 Sơ chế** ở dưới — vừa thái rau vừa canh được nồi phở.
+- **Không cần chọn bếp**: 🔥 Nấu tự đặt vào bếp trống đầu tiên. **Chạm vào nồi / chảo** để khuấy, nồi chín (vòng xanh) thì chạm là lấy ra; sắp cháy có vòng đỏ. **Chạm vào thớt** để thái. Trên máy tính: Space / E thái (khi đang thái) hoặc khuấy nồi gần chín nhất, phím 1–9 khuấy / lấy món ở bếp tương ứng.
+- Bảng điều khiển bên dưới: phần cố định (không phải cuộn) gồm **thẻ từng bếp** (món, tiến độ, nút **🍽️ Lấy** riêng khi chín, **Lấy hết** khi có từ 2 món chín) và **nồi tự chọn + 🔥 Nấu**; phần cuộn là **món trong menu** (món khách đang gọi lên đầu, có huy hiệu **×số phần còn cần nấu**) và **nguyên liệu**. Nguyên liệu cần thái mà chưa có phần thái sẵn có dấu 🔪: chạm vào là bắt đầu thái trên thớt; nồi thiếu phần đã thái thì nút Nấu đổi thành **🔪 Thái**.
 - **Nồi tự chọn**: chạm nguyên liệu để bỏ vào nồi (tối đa 4, chạm lại để lấy ra), xem trước món sẽ ra (😋 Ngon / 🤔 Lạ / 🧟 Quái dị, có trong menu chưa, thiếu gì) rồi bấm **🔥 Nấu**. Ô món trong menu là nút điền nhanh đủ nguyên liệu. Bỏ 🧅 ra khỏi nồi = món "không hành". Quầy pha chế dùng cùng kiểu nồi.
 - **Quầy pha chế** (trà đá, cà phê, gỏi cuốn) vẫn là màn riêng khi đi tới quầy.
 - **Thanh phiếu order** dưới tiêu đề (cả ở bếp và quầy): ô 🔥 cho biết còn phải nấu bao nhiêu món mỗi loại (đã trừ món đang nấu, trên quầy ra món và trên tay), tiếp theo là phiếu từng bàn 🪑 / cửa 🚪 / shipper 🛵 với món gọi (🚫 = không hành, ✅ = đã mang), thanh kiên nhẫn; bàn gấp nhất xếp trước và viền đỏ.
-- Thớt: chọn nguyên liệu rồi **chạm liên tục** để thái nhanh hơn (mỗi nhát rút 0,35 giây). Nguyên liệu vẽ chi tiết: miếng bò bít tết, ba chỉ heo nhiều lớp nạc – mỡ – bì, đùi gà, hành lá gốc trắng có rễ, xà lách, tôm có đốt – đuôi – râu; thái tới đâu nguyên liệu ngắn lại tới đó, đống thịt thái / hành cắt khoanh / tôm bóc vỏ to dần, xong thì vào bát.
-- Bếp: chọn món (nấu đúng bếp đang đứng), **chạm để khuấy**. Phở, cơm gà nấu trong nồi; bún chả, bánh mì trứng làm trên chảo. Món đổi màu dần từ sống → chín → cháy: thịt bò tái chuyển nâu, chả nướng có vệt cháy, trứng từ trong sang trắng; sắp cháy thì bốc khói đen.
+- Thớt: chạm ô nguyên liệu có 🔪 rồi **chạm thớt liên tục** để thái nhanh hơn (mỗi nhát rút 0,35 giây). Nguyên liệu vẽ chi tiết: miếng bò bít tết, ba chỉ heo nhiều lớp nạc – mỡ – bì, đùi gà, hành lá gốc trắng có rễ, xà lách, tôm có đốt – đuôi – râu; thái tới đâu nguyên liệu ngắn lại tới đó, đống thịt thái / hành cắt khoanh / tôm bóc vỏ to dần, xong thì vào bát.
+- Bếp: bỏ nguyên liệu vào nồi rồi 🔥 Nấu, **chạm để khuấy**; chín rồi còn ít nhất 8 giây mới cháy. Phở, cơm gà nấu trong nồi; bún chả, bánh mì trứng làm trên chảo. Món đổi màu dần từ sống → chín → cháy: thịt bò tái chuyển nâu, chả nướng có vệt cháy, trứng từ trong sang trắng; sắp cháy thì bốc khói đen.
 - **Nhấc ra** thì món lên tay (tối đa 2) và **vẫn ở lại bếp** để làm tiếp; bấm **🍽️ Ra phục vụ** (hoặc **⬅ Rời bếp**, phím Esc) để quay ra quán. Space / E để thái – khuấy trên máy tính.
 - Món mang ra bàn, đặt trên quầy ra món hay cầm trên tay đều là mô hình chi tiết: bát phở có bánh, thịt, hành; đĩa cơm gà; bún chả; ổ bánh mì; gỏi cuốn thấy tôm bên trong; ly trà đá, cà phê sữa có đá.
 
@@ -95,6 +95,12 @@ Chơi mới là **Chú Tư bếp trưởng** (nhân vật 3D KayKit có hoạt �
   - Thử ra món không chuẩn nhiều lần sẽ lộ gợi ý món chuẩn còn bí ẩn.
 - **🔥 Trend**: một món hot trong **3 ngày**, độ hot giảm dần: giá **+20%**, danh tiếng từ món đó **+20%**, lượng khách **+150%**, khách gọi món đó nhiều hơn hẳn. Nguồn: món lạ / quái dị gây sốt, sự kiện **📱 Food reviewer đăng clip**, món mới ra mắt (30%). Dải 🔥 Trend hiện ở chợ và HUD quán, huy hiệu 🔥 trên ô món và phiếu order.
 - **🆕 Món mới** thêm vào menu được khách gọi **gấp 3** trong ngày bán đầu tiên.
+
+### ⏳ Khách chờ
+- Khách thường chờ được khoảng 2,5 phút (điều hoà, ngày làm quen cho chờ lâu hơn); mỗi món gọi thêm cộng 15 giây.
+- Món của khách **đang nấu hoặc đã xong** (trên bếp, quầy ra món, trên tay) thì khách chờ **thong thả gấp đôi**: thanh kiên nhẫn chuyển xanh dương kèm ⏳ trên bong bóng và phiếu order.
+- Mỗi món mang ra bàn **hồi 15% kiên nhẫn**.
+- Đang cầm món thì bàn chờ đúng món đó sáng xanh dưới sàn, bong bóng to viền xanh kèm 👇.
 
 ### 🐣 3 ngày làm quen
 Ngày 1 chỉ khoảng 1/3 lượng khách, ngày 2 một nửa, ngày 3 khoảng 3/4; khách đi một mình, gọi 1 món, kiên nhẫn hơn; ngày 1–2 không có sự cố, ngày 3 rất ít; tiền mặt bằng giảm theo. Từ ngày 4 quán đông bình thường.

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { BURN_FACTOR, RECIPES } from '../game/data';
+import { burnGrace, RECIPES } from '../game/data';
 import type { CookSlot, Staff } from '../game/types';
 import { Button, ProgressBar, colors } from './ui';
 
@@ -29,7 +29,7 @@ export default function CookSlotCard({
   }
   const r = RECIPES[job.recipeId];
   const done = job.progress >= job.cookTime;
-  const burnRatio = (job.progress - job.cookTime) / (job.cookTime * (BURN_FACTOR - 1));
+  const burnRatio = (job.progress - job.cookTime) / burnGrace(job.cookTime);
   const byStaff = job.by !== 'player' ? staff.find((s) => s.id === job.by) : undefined;
 
   let status = 'Đang nấu...';

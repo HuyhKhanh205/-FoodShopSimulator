@@ -3,7 +3,7 @@ import { QUESTIONS } from '../src/game/chat';
 import { RECIPES } from '../src/game/data';
 import { dishFromCombo, registerDish, resolveCombo } from '../src/game/dishes';
 import { makeCustomer } from '../src/game/customers';
-import { errorRate, makeStaff, usableQty as uq } from '../src/game/helpers';
+import { dishNeeds, errorRate, handledCustomers, makeStaff, usableQty as uq } from '../src/game/helpers';
 import { addToMenu, unlockedRoles } from '../src/game/progression';
 import { orderWeight, startTrend, trendHeat, trendPriceMult, trendRepMult, trendSpawnMult } from '../src/game/trend';
 import type { IngredientId } from '../src/game/types';
@@ -417,6 +417,56 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
     spills += h.report.spills ?? 0;
   }
   check(trips > 0 && spills > 0, `sinh viên phục vụ có vấp té (${trips}) và đổ đồ ăn (${spills})`);
+}
+
+// ---------- Kiên nhẫn: chờ lâu hơn, chậm lại khi món đang nấu, hồi khi nhận món ----------
+{
+  const r = seededRng(21);
+  const g = E.newGame(r);
+  g.activeEvent = null;
+  g.day = 5;
+  for (const id of ['banh_mi', 'trung', 'pate', 'hanh'] as IngredientId[]) E.buy(g, id, 10);
+  E.openShop(g, r);
+  g.activeEvent = null;
+  const run = g.run!;
+  run.customers = [];
+  const mk = (n: number) => {
+    const c = makeCustomer(g, r)!;
+    c.kind = 'normal';
+    c.tableIndex = n;
+    c.items = [
+      { recipeId: 'tra_da', noGarnish: false, served: false, quality: 0 },
+      { recipeId: 'tra_da', noGarnish: false, served: false, quality: 0 },
+    ];
+    c.patience = c.maxPatience = 100_000;
+    return c;
+  };
+  const a = mk(0);
+  const b = mk(1);
+  run.customers = [a, b];
+  let one = makeCustomer(g, r)!;
+  for (let i = 0; i < 50 && one.kind !== 'normal'; i += 1) one = makeCustomer(g, r)!;
+  check(one.kind === 'normal' && one.maxPatience >= 75_000 * 1.9, `kiên nhẫn gốc tăng (khách thường ${Math.round(one.maxPatience / 1000)} giây)`);
+  // Bàn a có 2 trà đá đang pha / đã xong → được lo; bàn b thì chưa.
+  run.pass.push({ id: 'p1', recipeId: 'tra_da', quality: 'perfect', noGarnish: false, by: 'Bạn' });
+  run.pass.push({ id: 'p2', recipeId: 'tra_da', quality: 'perfect', noGarnish: false, by: 'Bạn' });
+  const set = handledCustomers(run);
+  check(set.size === 1, 'chia món đã xong cho một bàn');
+  const lucky = set.has(a.id) ? a : b;
+  const other = lucky === a ? b : a;
+  E.tick(g, 1000, r);
+  check(Math.abs(100_000 - lucky.patience - 500) < 1 && Math.abs(100_000 - other.patience - 1000) < 1, 'bàn có món đang lo: kiên nhẫn giảm một nửa');
+  other.patience = 50_000;
+  E.playerServe(g, 'p1', other.id, r);
+  check(other.patience >= 50_000 + 100_000 * 0.15 - 1, 'mang một món: hồi 15% kiên nhẫn');
+  // Nồi tự chọn: không truyền bếp thì tự tìm bếp trống; hết bếp thì báo.
+  run.prepped.hanh = 5;
+  const stoves = run.slots.filter((x) => x.station === 'stove');
+  let okAll = true;
+  for (let i = 0; i < stoves.length; i += 1) okAll = okAll && E.playerCookCombo(g, ['banh_mi', 'trung', 'pate', 'hanh'], undefined) === null;
+  check(okAll && stoves.every((x) => x.job), 'nấu liên tiếp tự vào các bếp trống');
+  check(E.playerCookCombo(g, ['banh_mi', 'trung', 'pate', 'hanh'], undefined) === 'Hết bếp trống', 'hết bếp trống thì báo');
+  check(dishNeeds(run).get('banh_mi_trung')! <= 0, 'phiếu cần nấu đã trừ món đang nấu');
 }
 
 process.exit(failed ? 1 : 0);

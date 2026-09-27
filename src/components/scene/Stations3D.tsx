@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import type { Group, Mesh } from 'three';
 import { useFrame } from '../../three/fiber';
-import { BURN_FACTOR } from '../../game/data';
+import { burnGrace } from '../../game/data';
 import { MAP_COLS, MAP_ROWS, PASS_ROW } from '../../game/layout';
 import type { MapStation } from '../../game/layout';
 import type { CookJob, Dish } from '../../game/types';
@@ -150,7 +150,7 @@ function Ghost({ st }: { st: MapStation }) {
 // ---------- Đồ vật ----------
 
 function Stove({ job, blocked }: { job: CookJob | null; blocked: boolean }) {
-  const warn = Boolean(job && job.progress >= job.cookTime + (job.cookTime * (BURN_FACTOR - 1)) / 2);
+  const warn = Boolean(job && job.progress >= job.cookTime + burnGrace(job.cookTime) / 2);
   return (
     <group>
       <mesh position={[0, 0.4, 0]} castShadow receiveShadow>

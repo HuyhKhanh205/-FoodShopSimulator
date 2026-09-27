@@ -3,7 +3,7 @@ import { CanvasTexture, SRGBColorSpace } from 'three';
 import type { Group, Mesh, MeshStandardMaterial } from 'three';
 import { useFrame } from '../../three/fiber';
 import { useProp } from '../../three/models';
-import { BURN_FACTOR } from '../../game/data';
+import { burnGrace } from '../../game/data';
 import type { CookJob, Dish } from '../../game/types';
 import { foodColor } from './looks';
 import DishModel, { dishKey } from './Dish';
@@ -108,7 +108,7 @@ export function DoneGlow({ y, color = '#FFEE58' }: { y: number; color?: string }
 function jobState(job: CookJob | null) {
   if (!job) return { done: false, warn: false };
   const done = job.progress >= job.cookTime;
-  const warn = job.progress >= job.cookTime + (job.cookTime * (BURN_FACTOR - 1)) / 2;
+  const warn = job.progress >= job.cookTime + burnGrace(job.cookTime) / 2;
   return { done, warn };
 }
 
