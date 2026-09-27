@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HELP } from '../../game/help';
 import type { HelpTopic } from '../../game/help';
+import { useGame } from '../../game/GameContext';
 import { colors } from '../ui';
+import { tutorialUi } from './tutorialUi';
 
 const seenKey = (t: HelpTopic) => `quanan-help-seen:${t}`;
 
 /** Các hướng dẫn đã tự mở trong lần chơi này (không mở lại khi đổi màn / vào–ra bếp). */
 const shownThisSession = new Set<HelpTopic>();
-/** Đang có một hướng dẫn tự mở — không mở chồng hai bảng. */
-let autoOpenBusy = false;
 
 function seenInLocal(t: HelpTopic): boolean {
   try {
@@ -30,10 +30,10 @@ function rememberSeen(t: HelpTopic) {
 }
 
 /** Máy đọc to hướng dẫn (chỉ có trên trình duyệt hỗ trợ). */
-function canSpeak() {
+export function canSpeak() {
   return Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
-function speak(text: string) {
+export function speak(text: string) {
   if (!canSpeak()) return;
   try {
     window.speechSynthesis.cancel();
@@ -90,22 +90,24 @@ export function HelpSheet({ topic, visible, onClose }: { topic: HelpTopic; visib
   );
 }
 
+/** Hướng dẫn ngày đầu (đầu bếp dẫn từng bước) đã bao gồm các màn này — không tự mở thêm. */
+const COVERED_BY_TUTORIAL: HelpTopic[] = ['home', 'character', 'market', 'shop', 'kitchen'];
+
 /**
- * Nút "!" tròn màu cam: bấm để xem hướng dẫn bằng hình của màn này.
- * Lần đầu vào màn, hướng dẫn tự mở một lần (ghi nhớ trên máy).
+ * Nút "!" tròn màu cam: bấm để bếp trưởng hiện lên đọc hướng dẫn của màn này.
+ * Màn chưa có trong hướng dẫn ngày đầu (bếp thử món, nhân viên...) thì lần đầu vào tự gọi bếp trưởng MỘT lần.
  */
 export default function HelpButton({ topic, autoOpen = true, style }: { topic: HelpTopic; autoOpen?: boolean; style?: StyleProp<ViewStyle> }) {
-  const [open, setOpen] = useState(false);
+  const { game } = useGame();
+  const tutorialDone = Boolean(game?.tutorial.done);
   useEffect(() => {
-    if (!autoOpen || shownThisSession.has(topic) || autoOpenBusy) return;
+    if (!autoOpen || !tutorialDone || COVERED_BY_TUTORIAL.includes(topic) || shownThisSession.has(topic)) return;
     let alive = true;
-    // Chỉ tự mở MỘT lần: đánh dấu ngay khi mở (không đợi đóng), cả trong bộ nhớ lẫn bộ lưu.
     const openOnce = () => {
-      if (!alive || shownThisSession.has(topic) || autoOpenBusy) return;
+      if (!alive || shownThisSession.has(topic)) return;
       shownThisSession.add(topic);
-      autoOpenBusy = true;
       rememberSeen(topic);
-      setOpen(true);
+      tutorialUi.requestHelp(topic);
     };
     if (seenInLocal(topic)) {
       shownThisSession.add(topic);
@@ -120,32 +122,16 @@ export default function HelpButton({ topic, autoOpen = true, style }: { topic: H
     return () => {
       alive = false;
     };
-  }, [topic, autoOpen]);
-  const close = () => {
-    setOpen(false);
-    autoOpenBusy = false;
-  };
-  // Màn bị đóng khi bảng đang mở: nhả cờ để màn khác còn mở được hướng dẫn của nó.
-  const openRef = useRef(open);
-  openRef.current = open;
-  useEffect(
-    () => () => {
-      if (openRef.current) autoOpenBusy = false;
-    },
-    []
-  );
+  }, [topic, autoOpen, tutorialDone]);
   return (
-    <>
-      <Pressable
-        onPress={() => setOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel="Hướng dẫn"
-        style={({ pressed }) => [styles.bang, pressed && { transform: [{ scale: 0.92 }] }, style]}
-      >
-        <Text style={styles.bangText}>!</Text>
-      </Pressable>
-      <HelpSheet topic={topic} visible={open} onClose={close} />
-    </>
+    <Pressable
+      onPress={() => tutorialUi.requestHelp(topic)}
+      accessibilityRole="button"
+      accessibilityLabel="Hướng dẫn"
+      style={({ pressed }) => [styles.bang, pressed && { transform: [{ scale: 0.92 }] }, style]}
+    >
+      <Text style={styles.bangText}>!</Text>
+    </Pressable>
   );
 }
 

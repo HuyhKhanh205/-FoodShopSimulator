@@ -47,43 +47,105 @@ export const RECIPES: Record<RecipeId, Recipe> = {
     ingredients: { banh_mi: 1, trung: 1, pate: 1, hanh: 1 },
     station: 'stove', cookTime: 4_000, drink: false, burns: true, garnish: 'hanh',
   },
-  pho_bo: {
-    id: 'pho_bo', name: 'Phở bò', emoji: '🍜', price: 45_000,
-    ingredients: { banh_pho: 1, thit_bo: 1, hanh: 1, rau: 1 },
-    station: 'stove', cookTime: 7_000, drink: false, burns: true, garnish: 'hanh',
+  tra_da: {
+    id: 'tra_da', name: 'Trà đá', emoji: '🧋', price: 5_000,
+    ingredients: { tra: 1, da: 1 },
+    station: 'counter', cookTime: 1_500, drink: true, burns: false,
+  },
+  banh_mi_pate: {
+    id: 'banh_mi_pate', name: 'Bánh mì pate', emoji: '🥖', price: 15_000,
+    ingredients: { banh_mi: 1, pate: 1 },
+    station: 'counter', cookTime: 2_000, drink: false, burns: false,
   },
   com_ga: {
     id: 'com_ga', name: 'Cơm gà', emoji: '🍛', price: 40_000,
     ingredients: { gao: 1, ga: 1, hanh: 1 },
     station: 'stove', cookTime: 6_000, drink: false, burns: true, garnish: 'hanh',
   },
-  tra_da: {
-    id: 'tra_da', name: 'Trà đá', emoji: '🧋', price: 5_000,
-    ingredients: { tra: 1, da: 1 },
-    station: 'counter', cookTime: 1_500, drink: true, burns: false,
+  com_chien_trung: {
+    id: 'com_chien_trung', name: 'Cơm chiên trứng', emoji: '🍳', price: 30_000,
+    ingredients: { gao: 1, trung: 1, hanh: 1 },
+    station: 'stove', cookTime: 5_000, drink: false, burns: true, garnish: 'hanh',
   },
-  bun_cha: {
-    id: 'bun_cha', name: 'Bún chả', emoji: '🥢', price: 45_000,
-    ingredients: { bun: 1, thit_heo: 1, rau: 1, hanh: 1 },
-    station: 'stove', cookTime: 8_000, drink: false, burns: true, garnish: 'hanh',
-    unlock: { cost: 500_000, reputation: 3.3 },
+  pho_bo: {
+    id: 'pho_bo', name: 'Phở bò', emoji: '🍜', price: 45_000,
+    ingredients: { banh_pho: 1, thit_bo: 1, hanh: 1, rau: 1 },
+    station: 'stove', cookTime: 7_000, drink: false, burns: true, garnish: 'hanh',
   },
-  goi_cuon: {
-    id: 'goi_cuon', name: 'Gỏi cuốn', emoji: '🌯', price: 35_000,
-    ingredients: { banh_trang: 1, tom: 1, bun: 1, rau: 1 },
-    station: 'counter', cookTime: 4_000, drink: false, burns: false,
-    unlock: { cost: 700_000, reputation: 3.6 },
+  banh_mi_bo: {
+    id: 'banh_mi_bo', name: 'Bánh mì bò', emoji: '🥙', price: 35_000,
+    ingredients: { banh_mi: 1, thit_bo: 1, rau: 1 },
+    station: 'stove', cookTime: 5_000, drink: false, burns: true,
   },
   ca_phe_sua: {
     id: 'ca_phe_sua', name: 'Cà phê sữa đá', emoji: '☕', price: 25_000,
     ingredients: { ca_phe: 1, sua: 1, da: 1 },
     station: 'counter', cookTime: 2_500, drink: true, burns: false,
-    unlock: { cost: 300_000, reputation: 3.0 },
+  },
+  tra_sua: {
+    id: 'tra_sua', name: 'Trà sữa', emoji: '🥤', price: 20_000,
+    ingredients: { tra: 1, sua: 1, da: 1 },
+    station: 'counter', cookTime: 2_500, drink: true, burns: false,
+  },
+  bun_cha: {
+    id: 'bun_cha', name: 'Bún chả', emoji: '🥢', price: 45_000,
+    ingredients: { bun: 1, thit_heo: 1, rau: 1, hanh: 1 },
+    station: 'stove', cookTime: 8_000, drink: false, burns: true, garnish: 'hanh',
+  },
+  com_tam: {
+    id: 'com_tam', name: 'Cơm tấm', emoji: '🍱', price: 40_000,
+    ingredients: { gao: 1, thit_heo: 1, trung: 1 },
+    station: 'stove', cookTime: 7_000, drink: false, burns: true,
+  },
+  banh_mi_thit: {
+    id: 'banh_mi_thit', name: 'Bánh mì thịt', emoji: '🌭', price: 30_000,
+    ingredients: { banh_mi: 1, thit_heo: 1, pate: 1, rau: 1 },
+    station: 'stove', cookTime: 5_000, drink: false, burns: true,
+  },
+  goi_cuon: {
+    id: 'goi_cuon', name: 'Gỏi cuốn', emoji: '🌯', price: 35_000,
+    ingredients: { banh_trang: 1, tom: 1, bun: 1, rau: 1 },
+    station: 'counter', cookTime: 4_000, drink: false, burns: false,
+  },
+  com_chien_tom: {
+    id: 'com_chien_tom', name: 'Cơm chiên tôm', emoji: '🍤', price: 45_000,
+    ingredients: { gao: 1, tom: 1, trung: 1, hanh: 1 },
+    station: 'stove', cookTime: 6_000, drink: false, burns: true, garnish: 'hanh',
   },
 };
 
 export const RECIPE_IDS = Object.keys(RECIPES) as RecipeId[];
-export const START_RECIPES: RecipeId[] = ['banh_mi_trung', 'pho_bo', 'com_ga', 'tra_da'];
+export const START_RECIPES: RecipeId[] = ['banh_mi_trung', 'tra_da'];
+
+/** Ngưỡng điểm kinh nghiệm của từng cấp (cấp 1 bắt đầu từ 0). */
+export const LEVEL_XP = [0, 60, 160, 320, 540, 820];
+export const MAX_LEVEL = LEVEL_XP.length;
+
+/** Nguyên liệu mở khoá theo cấp. */
+export const INGREDIENT_TIER: Record<IngredientId, number> = {
+  banh_mi: 1,
+  trung: 1,
+  pate: 1,
+  hanh: 1,
+  tra: 1,
+  da: 1,
+  gao: 2,
+  ga: 2,
+  banh_pho: 3,
+  thit_bo: 3,
+  rau: 3,
+  ca_phe: 4,
+  sua: 4,
+  bun: 5,
+  thit_heo: 5,
+  banh_trang: 6,
+  tom: 6,
+};
+
+/** Cấp cần để làm được món (cấp cao nhất trong các nguyên liệu). */
+export function recipeLevel(id: RecipeId): number {
+  return Math.max(...(Object.keys(RECIPES[id].ingredients) as IngredientId[]).map((i) => INGREDIENT_TIER[i]));
+}
 
 export interface UpgradeDef {
   key: keyof Upgrades;

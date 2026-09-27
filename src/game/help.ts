@@ -2,7 +2,7 @@
  * Hướng dẫn bằng hình cho nút "!" trên từng màn: mỗi bước là một hình to + một câu ngắn
  * (đủ để bé 5 tuổi nghe bố mẹ đọc, hoặc bấm 🔊 để máy đọc).
  */
-export type HelpTopic = 'home' | 'character' | 'market' | 'shop' | 'kitchen' | 'counter' | 'event' | 'summary' | 'staff' | 'upgrades';
+export type HelpTopic = 'home' | 'character' | 'market' | 'shop' | 'kitchen' | 'counter' | 'event' | 'summary' | 'staff' | 'upgrades' | 'lab';
 
 export interface HelpStep {
   icon: string;
@@ -107,6 +107,16 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
       { icon: '👥', text: 'Thuê người giúp nấu, thái, bưng món.' },
       { icon: '💰', text: 'Mỗi ngày phải trả lương.' },
       { icon: '😅', text: 'Người mới hay làm sai hơn người giỏi.' },
+    ],
+  },
+  lab: {
+    title: 'Bếp thử món',
+    steps: [
+      { icon: '🥚', text: 'Chạm vào 2–4 nguyên liệu để bỏ vào nồi.' },
+      { icon: '🧪', text: 'Bấm Nấu thử.' },
+      { icon: '🎉', text: 'Đúng công thức thì có món mới trong menu!' },
+      { icon: '🤏', text: '"Gần đúng rồi" là thiếu hoặc thừa 1 thứ.' },
+      { icon: '❓', text: 'Ô ❓ là món bí ẩn — thử sai nhiều sẽ lộ gợi ý.' },
     ],
   },
   upgrades: {

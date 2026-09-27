@@ -1,5 +1,7 @@
 /** Kiểm tra nhanh chế độ bản đồ (không cần giao diện): `npx tsx scripts/check-map.ts` */
 import { QUESTIONS } from '../src/game/chat';
+import { TUTORIAL, advanceTutorial, currentStep, tutorialTargets } from '../src/game/tutorial';
+import { addXp, experiment, levelOf, unlockedIngredients } from '../src/game/progression';
 import { START_UPGRADES } from '../src/game/data';
 import * as E from '../src/game/engine';
 import { seededRng } from '../src/game/helpers';
@@ -205,6 +207,86 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   const d1 = count(1);
   const d4 = count(4);
   check(d1 < d4, `ngày 1 ít khách hơn ngày 4 (${d1} < ${d4})`);
+}
+
+// Cấp độ & Bếp thử món
+{
+  const r10 = seededRng(5);
+  const g = E.newGame(r10);
+  check(g.unlockedRecipes.length === 2 && levelOf(g.xp) === 1, 'bắt đầu cấp 1 với 2 món');
+  check(unlockedIngredients(g).length === 6 && !unlockedIngredients(g).includes('gao'), 'cấp 1 chỉ có 6 nguyên liệu');
+  check(experiment(g, ['pate', 'banh_mi']).kind === 'new' && g.unlockedRecipes.includes('banh_mi_pate'), 'bánh mì + pate → Bánh mì pate');
+  check(experiment(g, ['banh_mi', 'pate']).kind === 'known', 'thử lại món đã có → đã có');
+  check(experiment(g, ['gao', 'trung']).kind === 'nothing', 'chưa mở gạo thì không thử được');
+  addXp(g, 60);
+  check(levelOf(g.xp) === 2 && g.chefQueue.some((n) => n.kind === 'levelUp' && n.level === 2), 'đủ 60 XP lên cấp 2 và báo đầu bếp');
+  check(experiment(g, ['gao', 'trung']).kind === 'near', 'gạo + trứng (thiếu hành) → gần đúng');
+  check(experiment(g, ['gao', 'trung', 'hanh']).kind === 'new', 'gạo + trứng + hành → Cơm chiên trứng');
+  const menuBefore = g.unlockedRecipes.length;
+  for (let i = 0; i < 3; i += 1) experiment(g, ['tra', 'pate']);
+  check(Object.values(g.labHints).some((n) => (n ?? 0) > 0), 'thử sai 3 lần lộ gợi ý');
+  check(g.unlockedRecipes.length === menuBefore, 'thử sai không thêm món');
+  // Món mới xuất hiện trong đơn khách
+  g.activeEvent = null;
+  E.openShop(g, r10);
+  let saw = false;
+  for (let i = 0; i < 4000 && !saw && g.run; i += 1) {
+    E.tick(g, 200, r10);
+    if (g.activeEvent) g.activeEvent = null;
+    saw = Boolean(g.run?.customers.some((c) => c.items.some((it) => it.recipeId === 'com_chien_trung' || it.recipeId === 'banh_mi_pate')));
+  }
+  check(saw, 'khách gọi món vừa sáng tạo');
+}
+
+// Hướng dẫn ngày đầu: đi hết 9 bước bằng thao tác engine
+{
+  const r11 = seededRng(8);
+  const g = E.newGame(r11);
+  g.activeEvent = null;
+  const ui = { fpOpen: false };
+  const stepId = () => TUTORIAL[g.tutorial.step]?.id;
+  const pump = () => {
+    for (let k = 0; k < 10; k += 1) {
+      const st = currentStep(g);
+      if (!st || st.tapToContinue || !st.done(g, ui)) break;
+      advanceTutorial(g);
+    }
+  };
+  check(stepId() === 'hello', 'bắt đầu ở bước chào');
+  advanceTutorial(g);
+  check(tutorialTargets(g).includes('market.buy:banh_mi'), 'bước mua chỉ vào bánh mì');
+  for (const id of ['banh_mi', 'trung', 'pate', 'hanh'] as const) E.buy(g, id, 5);
+  pump();
+  check(stepId() === 'open', 'mua đủ → bước mở cửa');
+  E.openShop(g, r11);
+  pump();
+  check(stepId() === 'board', 'mở cửa → bước vào bếp');
+  ui.fpOpen = true;
+  pump();
+  E.playerPrep(g, 'hanh');
+  for (let i = 0; i < 20; i += 1) E.playerChop(g);
+  E.tick(g, 50, r11);
+  pump();
+  check(stepId() === 'cook', 'thái hành → bước nấu');
+  E.playerCook(g, 'banh_mi_trung', false);
+  pump();
+  check(stepId() === 'take', 'nấu → bước lấy món');
+  for (let i = 0; i < 100; i += 1) E.playerStir(g, g.run!.slots[0].id);
+  E.playerTakeOut(g, g.run!.slots[0].id, true);
+  pump();
+  check(stepId() === 'serve', 'lấy món → bước mang cho khách');
+  let tries = 0;
+  while (g.run && g.run.customers.length === 0 && tries++ < 200) {
+    E.tick(g, 200, r11);
+    if (g.activeEvent) g.activeEvent = null;
+  }
+  check(g.run!.elapsed < 15_000, `khách đầu tiên tới sớm (${Math.round(g.run!.elapsed / 1000)} giây)`);
+  const c = g.run!.customers[0];
+  E.playerServe(g, g.run!.carrying[0], c.id, r11);
+  pump();
+  check(stepId() === 'great', 'mang món → bước khen');
+  advanceTutorial(g);
+  check(g.tutorial.done, 'hoàn thành hướng dẫn');
 }
 
 process.exit(failed ? 1 : 0);

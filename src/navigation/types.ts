@@ -5,6 +5,8 @@ export type RootStackParamList = {
   Upgrades: undefined;
   /** first = vừa bấm Chơi mới: lưu xong thì vào game. */
   Character: { first?: boolean } | undefined;
+  /** Bếp thử món: kết hợp nguyên liệu để tìm món mới. */
+  Lab: undefined;
 };
 
 declare global {

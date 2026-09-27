@@ -10,6 +10,7 @@ import { Canvas } from '../../three/fiber';
 import type { ThreeEvent } from '../../three/fiber';
 import HelpButton from '../kid/HelpButton';
 import OrderRail from './OrderRail';
+import TutorialGlow, { useTutorialTarget, useTutorialTargets } from '../kid/TutorialGlow';
 import IconTile from '../kid/IconTile';
 import { ProgressBar, colors } from '../ui';
 import { BOARD_Z, Backdrop, BoardScene, CounterScene, EyeRig, Kitchen, KitchenCounter, STOVE_GAP, STOVE_SCALE, STOVE_Z, StoveScene, TOP_Y } from './FPScenes';
@@ -123,9 +124,11 @@ function Header({
   topic: 'kitchen' | 'counter';
   lines: { text: string; bar: { value: number; color: string } | null }[];
 }) {
+  const exitGlow = useTutorialTarget('kitchen.exit') && carrying > 0;
   return (
     <View pointerEvents="box-none" style={styles.top}>
       <View style={styles.topRow}>
+        <TutorialGlow on={exitGlow} radius={14}>
         <Pressable
           onPress={onExit}
           style={[styles.exit, carrying > 0 && styles.exitServe]}
@@ -139,6 +142,7 @@ function Header({
             </View>
           )}
         </Pressable>
+        </TutorialGlow>
         <View pointerEvents="none" style={styles.titleBox}>
           {lines.map((l, i) => (
             <View key={i} style={{ gap: 3 }}>
@@ -191,6 +195,7 @@ function KitchenView({ station: initial, stations, game, act, onExit, noGarnish,
   const selInfo = slotInfo(run, selSlot);
 
   const boardPulse = useRef(0);
+  const targets = useTutorialTargets();
   const stovePulses = useRef<Record<string, PulseRef>>({});
   const pulseOf = (id: string) => (stovePulses.current[id] ??= { current: 0 });
   const [lastPrep, setLastPrep] = useState<IngredientId | null>(null);
@@ -270,28 +275,31 @@ function KitchenView({ station: initial, stations, game, act, onExit, noGarnish,
             const off = noGarnish && Boolean(r.garnish);
             const ok = canMake(game, r.id, off);
             return (
-              <IconTile
-                key={r.id}
-                icon={r.emoji}
-                name={r.name}
-                disabled={!ok}
-                missing={ok ? undefined : missingFor(game, r.id, off).map((m) => INGREDIENTS[m].emoji)}
-                tone={ok ? 'primary' : 'plain'}
-                onPress={() => act((s) => playerCook(s, r.id, noGarnish, selSlot.id))}
-              />
+              <TutorialGlow key={r.id} on={targets.includes(`kitchen.recipe:${r.id}`)}>
+                <IconTile
+                  icon={r.emoji}
+                  name={r.name}
+                  disabled={!ok}
+                  missing={ok ? undefined : missingFor(game, r.id, off).map((m) => INGREDIENTS[m].emoji)}
+                  tone={ok ? 'primary' : 'plain'}
+                  onPress={() => act((s) => playerCook(s, r.id, noGarnish, selSlot.id))}
+                />
+              </TutorialGlow>
             );
           })}
         </>
       )}
       {selSlot && selInfo.mine && (
-        <IconTile
-          icon="🍽️"
-          label={takeOutLabel(run, selInfo)}
-          name={takeOutName(run, selInfo)}
-          tone={!selInfo.done ? 'plain' : selInfo.warn ? 'danger' : 'good'}
-          disabled={run.carrying.length >= MAX_CARRY}
-          onPress={() => act((s) => playerTakeOut(s, selSlot.id, true))}
-        />
+        <TutorialGlow on={targets.includes('kitchen.takeout') && selInfo.done}>
+          <IconTile
+            icon="🍽️"
+            label={takeOutLabel(run, selInfo)}
+            name={takeOutName(run, selInfo)}
+            tone={!selInfo.done ? 'plain' : selInfo.warn ? 'danger' : 'good'}
+            disabled={run.carrying.length >= MAX_CARRY}
+            onPress={() => act((s) => playerTakeOut(s, selSlot.id, true))}
+          />
+        </TutorialGlow>
       )}
     </View>
   );
@@ -302,16 +310,17 @@ function KitchenView({ station: initial, stations, game, act, onExit, noGarnish,
         const raw = usableQty(game, id);
         const ready = run.prepped[id] ?? 0;
         return (
-          <IconTile
-            key={id}
-            icon={ing.emoji}
-            name={ing.name}
-            badge={ready}
-            sub={`📦${raw}`}
-            tone={ready === 0 && raw > 0 ? 'primary' : 'plain'}
-            disabled={Boolean(prep) || raw === 0}
-            onPress={() => act((s) => playerPrep(s, id))}
-          />
+          <TutorialGlow key={id} on={targets.includes(`kitchen.prep:${id}`)}>
+            <IconTile
+              icon={ing.emoji}
+              name={ing.name}
+              badge={ready}
+              sub={`📦${raw}`}
+              tone={ready === 0 && raw > 0 ? 'primary' : 'plain'}
+              disabled={Boolean(prep) || raw === 0}
+              onPress={() => act((s) => playerPrep(s, id))}
+            />
+          </TutorialGlow>
         );
       })}
     </View>

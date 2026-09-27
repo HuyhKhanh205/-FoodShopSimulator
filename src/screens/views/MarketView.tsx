@@ -4,7 +4,9 @@ import { useNavigation } from '@react-navigation/native';
 import Hud from '../../components/Hud';
 import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
-import { Button, colors } from '../../components/ui';
+import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
+import { Button, ProgressBar, colors } from '../../components/ui';
+import { levelOf, levelProgress, mysteryRecipes, unlockedIngredients } from '../../game/progression';
 import { INGREDIENTS, RECIPES, CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
 import { buy, discardExpired, openShop, payDebt, returnToShop, returnableQty, shopClosed, unbuy } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
@@ -27,9 +29,11 @@ export default function MarketView() {
   const wide = width >= 900;
 
   // Nguyên liệu dùng cho thực đơn hiện tại lên trước.
+  // Nguyên liệu đã mở khoá theo cấp; thứ dùng cho thực đơn hiện tại lên trước.
   const used = new Set<IngredientId>();
   for (const id of game.unlockedRecipes) for (const ing of Object.keys(RECIPES[id].ingredients)) used.add(ing as IngredientId);
-  const ingredientIds = (Object.keys(INGREDIENTS) as IngredientId[]).filter((id) => used.has(id));
+  const level = levelOf(game.xp);
+  const ingredientIds = unlockedIngredients(game).sort((a, b) => Number(used.has(b)) - Number(used.has(a)));
 
   const expired = expiredQty(game);
   // Đi chợ giữa giờ bán: đồng hồ vẫn chạy, quán có thể đang treo biển tạm đóng.
@@ -37,6 +41,7 @@ export default function MarketView() {
   const closed = midday && shopClosed(game);
   const waiting = game.run?.customers.length ?? 0;
   const [showDebt, setShowDebt] = useState(false);
+  const targets = useTutorialTargets();
 
   const menuTiles = (
     <View style={styles.tiles}>
@@ -80,6 +85,22 @@ export default function MarketView() {
           </View>
         )}
 
+        {/* Cấp độ + Bếp thử món */}
+        <View style={styles.levelRow}>
+          <Text style={styles.levelText}>⭐ {level}</Text>
+          <View style={{ flex: 1 }}>
+            <ProgressBar value={levelProgress(game.xp)} color={colors.accent} height={10} />
+          </View>
+          <IconTile
+            icon="🧪"
+            label="Thử món"
+            name="Bếp thử món"
+            size="sm"
+            badge={mysteryRecipes(game).length || undefined}
+            onPress={() => navigation.navigate('Lab')}
+          />
+        </View>
+
         {/* Món hôm nay: số trên hình = số bát nấu được */}
         {menuTiles}
 
@@ -93,10 +114,12 @@ export default function MarketView() {
             const cheap = price < ing.basePrice * 0.9;
             const stock = usableQty(game, id);
             return (
-              <View key={id} style={[styles.card, wide && styles.cardWide]} accessibilityLabel={ing.name}>
+              <TutorialGlow key={id} on={targets.includes(`market.buy:${id}`)} style={[styles.card, wide && styles.cardWide]}>
+              <View accessibilityLabel={ing.name} style={{ gap: 6 }}>
                 <View style={styles.cardTop}>
                   <Text style={styles.cardEmoji}>{ing.emoji}</Text>
                   {ing.needsPrep && <Text style={styles.prepMark}>🔪</Text>}
+                  {!used.has(id) && <Text style={styles.unusedMark}>🧪</Text>}
                   <View style={[styles.stock, stock === 0 && styles.stockEmpty]}>
                     <Text style={styles.stockText}>📦 {stock}</Text>
                   </View>
@@ -129,6 +152,7 @@ export default function MarketView() {
                   ))}
                 </View>
               </View>
+              </TutorialGlow>
             );
           })}
         </View>
@@ -164,6 +188,7 @@ export default function MarketView() {
           </View>
         )}
         {!midday && (
+          <TutorialGlow on={targets.includes('market.open')} style={{ alignSelf: 'stretch' }}>
           <IconTile
             icon="🏮"
             label="Mở cửa"
@@ -174,6 +199,7 @@ export default function MarketView() {
             disabled={Boolean(game.activeEvent)}
             style={styles.openBtn}
           />
+          </TutorialGlow>
         )}
       </ScrollView>
     </View>
@@ -204,6 +230,9 @@ const styles = StyleSheet.create({
   cardWide: { width: 170, flexGrow: 0 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cardEmoji: { fontSize: 40 },
+  levelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 6 },
+  levelText: { fontSize: 20, fontWeight: '900', color: colors.primaryDark },
+  unusedMark: { fontSize: 14, marginTop: -18 },
   prepMark: { fontSize: 16, marginTop: -18 },
   stock: { marginLeft: 'auto', backgroundColor: colors.goodBg, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
   stockEmpty: { backgroundColor: colors.badBg },

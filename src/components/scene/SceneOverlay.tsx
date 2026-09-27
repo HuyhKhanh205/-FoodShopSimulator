@@ -1,5 +1,7 @@
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { questionOf } from '../../game/chat';
+import { tutorialTargets } from '../../game/tutorial';
+import TutorialGlow from '../kid/TutorialGlow';
 import { BURN_FACTOR, PLAYER_PREP_MS, RECIPES } from '../../game/data';
 import type { MapLayout, MapStation } from '../../game/layout';
 import type { Customer, GameState } from '../../game/types';
@@ -91,6 +93,7 @@ export default function SceneOverlay({
   const unit = Math.max(Math.hypot(b.x - a.x, b.y - a.y), Math.hypot(c2.x - a.x, c2.y - a.y));
   const font = Math.max(11, Math.min(22, unit * 0.34));
   const center = (st: MapStation): [number, number] => [st.x + st.w / 2, st.y + st.h / 2];
+  const targets = tutorialTargets(game);
 
   const items: React.ReactNode[] = [];
   const place = (key: string, pt: { x: number; y: number }, node: React.ReactNode, width = 90) =>
@@ -108,7 +111,15 @@ export default function SceneOverlay({
     }
     if (st.kind === 'table') {
       const cust = run.customers.find((x) => x.tableIndex === st.tableIndex);
-      if (cust) place(`bubble-${st.id}`, p(cx, 1.8, cz), <OrderBubble c={cust} font={font} onQuestion={onQuestion} />, 150);
+      if (cust)
+        place(
+          `bubble-${st.id}`,
+          p(cx, 1.8, cz),
+          <TutorialGlow on={targets.includes('shop.table') && cust.items.some((i) => !i.served)} radius={12}>
+            <OrderBubble c={cust} font={font} onQuestion={onQuestion} />
+          </TutorialGlow>,
+          150
+        );
       continue;
     }
     if (st.slotId) {
@@ -136,10 +147,12 @@ export default function SceneOverlay({
       place(
         'board',
         p(cx, 1.35, cz),
+        <TutorialGlow on={targets.includes('shop.board')} radius={10}>
         <View style={styles.tag}>
-          <Text style={styles.label}>Thớt</Text>
+          <Text style={[styles.label, targets.includes('shop.board') && { fontSize: 16 }]}>Thớt</Text>
           {run.playerPrep && <Bar value={1 - (run.playerPrep.endsAt - run.elapsed) / PLAYER_PREP_MS} color={colors.info} width={Math.max(28, font * 2.2)} />}
         </View>
+        </TutorialGlow>
       );
     }
     if (st.kind === 'fridge') place('fridge', p(cx, 1.95, cz), <View style={styles.tag}><Text style={styles.label}>Kho</Text></View>);

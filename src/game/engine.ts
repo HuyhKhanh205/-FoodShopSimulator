@@ -113,6 +113,11 @@ export function newGame(rng: Rng): GameState {
     candidates: [],
     upgrades: { ...START_UPGRADES },
     unlockedRecipes: [...START_RECIPES],
+    xp: 0,
+    chefQueue: [],
+    tutorial: { step: 0, done: false },
+    labFails: 0,
+    labHints: {},
     mods: emptyMods(),
     report: emptyReport({ day: 1, reputation: 3 }),
     history: [],
@@ -244,15 +249,6 @@ export function buyUpgrade(s: GameState, key: keyof Upgrades): boolean {
   return true;
 }
 
-export function unlockRecipe(s: GameState, id: RecipeId): boolean {
-  const r = RECIPES[id];
-  if (!r.unlock || s.unlockedRecipes.includes(id)) return false;
-  if (s.reputation < r.unlock.reputation || s.money < r.unlock.cost) return false;
-  s.money -= r.unlock.cost;
-  s.report.otherCosts += r.unlock.cost;
-  s.unlockedRecipes.push(id);
-  return true;
-}
 
 export function setProfile(s: GameState, profile: PlayerProfile) {
   s.profile = { ...profile, name: profile.name.trim() || DEFAULT_PROFILE.name, shopName: profile.shopName.trim() || DEFAULT_PROFILE.shopName };
@@ -678,7 +674,9 @@ function spawnCustomers(s: GameState, dt: number, rng: Rng) {
   const intro = introFactor(s.day);
   const rate =
     0.14 * trafficCurve(hourAt(run.elapsed)) * (0.4 + s.reputation * 0.25) * (1 + 0.15 * s.upgrades.sign) * s.mods.spawnMult * intro;
-  const force = run.sinceLastCustomer > 15_000 / intro && run.customers.length === 0;
+  // Đang hướng dẫn ngày đầu: khách đầu tiên tới sớm (~10 giây) để kịp học mang món.
+  const tutorialWait = s.day === 1 && !s.tutorial?.done ? 10_000 : 15_000 / intro;
+  const force = run.sinceLastCustomer > tutorialWait && run.customers.length === 0;
   if (!force && rng() >= (rate * dt) / 1000) return;
   const c = makeCustomer(s, rng);
   if (!c) return;

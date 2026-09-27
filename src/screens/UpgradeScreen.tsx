@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import HelpButton from '../components/kid/HelpButton';
 import { Button, Panel, colors } from '../components/ui';
 import { INGREDIENTS, RECIPES, RECIPE_IDS, UPGRADES } from '../game/data';
-import { buyUpgrade, unlockRecipe, upgradeInfo } from '../game/engine';
+import { buyUpgrade, upgradeInfo } from '../game/engine';
 import { useGame } from '../game/GameContext';
 import { formatMoney } from '../game/helpers';
 import type { IngredientId } from '../game/types';
@@ -48,37 +48,14 @@ export default function UpgradeScreen() {
         </Panel>
 
         <Panel title="📖">
-          {RECIPE_IDS.filter((id) => RECIPES[id].unlock).map((id) => {
-            const r = RECIPES[id];
-            const owned = game.unlockedRecipes.includes(id);
-            const need = r.unlock!;
-            const repOk = game.reputation >= need.reputation;
-            const ingredients = (Object.keys(r.ingredients) as IngredientId[]).map((i) => INGREDIENTS[i].emoji).join(' ');
-            return (
-              <View key={id} style={styles.row}>
-                <Text style={styles.emoji}>{r.emoji}</Text>
-                <View style={styles.flex}>
-                  <Text style={styles.name}>
-                    {r.name} · 💰 {formatMoney(r.price)}
-                  </Text>
-                  <Text style={styles.ingr}>{ingredients}</Text>
-                  {!owned && (
-                    <Text style={[styles.muted, !repOk && { color: colors.bad }]}>⭐ ≥ {need.reputation.toFixed(1)}</Text>
-                  )}
-                </View>
-                {owned ? (
-                  <Text style={styles.max}>✅</Text>
-                ) : (
-                  <Button
-                    small
-                    label={formatMoney(need.cost)}
-                    disabled={!repOk || game.money < need.cost}
-                    onPress={() => act((s) => void unlockRecipe(s, id))}
-                  />
-                )}
-              </View>
-            );
-          })}
+          <View style={styles.row}>
+            <Text style={styles.emoji}>🧪</Text>
+            <View style={styles.flex}>
+              <Text style={styles.name}>Bếp thử món</Text>
+              <Text style={styles.ingr}>{game.unlockedRecipes.map((id) => RECIPES[id].emoji).join(' ')}</Text>
+            </View>
+            <Button small label="🧪 Thử món" onPress={() => navigation.navigate('Lab')} />
+          </View>
         </Panel>
       </ScrollView>
     </SafeAreaView>

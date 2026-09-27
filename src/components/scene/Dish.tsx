@@ -114,6 +114,59 @@ function Glass({ fill, cream, burnt }: { fill: string; cream?: string; burnt?: b
   );
 }
 
+/** Ổ bánh mì kẹp nhân (màu nhân tuỳ món). */
+function Baguette({ fill, greens = true, burnt }: { fill: string; greens?: boolean; burnt?: boolean }) {
+  return (
+    <group>
+      <Plate r={0.15} />
+      <mesh position={[0, 0.06, 0]} rotation-z={Math.PI / 2} scale={[1, 1, 0.8]} castShadow>
+        <capsuleGeometry args={[0.04, 0.16, 8, 14]} />
+        <M c="#D9A25F" r={0.7} burnt={burnt} />
+      </mesh>
+      <mesh position={[0, 0.09, 0.012]} rotation-z={Math.PI / 2}>
+        <capsuleGeometry args={[0.018, 0.14, 6, 10]} />
+        <M c={fill} r={0.5} burnt={burnt} />
+      </mesh>
+      {greens &&
+        [-0.05, 0, 0.05].map((x) => (
+          <mesh key={x} position={[x, 0.1, 0.02]} rotation={[0.5, 0, 0.3]}>
+            <circleGeometry args={[0.014, 8]} />
+            <M c="#43A047" />
+          </mesh>
+        ))}
+    </group>
+  );
+}
+
+/** Đĩa cơm (màu cơm tuỳ món: trắng, cơm chiên vàng) + phần ăn kèm. */
+function RicePlate({ rice, burnt, children }: { rice: string; burnt?: boolean; children?: React.ReactNode }) {
+  return (
+    <group>
+      <Plate />
+      <mesh position={[-0.03, 0.025, 0]} scale={[1, 0.6, 1]} castShadow>
+        <sphereGeometry args={[0.09, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <M c={rice} r={0.9} burnt={burnt} />
+      </mesh>
+      {children}
+    </group>
+  );
+}
+
+function FriedEgg({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh rotation-x={-Math.PI / 2}>
+        <circleGeometry args={[0.04, 16]} />
+        <M c="#FFFFFF" r={0.4} />
+      </mesh>
+      <mesh position={[0, 0.006, 0]} scale={[1, 0.5, 1]}>
+        <sphereGeometry args={[0.016, 10, 8]} />
+        <M c="#FFB300" r={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
 /** Mô hình món ăn chi tiết, rộng khoảng 0.3 đơn vị, đặt trên mặt phẳng y = 0. */
 export default function DishModel({ dish, scale = 1 }: { dish: DishKey; scale?: number }) {
   const { recipeId, burnt } = parseDish(dish);
@@ -258,6 +311,66 @@ export default function DishModel({ dish, scale = 1 }: { dish: DishKey; scale?: 
       break;
     case 'ca_phe_sua':
       body = <Glass fill="#5D3A26" cream="#E9D3AE" burnt={burnt} />;
+      break;
+    case 'banh_mi_pate':
+      body = <Baguette fill="#8D5A3B" greens={false} burnt={burnt} />;
+      break;
+    case 'banh_mi_bo':
+      body = <Baguette fill="#7B4A3A" burnt={burnt} />;
+      break;
+    case 'banh_mi_thit':
+      body = <Baguette fill="#E39A8A" burnt={burnt} />;
+      break;
+    case 'com_chien_trung':
+      body = (
+        <RicePlate rice="#F2C94C" burnt={burnt}>
+          <Scallion n={6} spread={0.06} y={0.06} />
+          <FriedEgg position={[0.08, 0.03, 0.05]} />
+        </RicePlate>
+      );
+      break;
+    case 'com_chien_tom':
+      body = (
+        <RicePlate rice="#F2C94C" burnt={burnt}>
+          {[0, 1, 2].map((i) => (
+            <mesh key={i} position={[0.07, 0.05, -0.05 + i * 0.05]} rotation={[Math.PI / 2, 0, i]}>
+              <torusGeometry args={[0.018, 0.009, 6, 12, Math.PI * 1.3]} />
+              <M c="#FF7043" r={0.4} burnt={burnt} />
+            </mesh>
+          ))}
+          <Scallion n={5} spread={0.05} y={0.06} />
+        </RicePlate>
+      );
+      break;
+    case 'com_tam':
+      body = (
+        <RicePlate rice="#FFFBEF" burnt={burnt}>
+          <mesh position={[0.07, 0.035, -0.02]} rotation-y={0.4} scale={[1.3, 0.35, 0.8]} castShadow>
+            <sphereGeometry args={[0.05, 14, 10]} />
+            <M c="#A0522D" r={0.6} burnt={burnt} />
+          </mesh>
+          <FriedEgg position={[0.02, 0.04, 0.08]} />
+          {[0, 1].map((i) => (
+            <mesh key={i} position={[-0.1 + i * 0.03, 0.03, 0.1]} rotation-x={-Math.PI / 2 + 0.3}>
+              <circleGeometry args={[0.016, 12]} />
+              <M c="#7CB342" r={0.4} />
+            </mesh>
+          ))}
+        </RicePlate>
+      );
+      break;
+    case 'tra_sua':
+      body = (
+        <group>
+          <Glass fill="#D7B899" burnt={burnt} />
+          {[0, 1, 2, 3, 4].map((i) => (
+            <mesh key={i} position={[Math.cos(i * 1.3) * 0.035, 0.018, Math.sin(i * 1.3) * 0.035]}>
+              <sphereGeometry args={[0.011, 8, 6]} />
+              <M c="#2B1B12" r={0.2} />
+            </mesh>
+          ))}
+        </group>
+      );
       break;
     default:
       body = (

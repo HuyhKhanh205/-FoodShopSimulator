@@ -82,6 +82,14 @@ Tới **thớt** hoặc **bếp** là vào màn **Bếp của tôi**: nhìn qua 
 
 Trên điện thoại cảnh quán được phóng to 30% và camera đi theo nhân vật.
 
+### 👨‍🍳 Bếp trưởng Tư dẫn đường
+Chơi mới là **bếp trưởng Tư** (nhân vật 3D KayKit có hoạt ảnh vẫy tay, giải thích) trượt lên màn hình và dẫn từng bước ngày đầu: mua 🥖🥚🥫🧅 → 🏮 mở cửa → vào 🔪 thớt → thái hành → nấu 🥪 → lấy món → mang cho khách. Mỗi bước chỉ vào đúng nút cần bấm (viền vàng nhấp nháy + 👆), làm xong tự sang bước sau; có ⏭️ bỏ qua, chạm vào bếp trưởng để thu nhỏ, 🔊 để nghe đọc. Sau đó bếp trưởng chỉ xuất hiện khi có tin mới (lên cấp, món mới) hoặc khi bấm ❗ ở bất kỳ màn nào.
+
+### ⭐ Cấp độ & 🧪 Bếp thử món
+- Mỗi món mang cho khách được điểm kinh nghiệm; **lên cấp mở khoá nguyên liệu mới**: cấp 1 🥖🥚🥫🧅🍵🧊 · cấp 2 🍚🍗 · cấp 3 🍜🥩🥬 · cấp 4 🫘🥛 · cấp 5 🍝🥓 · cấp 6 🫓🦐.
+- Menu **không có sẵn**: bắt đầu chỉ có 🥪 Bánh mì trứng và 🧋 Trà đá. Vào **🧪 Bếp thử món** (ở chợ hoặc màn nâng cấp), chọn 2–4 nguyên liệu bỏ vào nồi rồi bấm **Nấu thử**: đúng công thức thì phát hiện món mới và món vào menu ngay (khách bắt đầu gọi); thiếu / thừa đúng 1 thứ thì "Gần đúng rồi!"; thử sai nhiều lần sẽ lộ gợi ý trong 📖 sổ công thức.
+- 15 món để khám phá: bánh mì trứng / pate / bò / thịt, cơm gà, cơm chiên trứng, cơm tấm, cơm chiên tôm, phở bò, bún chả, gỏi cuốn, trà đá, trà sữa, cà phê sữa đá.
+
 ### 🐣 3 ngày làm quen
 Ngày 1 chỉ khoảng 1/3 lượng khách, ngày 2 một nửa, ngày 3 khoảng 3/4; khách đi một mình, gọi 1 món, kiên nhẫn hơn; ngày 1–2 không có sự cố, ngày 3 rất ít; tiền mặt bằng giảm theo. Từ ngày 4 quán đông bình thường.
 

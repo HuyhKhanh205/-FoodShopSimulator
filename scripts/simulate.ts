@@ -4,6 +4,7 @@
  */
 import { DAY_MS, INGREDIENTS, RECIPES } from '../src/game/data';
 import * as E from '../src/game/engine';
+import { experiment, levelOf, mysteryRecipes } from '../src/game/progression';
 import { canMake, seededRng, usableQty } from '../src/game/helpers';
 import type { GameState, IngredientId, StaffRole } from '../src/game/types';
 
@@ -63,6 +64,8 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
   for (let d = 0; d < days && !s.gameOver; d++) {
     while (s.activeEvent) E.chooseEventOption(s, 0, rng);
     E.discardExpired(s);
+    // Bot tự "sáng tạo" mọi món đã đủ cấp ở Bếp thử món.
+    for (const id of mysteryRecipes(s)) experiment(s, Object.keys(RECIPES[id].ingredients) as IngredientId[]);
     stockUp(s, Math.max(25, (s.history.at(-1)?.served ?? 12) * 2.2 + 8));
     E.openShop(s, rng);
     let guard = 0;
@@ -76,7 +79,7 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
     if (s.money > 3_000_000) E.payDebt(s, s.money - 2_000_000);
     E.nextDay(s, rng);
   }
-  console.log(`\n=== ${label} → debt=${Math.round(s.debt/1000)}k gameOver=${s.gameOver}`);
+  console.log(`\n=== ${label} → debt=${Math.round(s.debt/1000)}k gameOver=${s.gameOver} level=${levelOf(s.xp)} menu=${s.unlockedRecipes.length}`);
   console.log(rows.filter((_, i) => i < 3 || i % 5 === 0 || i === rows.length - 1).join('\n'));
 }
 

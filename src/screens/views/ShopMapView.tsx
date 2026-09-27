@@ -6,6 +6,7 @@ import Map2D from '../../components/map/Map2D';
 import MapHud from '../../components/scene/MapHud';
 import SceneOverlay from '../../components/scene/SceneOverlay';
 import ChatPrompt from '../../components/kid/ChatPrompt';
+import { tutorialUi } from '../../components/kid/tutorialUi';
 import ShopScene3D from '../../components/scene/ShopScene3D';
 import { LANDSCAPE_YAW, PORTRAIT_YAW, fitCamera, makeCamera, screenDirToTile } from '../../components/scene/camera';
 import { colors } from '../../components/ui';
@@ -68,6 +69,10 @@ export default function ShopMapView() {
   const [fp, setFp] = useState<MapStation | null>(null);
   const fpOpen = useRef(false);
   fpOpen.current = fp !== null;
+  useEffect(() => {
+    tutorialUi.setFpOpen(fp !== null);
+    return () => tutorialUi.setFpOpen(false);
+  }, [fp]);
   const gameRef = useRef(game);
   gameRef.current = game;
 

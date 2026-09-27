@@ -1,3 +1,4 @@
+import { addXp } from './progression';
 import { CUSTOMER_EMOJI, FIRST_NAMES, RECIPES, REGULARS, REVIEW_TEXTS } from './data';
 import { changeRep, clamp, formatMoney, log, menuRecipes, nextId, pick, weightedPick } from './helpers';
 import type { Customer, CustomerKind, GameState, OrderItem, RecipeId, Rng, Staff } from './types';
@@ -233,6 +234,7 @@ export function serveDish(s: GameState, dishId: string, customerId: string, rng:
 
   target.served = true;
   target.quality = QUALITY_SCORE[dish.quality];
+  addXp(s, dish.quality === 'perfect' ? 10 : 4);
   if (dish.quality === 'raw') log(s, `😖 ${c.name}: "${recipe.name} còn sống!"`, 'bad');
   if (dish.quality === 'burnt') log(s, `🤮 ${c.name}: "${recipe.name} cháy khét!"`, 'bad');
   if (c.items.every((i) => i.served)) completeCustomer(s, c, rng);

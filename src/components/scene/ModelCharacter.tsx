@@ -25,6 +25,7 @@ export default function ModelCharacter({
   carrying = [],
   hat,
   shadows = true,
+  anim,
 }: {
   model: CharacterModel;
   fallback: Look;
@@ -34,6 +35,8 @@ export default function ModelCharacter({
   /** Mũ đội thêm (lấy từ nhân vật tự tạo). */
   hat?: Look;
   shadows?: boolean;
+  /** Ép một hoạt ảnh cụ thể (vd 'Cheer', 'Interact') — dùng cho đầu bếp dẫn đường. */
+  anim?: string;
 }) {
   const tint = useMemo(
     () => ({ shirt: fallback.shirt, shirt2: fallback.apron ?? fallback.accent, pants: fallback.pants, hair: fallback.hair, skin: fallback.skin }),
@@ -64,7 +67,7 @@ export default function ModelCharacter({
 
   useFrame((_, dt) => {
     if (!mixer) return;
-    const want = seated ? 'Sit_Chair_Idle' : isMoving?.() ? 'Walking_A' : 'Idle';
+    const want = anim && actions.current[anim] ? anim : seated ? 'Sit_Chair_Idle' : isMoving?.() ? 'Walking_A' : 'Idle';
     if (want !== current.current) {
       const next = actions.current[want];
       const prev = actions.current[current.current];

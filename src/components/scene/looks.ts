@@ -104,4 +104,11 @@ export const FOOD_COLOR: Record<RecipeId, string> = {
   bun_cha: '#B8643D',
   goi_cuon: '#E8F5E9',
   ca_phe_sua: '#5D4037',
+  banh_mi_pate: '#C98F4E',
+  com_chien_trung: '#F2C94C',
+  banh_mi_bo: '#9C5B3C',
+  tra_sua: '#D7B899',
+  com_tam: '#E8B27A',
+  banh_mi_thit: '#C77B5A',
+  com_chien_tom: '#F4A261',
 };

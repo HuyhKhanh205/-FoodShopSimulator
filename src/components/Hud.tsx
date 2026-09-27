@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { formatMoney } from '../game/helpers';
 import type { GameState } from '../game/types';
+import { levelOf } from '../game/progression';
 import { Stars, colors } from './ui';
 
 /** Thanh chỉ số trên cùng (bằng biểu tượng): 📅 ngày / hạn nợ, 💰 tiền, 💳 nợ, ⭐ danh tiếng, 🧽 vệ sinh. */
@@ -15,6 +16,7 @@ export default function Hud({ game, extra }: { game: GameState; extra?: React.Re
       <View style={styles.item}>
         <Stars value={game.reputation} size={16} />
       </View>
+      <Item icon="🎖️" value={`${levelOf(game.xp)}`} />
       <Item icon="🧽" value={`${clean}%`} valueColor={clean < 40 ? '#FFCDD2' : '#fff'} />
       {extra}
     </View>

@@ -39,7 +39,14 @@ export type RecipeId =
   | 'tra_da'
   | 'bun_cha'
   | 'goi_cuon'
-  | 'ca_phe_sua';
+  | 'ca_phe_sua'
+  | 'banh_mi_pate'
+  | 'com_chien_trung'
+  | 'banh_mi_bo'
+  | 'tra_sua'
+  | 'com_tam'
+  | 'banh_mi_thit'
+  | 'com_chien_tom';
 
 export type Station = 'stove' | 'counter';
 
@@ -57,8 +64,10 @@ export interface Recipe {
   burns: boolean;
   /** Nguyên liệu rắc thêm, khách dị ứng dặn bỏ. */
   garnish?: IngredientId;
-  unlock?: { cost: number; reputation: number };
 }
+
+/** Lời đầu bếp dẫn đường đang chờ nói (lên cấp, món mới...). */
+export type ChefNote = { kind: 'levelUp'; level: number } | { kind: 'newDish'; recipeId: RecipeId } | { kind: 'lab' };
 
 export interface StockBatch {
   ingredientId: IngredientId;
@@ -312,6 +321,16 @@ export interface GameState {
   candidates: Staff[];
   upgrades: Upgrades;
   unlockedRecipes: RecipeId[];
+  /** Điểm kinh nghiệm: phục vụ khách để lên cấp, mở khoá nguyên liệu mới. */
+  xp: number;
+  /** Lời đầu bếp chờ nói. */
+  chefQueue: ChefNote[];
+  /** Hướng dẫn từng bước ngày đầu. */
+  tutorial: { step: number; done: boolean };
+  /** Số lần thử món sai liên tiếp (để lộ gợi ý). */
+  labFails: number;
+  /** Gợi ý đã lộ: số nguyên liệu đã lộ của từng món bí ẩn. */
+  labHints: Partial<Record<RecipeId, number>>;
   mods: DayModifiers;
   report: DayReport;
   history: DayReport[];

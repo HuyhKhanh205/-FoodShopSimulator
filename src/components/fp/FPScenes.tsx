@@ -646,7 +646,7 @@ function Bubbles({ color, active, y = 1.13 }: { color: string; active: boolean; 
 }
 
 /** Món chiên / nướng dùng chảo, còn lại dùng nồi. */
-const PAN_RECIPES: RecipeId[] = ['bun_cha', 'banh_mi_trung'];
+const PAN_RECIPES: RecipeId[] = ['bun_cha', 'banh_mi_trung', 'com_chien_trung', 'com_chien_tom', 'banh_mi_bo', 'banh_mi_thit', 'com_tam'];
 
 const tmp = new Color();
 /** Màu chuyển dần: sống → chín (cook 0..1) → cháy (burn 0..1). */
@@ -746,6 +746,37 @@ function PotFood({ recipeId, cook, burn }: { recipeId: RecipeId; cook: number; b
                 <Std color={cookColor('#FFB300', '#FFA000', cook, burn)} rough={0.2} />
               </mesh>
             </group>
+          ))}
+        </group>
+      );
+    case 'com_chien_trung':
+    case 'com_chien_tom':
+      // Cơm chiên đảo trong chảo: cơm vàng dần, hành xanh, tôm cam.
+      return (
+        <group>
+          <mesh scale={[1, 0.2, 1]}>
+            <sphereGeometry args={[0.24, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+            <Std color={cookColor('#F4F1E8', '#F2C94C', cook, burn)} rough={0.9} />
+          </mesh>
+          {Array.from({ length: 10 }, (_, i) => (
+            <mesh key={i} position={[Math.cos(i * 2.4) * 0.14 * ((i % 3) / 3 + 0.4), 0.045, Math.sin(i * 2.4) * 0.14 * ((i % 3) / 3 + 0.4)]}>
+              {recipeId === 'com_chien_tom' && i % 3 === 0 ? <torusGeometry args={[0.025, 0.012, 6, 12, Math.PI * 1.3]} /> : <sphereGeometry args={[0.012, 6, 5]} />}
+              <Std color={recipeId === 'com_chien_tom' && i % 3 === 0 ? cookColor('#FFCCBC', '#FF7043', cook, burn) : '#43A047'} />
+            </mesh>
+          ))}
+        </group>
+      );
+    case 'banh_mi_bo':
+    case 'banh_mi_thit':
+    case 'com_tam':
+      // Thịt áp chảo: miếng thịt sống hồng chuyển nâu.
+      return (
+        <group>
+          {Array.from({ length: 4 }, (_, i) => (
+            <mesh key={i} position={[Math.cos(i * 1.6) * 0.11, 0.015, Math.sin(i * 1.6) * 0.11]} rotation-y={i} scale={[1.4, 0.3, 0.9]} castShadow>
+              <sphereGeometry args={[0.05, 14, 10]} />
+              <Std color={cookColor(recipeId === 'banh_mi_bo' ? '#B8342A' : '#E8998A', recipeId === 'banh_mi_bo' ? '#6D3B1F' : '#A0522D', cook, burn)} rough={0.6} />
+            </mesh>
           ))}
         </group>
       );
