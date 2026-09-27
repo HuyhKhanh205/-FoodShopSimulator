@@ -8,6 +8,7 @@ import {
   burnAt,
   CLEAN_COOLDOWN_MS,
   CLOSE_HOUR,
+  CUSTOMER_PACE,
   DAY_MS,
   DEBT_DUE_DAY,
   INGREDIENT_IDS,
@@ -307,7 +308,7 @@ export function openShop(s: GameState, rng: Rng) {
     st.lateUntil = 0;
     if (st.absent) continue;
     if (st.trait === 'late' && rng() < 0.4) {
-      st.lateUntil = 30_000;
+      st.lateUntil = DAY_MS / 6; // đi trễ khoảng 2 tiếng trong game
       log(s, `⏰ ${st.name} lại đi trễ rồi!`, 'bad');
     }
   }
@@ -745,9 +746,9 @@ function spawnCustomers(s: GameState, dt: number, rng: Rng) {
   run.sinceLastCustomer += dt;
   const intro = introFactor(s.day);
   const rate =
-    0.14 * trafficCurve(hourAt(run.elapsed)) * (0.4 + s.reputation * 0.25) * (1 + 0.15 * s.upgrades.sign) * s.mods.spawnMult * intro * trendSpawnMult(s);
+    0.14 * trafficCurve(hourAt(run.elapsed)) * (0.4 + s.reputation * 0.25) * (1 + 0.15 * s.upgrades.sign) * s.mods.spawnMult * intro * trendSpawnMult(s) * CUSTOMER_PACE;
   // Đang hướng dẫn ngày đầu: khách đầu tiên tới sớm (~10 giây) để kịp học mang món.
-  const tutorialWait = s.day === 1 && !s.tutorial?.done ? 10_000 : 15_000 / intro;
+  const tutorialWait = s.day === 1 && !s.tutorial?.done ? 10_000 : (15_000 / intro) * (DAY_MS / 180_000);
   const force = run.sinceLastCustomer > tutorialWait && run.customers.length === 0;
   if (!force && rng() >= (rate * dt) / 1000) return;
   const c = makeCustomer(s, rng);
@@ -774,7 +775,8 @@ function spawnCustomers(s: GameState, dt: number, rng: Rng) {
 function maybeDayEvent(s: GameState, rng: Rng) {
   const run = s.run!;
   if (s.activeEvent || run.elapsed < run.nextEventCheck) return;
-  run.nextEventCheck = run.elapsed + 10_000;
+  // Khoảng 18 lần xét mỗi ngày, bất kể ngày dài bao lâu.
+  run.nextEventCheck = run.elapsed + DAY_MS / 18;
   if (run.eventsFired.length >= 3 || run.elapsed > DAY_MS - 20_000) return;
   // Ngày làm quen: ngày 1–2 không có sự kiện, ngày 3 ít hơn.
   if (s.day <= 2) return;

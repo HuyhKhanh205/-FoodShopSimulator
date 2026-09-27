@@ -2,7 +2,7 @@
 
 Game giả lập mở quán ăn, viết bằng **Expo (SDK 57) + React Native + TypeScript**. Chạy trên trình duyệt máy tính và điện thoại (Expo Go).
 
-Bạn vay 10 triệu để mở quán. Mỗi ngày: đi chợ mua nguyên liệu → mở cửa 3 phút (7:00–21:00 trong game) → sơ chế, nấu, phục vụ → xem tổng kết. Trả hết nợ trước ngày 33 (30 ngày kinh doanh + 3 ngày làm quen)!
+Bạn vay 10 triệu để mở quán. Mỗi ngày: đi chợ mua nguyên liệu → mở cửa 10 phút (7:00–21:00 trong game, khách tới thưa, dễ thở) → sơ chế, nấu, phục vụ → xem tổng kết. Trả hết nợ trước ngày 33 (30 ngày kinh doanh + 3 ngày làm quen)!
 
 ## Chạy trên máy tính
 
