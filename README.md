@@ -49,8 +49,8 @@ Kiểm tra kiểu: `npm run typecheck` · Mô phỏng cân bằng game (không c
 | 🏮 Mở cửa | **Sơ chế** thịt/rau/hành → **nấu** trên bếp (nhấc sớm = sống, để lâu = cháy) → chọn món ở quầy ra món → **bấm vào khách** để phục vụ |
 | 🌙 Tổng kết | Thu chi, số bàn phục vụ/bỏ về, lỗi nhân viên, đánh giá sao của khách |
 
-### 🗺️ Góc nhìn nhân vật (chế độ bản đồ — mặc định)
-Giờ mở cửa hiển thị quán nhìn từ trên xuống: bếp, quầy pha chế, kho, thớt ở trên; quầy ra món ở giữa; bàn khách và cửa ra vào ở dưới. Bạn điều khiển chủ quán 🧑‍🍳 đi lại:
+### 🗺️ Góc nhìn nhân vật (chế độ bản đồ 3D — mặc định)
+Giờ mở cửa hiển thị quán dạng **3D nhìn chéo từ trên** (three.js + react-three-fiber): chủ quán, nhân viên và khách là nhân vật 3D low-poly có bóng đổ, tay chân vung khi đi, cầm đĩa món trên tay; bếp có lửa và khói khi sắp cháy. Trên điện thoại cầm dọc, camera tự xoay để quán nằm dọc màn hình. Thiết bị không có WebGL sẽ tự dùng bản đồ 2D. Bố cục quán: bếp, quầy pha chế, kho, thớt ở trên; quầy ra món ở giữa; bàn khách và cửa ra vào ở dưới. Bạn điều khiển chủ quán 🧑‍🍳 đi lại:
 
 | Thao tác | Điện thoại | Máy tính |
 |---|---|---|
@@ -85,11 +85,13 @@ src/game/          Logic thuần (không phụ thuộc React) — dễ kiểm th
   customers.ts     Sinh khách, phục vụ, thanh toán, đánh giá
   events.ts        Các tình huống ngẫu nhiên và lựa chọn
   layout.ts        Bố cục bản đồ quán + tìm đường (BFS) cho chế độ góc nhìn nhân vật
+  staffTarget.ts   Nhân viên đứng ở đâu trên bản đồ theo việc đang làm
   storage.ts       Lưu/tải bằng AsyncStorage (tự lưu ngoài giờ mở cửa)
   GameContext.tsx  Kết nối engine với React (đồng hồ 200ms, tự lưu)
 src/screens/       Home, Game (Chợ / Mở cửa / Tổng kết), Nhân viên, Nâng cấp
 src/components/    CustomerCard, CookSlotCard, EventModal, Hud, ShopTopBar, ui
-  map/             Vẽ bản đồ: đồ vật, bàn khách, nhân vật, nhân viên, bảng hành động
+  map/             Bản đồ 2D dự phòng + bảng hành động
+  scene/           Cảnh 3D: camera, nhân vật low-poly, đồ vật, lớp chữ nổi, HUD
 scripts/simulate.ts  Bot chơi thử 30 ngày để cân bằng số liệu
 scripts/check-map.ts Kiểm tra bản đồ và việc cầm/đưa món
 ```

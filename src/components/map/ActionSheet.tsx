@@ -50,7 +50,7 @@ function CustomerBlock({ c, held, act }: { c: Customer; held: Dish[]; act: (fn: 
       </Text>
       <View style={styles.wrap}>
         {held.map((d) => (
-          <Button key={d.id} small label={`Đưa ${dishLabel(d)}`} onPress={() => act((s, rng) => playerServe(s, d.id, c.id, rng))} />
+          <Button key={d.id} small style={styles.big} label={`Đưa ${dishLabel(d)}`} onPress={() => act((s, rng) => playerServe(s, d.id, c.id, rng))} />
         ))}
       </View>
     </View>
@@ -109,7 +109,7 @@ export default function ActionSheet({
             {r.emoji} {r.name} — {done ? 'chín rồi!' : `${Math.round((job.progress / job.cookTime) * 100)}%`}
           </Text>
           <Button
-            small
+            small style={styles.big}
             label={done ? 'Nhấc ra (cầm trên tay)' : 'Nhấc sớm (sẽ bị sống)'}
             variant={done ? 'primary' : 'secondary'}
             onPress={() => act((s) => playerTakeOut(s, slot!.id, true))}
@@ -130,7 +130,7 @@ export default function ActionSheet({
               const missing = ok ? [] : missingFor(game, r.id, off);
               return (
                 <View key={r.id} style={styles.cookItem}>
-                  <Button small label={`${r.emoji} ${r.name}`} disabled={!ok} onPress={() => act((s) => playerCook(s, r.id, noGarnish))} />
+                  <Button small style={styles.big} label={`${r.emoji} ${r.name}`} disabled={!ok} onPress={() => act((s) => playerCook(s, r.id, noGarnish))} />
                   {!ok && <Text style={styles.missing}>Thiếu: {missing.map((m) => INGREDIENTS[m].name).join(', ')}</Text>}
                 </View>
               );
@@ -151,7 +151,7 @@ export default function ActionSheet({
             return (
               <Button
                 key={id}
-                small
+                small style={styles.big}
                 variant={ready === 0 && raw > 0 ? 'primary' : 'secondary'}
                 label={`${ing.emoji} ${ing.name} (${ready} sẵn · ${raw} sống)`}
                 disabled={Boolean(run.playerPrep) || raw === 0}
@@ -182,10 +182,10 @@ export default function ActionSheet({
       <View style={styles.wrap}>
         {onCounter.length === 0 && held.length === 0 && <Text style={styles.muted}>Chưa có món nào xong.</Text>}
         {onCounter.map((d) => (
-          <Button key={d.id} small label={`Cầm ${dishLabel(d)}`} onPress={() => act((s) => pickUpDish(s, d.id))} />
+          <Button key={d.id} small style={styles.big} label={`Cầm ${dishLabel(d)}`} onPress={() => act((s) => pickUpDish(s, d.id))} />
         ))}
         {held.map((d) => (
-          <Button key={d.id} small variant="secondary" label={`Đặt xuống ${dishLabel(d)}`} onPress={() => act((s) => putDownDish(s, d.id))} />
+          <Button key={d.id} small style={styles.big} variant="secondary" label={`Đặt xuống ${dishLabel(d)}`} onPress={() => act((s) => putDownDish(s, d.id))} />
         ))}
       </View>
     );
@@ -207,7 +207,7 @@ export default function ActionSheet({
       ) : (
         <View style={styles.wrap}>
           {held.map((d) => (
-            <Button key={d.id} small variant="danger" label={`Bỏ ${dishLabel(d)}`} onPress={() => act((s) => discardDish(s, d.id))} />
+            <Button key={d.id} small style={styles.big} variant="danger" label={`Bỏ ${dishLabel(d)}`} onPress={() => act((s) => discardDish(s, d.id))} />
           ))}
         </View>
       );
@@ -216,7 +216,7 @@ export default function ActionSheet({
     body = (
       <View style={styles.wrap}>
         <Text style={styles.text}>Vệ sinh: {Math.round(game.cleanliness)}%</Text>
-        <Button small label={ready ? '🧽 Lau dọn quán (+20%)' : 'Đang nghỉ tay...'} disabled={!ready} onPress={() => act((s) => playerClean(s))} />
+        <Button small style={styles.big} label={ready ? '🧽 Lau dọn quán (+20%)' : 'Đang nghỉ tay...'} disabled={!ready} onPress={() => act((s) => playerClean(s))} />
       </View>
     );
   }
@@ -234,13 +234,14 @@ export default function ActionSheet({
 }
 
 const styles = StyleSheet.create({
-  sheet: { gap: 6 },
-  title: { fontSize: 16, fontWeight: '800', color: colors.text },
+  sheet: { gap: 8 },
+  big: { paddingVertical: 11, paddingHorizontal: 12, borderRadius: 12, minHeight: 44 },
+  title: { fontSize: 18, fontWeight: '900', color: colors.text },
   hands: { fontSize: 13, color: colors.primaryDark, fontWeight: '700' },
   text: { color: colors.text },
   bold: { fontWeight: '800', color: colors.text },
   muted: { color: colors.muted, fontSize: 13 },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   customer: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 6, gap: 4 },
   cookItem: { alignItems: 'flex-start' },
   missing: { fontSize: 10, color: colors.bad, maxWidth: 160 },
