@@ -6,7 +6,7 @@ import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
 import { Button, colors } from '../../components/ui';
 import { INGREDIENTS, RECIPES, CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
-import { buy, discardExpired, openShop, payDebt, returnToShop, shopClosed } from '../../game/engine';
+import { buy, discardExpired, openShop, payDebt, returnToShop, returnableQty, shopClosed, unbuy } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
 import { expiredQty, formatMoney, usableQty, formatClock } from '../../game/helpers';
 import type { GameState, IngredientId } from '../../game/types';
@@ -65,6 +65,11 @@ export default function MarketView() {
             <IconTile icon="🏃" label="Về quán" tone="primary" onPress={() => act((s) => returnToShop(s))} style={{ alignSelf: 'flex-start' }} />
           </View>
         )}
+        {!midday && game.day <= 3 && (
+          <View style={styles.intro} accessibilityLabel="Ngày làm quen: khách ít, không có sự cố">
+            <Text style={styles.introText}>🐣 Ngày làm quen {game.day}/3 · 👤 {game.day === 1 ? '·' : game.day === 2 ? '··' : '···'}</Text>
+          </View>
+        )}
         {game.mods.labels.length > 0 && (
           <View style={styles.tags}>
             {game.mods.labels.map((l) => (
@@ -101,6 +106,15 @@ export default function MarketView() {
                   {pricey && !unavailable ? ' ↑' : cheap ? ' ↓' : ''}
                 </Text>
                 <View style={styles.buyBtns}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Bớt 1 ${ing.name}`}
+                    disabled={returnableQty(game, id) === 0}
+                    onPress={() => act((s) => void unbuy(s, id, 1))}
+                    style={({ pressed }) => [styles.buy, styles.buyLess, returnableQty(game, id) === 0 && { opacity: 0.3 }, pressed && { transform: [{ scale: 0.94 }] }]}
+                  >
+                    <Text style={styles.buyText}>−</Text>
+                  </Pressable>
                   {[1, 5].map((q) => (
                     <Pressable
                       key={q}
@@ -206,6 +220,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  buyLess: { backgroundColor: '#fff', borderColor: colors.border },
+  intro: { backgroundColor: '#FFF8E1', borderRadius: 14, borderWidth: 2, borderColor: colors.accent, padding: 10 },
+  introText: { fontSize: 17, fontWeight: '900', color: colors.primaryDark },
   buyMore: { backgroundColor: colors.primary, borderColor: colors.primaryDark },
   buyText: { fontSize: 20, fontWeight: '900', color: colors.primaryDark },
   inline: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },

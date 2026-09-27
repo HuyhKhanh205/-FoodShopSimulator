@@ -1,4 +1,5 @@
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { questionOf } from '../../game/chat';
 import { BURN_FACTOR, PLAYER_PREP_MS, RECIPES } from '../../game/data';
 import type { MapLayout, MapStation } from '../../game/layout';
 import type { Customer, GameState } from '../../game/types';
@@ -14,15 +15,45 @@ function Bar({ value, color, width }: { value: number; color: string; width: num
   );
 }
 
-function OrderBubble({ c, font }: { c: Customer; font: number }) {
+/** Bong bóng trò chuyện (chỉ hình + câu ngắn) hoặc câu hỏi ❓ chạm được để trả lời. */
+function ChatBubble({ c, font, onQuestion }: { c: Customer; font: number; onQuestion?: (id: string) => void }) {
+  if (c.question) {
+    const q = questionOf(c.question.id);
+    return (
+      <Pressable
+        onPress={() => onQuestion?.(c.id)}
+        accessibilityRole="button"
+        accessibilityLabel={`${c.name} hỏi: ${q?.text ?? ''}`}
+        style={({ pressed }) => [styles.ask, pressed && { transform: [{ scale: 0.94 }] }]}
+      >
+        <Text style={{ fontSize: font * 1.1 }}>
+          {q?.icon ?? '💬'}❓
+        </Text>
+      </Pressable>
+    );
+  }
+  if (!c.chat) return null;
+  return (
+    <View pointerEvents="none" style={styles.chat}>
+      <Text style={[styles.chatText, { fontSize: Math.max(10, font * 0.6) }]} numberOfLines={2}>
+        {c.chat.icon} {c.chat.text}
+      </Text>
+    </View>
+  );
+}
+
+function OrderBubble({ c, font, onQuestion }: { c: Customer; font: number; onQuestion?: (id: string) => void }) {
   const open = c.items.filter((i) => !i.served);
   const ratio = c.patience / c.maxPatience;
   return (
-    <View style={styles.bubble}>
+    <View style={styles.stack} pointerEvents="box-none">
+    <ChatBubble c={c} font={font} onQuestion={onQuestion} />
+    <View pointerEvents="none" style={styles.bubble}>
       <Text style={{ fontSize: font }} numberOfLines={2}>
         {open.map((i) => RECIPES[i.recipeId].emoji + (i.noGarnish ? '🚫' : '')).join('')}
       </Text>
       <Bar value={ratio} color={patienceColor(ratio)} width={Math.max(30, font * 2.6)} />
+    </View>
     </View>
   );
 }
@@ -38,6 +69,7 @@ export default function SceneOverlay({
   w,
   h,
   pan,
+  onQuestion,
 }: {
   game: GameState;
   layout: MapLayout;
@@ -47,6 +79,8 @@ export default function SceneOverlay({
   h: number;
   /** Độ dời màn hình hiện tại của camera đi theo nhân vật. */
   pan: Animated.ValueXY;
+  /** Chạm vào câu hỏi ❓ của khách. */
+  onQuestion?: (customerId: string) => void;
 }) {
   const run = game.run!;
   const p = (x: number, y: number, z: number) => project(cam, x, y, z, w, h);
@@ -61,7 +95,7 @@ export default function SceneOverlay({
   const items: React.ReactNode[] = [];
   const place = (key: string, pt: { x: number; y: number }, node: React.ReactNode, width = 90) =>
     items.push(
-      <View key={key} style={[styles.anchor, { left: pt.x - width / 2, bottom: h - pt.y, width }]}>
+      <View key={key} pointerEvents="box-none" style={[styles.anchor, { left: pt.x - width / 2, bottom: h - pt.y, width }]}>
         {node}
       </View>
     );
@@ -74,7 +108,7 @@ export default function SceneOverlay({
     }
     if (st.kind === 'table') {
       const cust = run.customers.find((x) => x.tableIndex === st.tableIndex);
-      if (cust) place(`bubble-${st.id}`, p(cx, 1.8, cz), <OrderBubble c={cust} font={font} />, 110);
+      if (cust) place(`bubble-${st.id}`, p(cx, 1.8, cz), <OrderBubble c={cust} font={font} onQuestion={onQuestion} />, 150);
       continue;
     }
     if (st.slotId) {
@@ -122,19 +156,46 @@ export default function SceneOverlay({
     }
     if (st.kind === 'door') {
       const waiting = run.customers.filter((x) => x.tableIndex === undefined);
-      waiting.slice(0, 2).forEach((cust, i) => place(`door-${cust.id}`, p(11 - i * 0.9, 2.1, 8.1), <OrderBubble c={cust} font={font * 0.85} />, 110));
+      waiting.slice(0, 2).forEach((cust, i) => place(`door-${cust.id}`, p(11 - i * 0.9, 2.1, 8.1), <OrderBubble c={cust} font={font * 0.85} onQuestion={onQuestion} />, 150));
     }
   }
 
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
-      <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: pan.x }, { translateY: pan.y }] }]}>{items}</Animated.View>
+    <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
+      <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { transform: [{ translateX: pan.x }, { translateY: pan.y }] }]}>{items}</Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   anchor: { position: 'absolute', alignItems: 'center' },
+  stack: { alignItems: 'center', gap: 3 },
+  chat: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    maxWidth: 150,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  chatText: { color: colors.text, fontWeight: '700', textAlign: 'center' },
+  ask: {
+    backgroundColor: colors.accent,
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
   bubble: {
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 10,

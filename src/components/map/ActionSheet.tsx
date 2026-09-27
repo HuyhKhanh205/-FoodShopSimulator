@@ -15,6 +15,7 @@ import type { GameMutation } from '../../game/GameContext';
 import { canMake, missingFor, prepIngredients, usableQty } from '../../game/helpers';
 import type { MapStation } from '../../game/layout';
 import type { Customer, Dish, GameState } from '../../game/types';
+import { QuestionAnswers } from '../kid/ChatPrompt';
 import IconTile from '../kid/IconTile';
 import { colors } from '../ui';
 
@@ -55,6 +56,12 @@ function CustomerBlock({ c, held, act }: { c: Customer; held: Dish[]; act: (fn: 
           </Text>
         ))}
       </View>
+      {c.question && <QuestionAnswers c={c} act={act} />}
+      {c.chat && !c.question && (
+        <Text style={styles.chatLine}>
+          {c.chat.icon} {c.chat.text}
+        </Text>
+      )}
       {held.length > 0 && (
         <View style={styles.wrap}>
           {held.map((d) => (
@@ -262,4 +269,5 @@ const styles = StyleSheet.create({
   orderArrow: { fontSize: 18 },
   order: { fontSize: 28 },
   orderDone: { opacity: 0.6 },
+  chatLine: { fontSize: 14, color: colors.muted, fontStyle: 'italic' },
 });

@@ -108,11 +108,14 @@ export default function FirstPersonView(props: Props) {
 function Header({
   onExit,
   carrying,
+  asking = 0,
   topic,
   lines,
 }: {
   onExit: () => void;
   carrying: number;
+  /** Số khách đang chờ chủ quán trả lời câu hỏi. */
+  asking?: number;
   topic: 'kitchen' | 'counter';
   lines: { text: string; bar: { value: number; color: string } | null }[];
 }) {
@@ -126,6 +129,11 @@ function Header({
           accessibilityLabel={carrying > 0 ? `Ra phục vụ (${carrying})` : 'Rời bếp'}
         >
           <Text style={styles.exitText}>{carrying > 0 ? `🍽️×${carrying} ➡` : '⬅'}</Text>
+          {asking > 0 && (
+            <View style={styles.askBadge} accessibilityLabel={`${asking} khách đang hỏi chủ quán`}>
+              <Text style={styles.askBadgeText}>💬❓</Text>
+            </View>
+          )}
         </Pressable>
         <View pointerEvents="none" style={styles.titleBox}>
           {lines.map((l, i) => (
@@ -375,7 +383,7 @@ function KitchenView({ station: initial, stations, game, act, onExit, noGarnish,
             </mesh>
           </group>
         </Canvas>
-        <Header onExit={onExit} carrying={run.carrying.length} topic="kitchen" lines={[stoveLine, prepLine]} />
+        <Header onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="kitchen" lines={[stoveLine, prepLine]} />
         {hint && <Pointer icon={hint} />}
       </View>
       <ScrollView style={styles.controls} contentContainerStyle={styles.controlsContent}>
@@ -451,7 +459,7 @@ function CounterView({ station, game, act, onExit, noGarnish }: Props) {
           <CounterScene recipeId={info.job?.recipeId ?? null} drink={info.recipe?.drink ?? true} progress={Math.min(1, info.cookRatio)} pulse={pulse} />
         </Canvas>
         <Pressable accessibilityLabel="Lắc" onPress={tap} style={StyleSheet.absoluteFill} />
-        <Header onExit={onExit} carrying={run.carrying.length} topic="counter" lines={[{ text: `🧋  ${slotStatus(game, info)}`, bar: slotBar(info) }]} />
+        <Header onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="counter" lines={[{ text: `🧋  ${slotStatus(game, info)}`, bar: slotBar(info) }]} />
         {info.mine && !info.done && <Pointer icon="👆🧋" />}
       </View>
       {controls && (
@@ -479,6 +487,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   exitServe: { backgroundColor: colors.good },
+  askBadge: { position: 'absolute', top: -10, right: -14, backgroundColor: colors.accent, borderRadius: 12, paddingHorizontal: 4, borderWidth: 2, borderColor: '#fff' },
+  askBadgeText: { fontSize: 12 },
   exitText: { color: '#fff', fontWeight: '900', fontSize: 20 },
   titleBox: { flex: 1, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, gap: 4 },
   title: { fontSize: 15, fontWeight: '900', color: colors.text },

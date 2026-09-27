@@ -2,7 +2,7 @@
 
 Game giả lập mở quán ăn, viết bằng **Expo (SDK 57) + React Native + TypeScript**. Chạy trên trình duyệt máy tính và điện thoại (Expo Go).
 
-Bạn vay 10 triệu để mở quán. Mỗi ngày: đi chợ mua nguyên liệu → mở cửa 3 phút (7:00–21:00 trong game) → sơ chế, nấu, phục vụ → xem tổng kết. Trả hết nợ trước ngày 30!
+Bạn vay 10 triệu để mở quán. Mỗi ngày: đi chợ mua nguyên liệu → mở cửa 3 phút (7:00–21:00 trong game) → sơ chế, nấu, phục vụ → xem tổng kết. Trả hết nợ trước ngày 33 (30 ngày kinh doanh + 3 ngày làm quen)!
 
 ## Chạy trên máy tính
 
@@ -81,9 +81,18 @@ Tới **thớt** hoặc **bếp** là vào màn **Bếp của tôi**: nhìn qua 
 
 Trên điện thoại cảnh quán được phóng to 30% và camera đi theo nhân vật.
 
+### 🐣 3 ngày làm quen
+Ngày 1 chỉ khoảng 1/3 lượng khách, ngày 2 một nửa, ngày 3 khoảng 3/4; khách đi một mình, gọi 1 món, kiên nhẫn hơn; ngày 1–2 không có sự cố, ngày 3 rất ít; tiền mặt bằng giảm theo. Từ ngày 4 quán đông bình thường.
+
+### 💬 Khách trò chuyện
+Khách ngồi bàn thỉnh thoảng nói chuyện đời sống (thời tiết, gia đình, công việc, trường học, bóng đá, kẹt xe, giá chợ, lễ Tết, thú cưng…) trong bong bóng trên đầu; khách bàn bên đôi khi đáp lời. Thỉnh thoảng khách **hỏi chủ quán** (bong bóng ❓ vàng): chạm vào ❓ (hoặc tới bàn) để chọn câu trả lời bằng hình — trả lời khéo thì khách chờ lâu hơn và boa thêm, trả lời phũ thì khách kém vui. Đang trong bếp thì nút ra quán có huy hiệu 💬❓.
+
+### 🛒 Mua dư thì bớt
+Ở chợ mỗi thẻ nguyên liệu có nút **−** để bớt phần vừa mua hôm nay (trả lại đúng giá đã mua); đồ mua từ hôm trước thì không trả được.
+
 ### 🧒 Dễ chơi cho bé (ít chữ, nhiều hình)
 Luồng chơi giữ nguyên (chợ → mở cửa → thái → nấu → mang món → tổng kết) nhưng giao diện dùng **ô hình to**: nguyên liệu ở chợ là thẻ có 📦 số trong kho và nút **+1 / +5**; món nấu là ô hình món, thiếu gì thì hiện hình nhỏ của thứ thiếu; thanh chỉ số bằng biểu tượng (📅 💰 💳 ⭐ 🧽); tổng kết chỉ còn ⭐, 💰 lãi/lỗ, 😊/😡 và nút ☀️ Ngày mới (bấm 📊 để xem chi tiết).
-- Nút **❗** tròn màu cam ở mỗi màn mở **hướng dẫn bằng hình** (mỗi bước một hình to + một câu ngắn, có **🔊 Đọc** để máy đọc to trên trình duyệt, **➕ Thêm** cho phần dành cho người lớn). Lần đầu vào mỗi màn, hướng dẫn tự mở một lần.
+- Nút **❗** tròn màu cam ở mỗi màn mở **hướng dẫn bằng hình** (mỗi bước một hình to + một câu ngắn, có **🔊 Đọc** để máy đọc to trên trình duyệt, **➕ Thêm** cho phần dành cho người lớn). Hướng dẫn chỉ tự mở **một lần** cho mỗi màn (nhớ cả khi tải lại trang), sau đó chỉ mở khi bấm ❗.
 
 ### 🧑‍🍳 Tạo nhân vật
 Khi bấm **Chơi mới**, bạn tạo chủ quán (xem trước 3D xoay tròn): tên chủ quán, tên quán, giới tính, kiểu tóc (ngắn, dựng, dài, búi, trọc), màu tóc, màu da, màu áo / tạp dề (khăn – viền áo) / quần — **tô được lên cả 4 nhân vật KayKit**, mũ (mũ đầu bếp, lưỡi trai, nón lá, khăn trùm) và kính; có nút 🎲 Ngẫu nhiên. Sửa lại được mỗi buổi sáng bằng nút **🧑‍🍳 Nhân vật** ở màn chợ.

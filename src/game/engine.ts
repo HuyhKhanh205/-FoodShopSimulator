@@ -1,3 +1,5 @@
+import { answerEffect, tickChat } from './chat';
+import { introFactor } from './customers';
 import {
   BANKRUPT_AT,
   BURN_FACTOR,
@@ -129,11 +131,12 @@ function beginMarket(s: GameState, rng: Rng) {
   s.run = null;
   s.mods = emptyMods();
   s.report = emptyReport(s);
+  s.boughtToday = {};
   for (const st of s.staff) {
     st.absent = false;
     st.task = null;
   }
-  if (s.day > 1 && rng() < 0.55) rollEvent(s, 'morning', rng);
+  if (s.day > 2 && rng() < (s.day === 3 ? 0.3 : 0.55)) rollEvent(s, 'morning', rng);
   for (const id of INGREDIENT_IDS) {
     const base = INGREDIENTS[id].basePrice * (0.8 + rng() * 0.4) * (s.mods.priceMult[id] ?? 1);
     s.prices[id] = Math.max(100, Math.round(base / 100) * 100);
@@ -159,6 +162,34 @@ export function buy(s: GameState, id: IngredientId, qty: number): boolean {
   else s.stock.push({ ingredientId: id, qty, expiresOnDay });
   s.money -= cost;
   s.report.ingredientCost += cost;
+  const today = (s.boughtToday ??= {});
+  const prev = today[id];
+  today[id] = { qty: (prev?.qty ?? 0) + qty, cost: (prev?.cost ?? 0) + cost, expiresOnDay };
+  return true;
+}
+
+/** Số phần mua hôm nay còn bớt lại được (còn nguyên trong lô vừa mua). */
+export function returnableQty(s: GameState, id: IngredientId): number {
+  const b = s.boughtToday?.[id];
+  if (!b || !atMarket(s)) return 0;
+  const batch = s.stock.find((x) => x.ingredientId === id && x.expiresOnDay === b.expiresOnDay);
+  return Math.min(b.qty, batch?.qty ?? 0);
+}
+
+/** Bớt đồ mua dư hôm nay: trả lại đúng giá trung bình đã trả. Không trả được đồ mua ngày trước. */
+export function unbuy(s: GameState, id: IngredientId, qty: number): boolean {
+  const n = Math.min(qty, returnableQty(s, id));
+  if (n <= 0) return false;
+  const b = s.boughtToday![id]!;
+  const batch = s.stock.find((x) => x.ingredientId === id && x.expiresOnDay === b.expiresOnDay)!;
+  const refund = Math.round((b.cost / b.qty) * n);
+  batch.qty -= n;
+  if (batch.qty <= 0) s.stock = s.stock.filter((x) => x !== batch);
+  b.qty -= n;
+  b.cost -= refund;
+  if (b.qty <= 0) delete s.boughtToday![id];
+  s.money += refund;
+  s.report.ingredientCost -= refund;
   return true;
 }
 
@@ -644,9 +675,10 @@ function spawnCustomers(s: GameState, dt: number, rng: Rng) {
     return;
   }
   run.sinceLastCustomer += dt;
+  const intro = introFactor(s.day);
   const rate =
-    0.14 * trafficCurve(hourAt(run.elapsed)) * (0.4 + s.reputation * 0.25) * (1 + 0.15 * s.upgrades.sign) * s.mods.spawnMult * (s.day <= 2 ? 0.8 : 1);
-  const force = run.sinceLastCustomer > 15_000 && run.customers.length === 0;
+    0.14 * trafficCurve(hourAt(run.elapsed)) * (0.4 + s.reputation * 0.25) * (1 + 0.15 * s.upgrades.sign) * s.mods.spawnMult * intro;
+  const force = run.sinceLastCustomer > 15_000 / intro && run.customers.length === 0;
   if (!force && rng() >= (rate * dt) / 1000) return;
   const c = makeCustomer(s, rng);
   if (!c) return;
@@ -674,7 +706,9 @@ function maybeDayEvent(s: GameState, rng: Rng) {
   if (s.activeEvent || run.elapsed < run.nextEventCheck) return;
   run.nextEventCheck = run.elapsed + 10_000;
   if (run.eventsFired.length >= 3 || run.elapsed > DAY_MS - 20_000) return;
-  if (rng() >= 0.2) return;
+  // Ngày làm quen: ngày 1–2 không có sự kiện, ngày 3 ít hơn.
+  if (s.day <= 2) return;
+  if (rng() >= (s.day === 3 ? 0.08 : 0.2)) return;
   const ev = rollEvent(s, 'day', rng, run.eventsFired);
   if (ev) run.eventsFired.push(ev.id);
 }
@@ -744,6 +778,7 @@ export function tick(s: GameState, dt: number, rng: Rng) {
   }
 
   spawnCustomers(s, dt, rng);
+  tickChat(s, dt, rng);
   maybeDayEvent(s, rng);
 
   if (t >= DAY_MS) closeDay(s);
@@ -760,9 +795,11 @@ export function closeDay(s: GameState) {
 
   const wages = s.staff.reduce((sum, st) => sum + st.wage, 0);
   const utilities = s.upgrades.stoves * UTILITY_PER_STOVE + s.upgrades.aircon * UTILITY_AIRCON;
-  s.money -= wages + RENT_PER_DAY + utilities;
+  // Ngày làm quen: chủ nhà giảm tiền mặt bằng tương ứng lượng khách ít hơn.
+  const rent = Math.round((RENT_PER_DAY * introFactor(s.day)) / 1000) * 1000;
+  s.money -= wages + rent + utilities;
   s.report.wages += wages;
-  s.report.rent += RENT_PER_DAY;
+  s.report.rent += rent;
   s.report.utilities += utilities;
 
   // Đồ sẽ hỏng vào ngày mai (vẫn nằm trong kho tới khi bạn vứt đi).
@@ -799,6 +836,24 @@ export function closeDay(s: GameState) {
 
   if (s.money < BANKRUPT_AT) s.gameOver = 'bankrupt';
   else if (s.day >= s.debtDueDay && s.debt > 0) s.gameOver = 'debt';
+}
+
+/**
+ * Chủ quán trả lời câu hỏi của khách: hợp ý thì khách chờ lâu hơn và boa thêm, trả lời phũ thì khách kém vui.
+ */
+export function answerChat(s: GameState, customerId: string, answerIndex: number): 'good' | 'ok' | 'bad' | null {
+  const run = s.run;
+  const c = run?.customers.find((x) => x.id === customerId);
+  if (!run || !c?.question) return null;
+  const eff = answerEffect(c.question.id, answerIndex);
+  if (!eff) return null;
+  c.question = undefined;
+  const bump = eff.effect === 'good' ? 0.25 : eff.effect === 'ok' ? 0.1 : -0.1;
+  c.patience = Math.max(1000, Math.min(c.maxPatience * 1.3, c.patience + c.maxPatience * bump));
+  if (eff.effect === 'good') c.tipBonus = (c.tipBonus ?? 0) + 0.2;
+  c.chat = { text: eff.reply, icon: eff.effect === 'good' ? '😊' : eff.effect === 'ok' ? '🙂' : '😒', until: run.elapsed + 4000 };
+  log(s, `💬 ${c.name}: ${eff.reply}`, eff.effect === 'bad' ? 'bad' : 'good');
+  return eff.effect;
 }
 
 export function nextDay(s: GameState, rng: Rng) {

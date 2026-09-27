@@ -5,6 +5,7 @@ import ActionSheet from '../../components/map/ActionSheet';
 import Map2D from '../../components/map/Map2D';
 import MapHud from '../../components/scene/MapHud';
 import SceneOverlay from '../../components/scene/SceneOverlay';
+import ChatPrompt from '../../components/kid/ChatPrompt';
 import ShopScene3D from '../../components/scene/ShopScene3D';
 import { LANDSCAPE_YAW, PORTRAIT_YAW, fitCamera, makeCamera, screenDirToTile } from '../../components/scene/camera';
 import { colors } from '../../components/ui';
@@ -61,6 +62,8 @@ export default function ShopMapView() {
   const [here, setHere] = useState<MapStation | null>(null);
   const [walkingTo, setWalkingTo] = useState<string | null>(null);
   const [noGarnish, setNoGarnish] = useState(false);
+  /** Khách đang được trả lời câu hỏi (chạm vào ❓). */
+  const [askId, setAskId] = useState<string | null>(null);
   /** Đồ vật đang thao tác ở góc nhìn thứ nhất (thớt / bếp / quầy). */
   const [fp, setFp] = useState<MapStation | null>(null);
   const fpOpen = useRef(false);
@@ -209,7 +212,7 @@ export default function ShopMapView() {
               wanted={wanted}
               onTapTile={goToTile}
             />
-            <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} />
+            <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} onQuestion={setAskId} />
           </>
         ) : (
           <Map2D
@@ -240,10 +243,13 @@ export default function ShopMapView() {
   const hint =
     Platform.OS === 'web' ? '👆 · ⌨️ WASD · E' : '👆';
 
+  const asking = askId ? game.run?.customers.find((c) => c.id === askId) ?? null : null;
+  const prompt = <ChatPrompt customer={asking} act={act} onClose={() => setAskId(null)} />;
   if (wide) {
     return (
       <View style={styles.row}>
         {scene}
+        {prompt}
         <View style={styles.side}>
           <ScrollView style={styles.flex} contentContainerStyle={styles.sideContent}>
             <View style={styles.card}>{sheet}</View>
@@ -275,6 +281,7 @@ export default function ShopMapView() {
   return (
     <View style={styles.flex}>
       {scene}
+      {prompt}
       {!fp && (
         <View style={styles.sheet}>
           <View style={styles.grabber} />

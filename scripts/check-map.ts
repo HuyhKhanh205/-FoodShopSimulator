@@ -1,4 +1,5 @@
 /** Kiểm tra nhanh chế độ bản đồ (không cần giao diện): `npx tsx scripts/check-map.ts` */
+import { QUESTIONS } from '../src/game/chat';
 import { START_UPGRADES } from '../src/game/data';
 import * as E from '../src/game/engine';
 import { seededRng } from '../src/game/helpers';
@@ -138,6 +139,72 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   for (let i = 0; i < 100; i += 1) E.playerStir(g, stoves[0].id);
   E.playerTakeOut(g, stoves[0].id, true);
   check(k.carrying.length === 1 && stoves[0].job === null, 'nhấc phở lên tay, bếp 1 trống để nấu tiếp');
+}
+
+// Bớt đồ mua dư ở chợ
+{
+  const r8 = seededRng(21);
+  const g = E.newGame(r8);
+  g.activeEvent = null;
+  const before = g.money;
+  const oldStock = g.stock.filter((b) => b.ingredientId === 'thit_bo').reduce((n, b) => n + b.qty, 0);
+  E.buy(g, 'thit_bo', 5);
+  check(E.unbuy(g, 'thit_bo', 2), 'bớt được 2 phần thịt bò vừa mua');
+  const now = g.stock.filter((b) => b.ingredientId === 'thit_bo').reduce((n, b) => n + b.qty, 0);
+  check(now === oldStock + 3, `kho còn 3 phần mới mua (${now - oldStock})`);
+  check(g.money === before - g.prices.thit_bo * 3, 'tiền được trả lại đúng giá');
+  check(!E.unbuy(g, 'thit_bo', 10) || E.returnableQty(g, 'thit_bo') === 0, 'không bớt quá số đã mua hôm nay');
+  check(E.returnableQty(g, 'thit_bo') === 0, 'đã bớt hết phần mua hôm nay còn lại');
+  E.buy(g, 'hanh', 3);
+  E.openShop(g, r8);
+  check(!E.unbuy(g, 'hanh', 1), 'đang bán ở quán thì không bớt được');
+}
+
+// Trò chuyện có trả lời
+{
+  const r9 = seededRng(33);
+  const g = E.newGame(r9);
+  g.activeEvent = null;
+  E.openShop(g, r9);
+  check(g.run!.customers.every((c) => !c.chat && !c.question), 'chưa có khách thì không có trò chuyện');
+  let asked = false;
+  for (let i = 0; i < 3000 && !asked; i += 1) {
+    E.tick(g, 200, r9);
+    if (g.activeEvent) g.activeEvent = null;
+    asked = g.run!.customers.some((c) => c.question);
+  }
+  check(asked, 'có khách hỏi chủ quán');
+  const c = g.run!.customers.find((x) => x.question)!;
+  const q = c.question!.id;
+  const good = QUESTIONS.find((x) => x.id === q)!.answers.findIndex((a) => a.effect === 'good');
+  const p0 = c.patience;
+  check(E.answerChat(g, c.id, good) === 'good' && c.patience > p0 && (c.tipBonus ?? 0) > 0, 'trả lời hợp ý: khách chờ lâu hơn, boa thêm');
+  check(!c.question && E.answerChat(g, c.id, 0) === null, 'mỗi câu hỏi chỉ trả lời một lần');
+  const chatted = g.run!.customers.some((x) => x.chat);
+  check(chatted, 'có bong bóng trò chuyện');
+}
+
+// Ngày làm quen: ít khách hơn
+{
+  const count = (day: number) => {
+    const r = seededRng(99);
+    const g = E.newGame(r);
+    g.day = day;
+    g.activeEvent = null;
+    E.openShop(g, r);
+    let n = 0;
+    for (let i = 0; i < 1500; i += 1) {
+      const before = g.run!.customers.length;
+      E.tick(g, 200, r);
+      if (g.activeEvent) g.activeEvent = null;
+      if (!g.run) break;
+      if (g.run.customers.length > before) n += 1;
+    }
+    return n;
+  };
+  const d1 = count(1);
+  const d4 = count(4);
+  check(d1 < d4, `ngày 1 ít khách hơn ngày 4 (${d1} < ${d4})`);
 }
 
 process.exit(failed ? 1 : 0);

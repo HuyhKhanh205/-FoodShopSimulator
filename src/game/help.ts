@@ -17,6 +17,7 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
       { icon: '🛒', text: 'Buổi sáng đi chợ mua đồ.' },
       { icon: '🏮', text: 'Mở cửa đón khách.' },
       { icon: '🔪', text: 'Thái đồ, rồi 🔥 nấu, rồi 🍽️ mang cho khách.' },
+      { icon: '🐣', text: '3 ngày đầu khách ít để bạn làm quen.' },
       { icon: '⭐', text: 'Khách vui thì được sao và tiền.' },
     ],
     more: [
@@ -36,7 +37,7 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
   market: {
     title: 'Đi chợ',
     steps: [
-      { icon: '➕', text: 'Bấm + để mua đồ.' },
+      { icon: '➕', text: 'Bấm + để mua đồ, bấm − nếu lỡ mua dư.' },
       { icon: '📦', text: 'Số trong hộp là đồ đang có trong kho.' },
       { icon: '🍜', text: 'Số trên món là số bát nấu được.' },
       { icon: '🔪', text: 'Thịt, rau, hành phải thái trước khi nấu.' },
@@ -56,6 +57,7 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
       { icon: '🔪', text: 'Tới thớt hoặc 🔥 bếp để nấu.' },
       { icon: '🍽️', text: 'Cầm món tới bàn khách.' },
       { icon: '😊', text: 'Thanh xanh trên đầu khách ngắn dần — nhanh lên kẻo khách buồn!' },
+      { icon: '❓', text: 'Khách hỏi thì chạm vào ❓ để trả lời — trả lời khéo được boa thêm!' },
       { icon: '⏸️', text: 'Nút ⏸️ để nghỉ, 🧽 để lau quán, 🛒 để chạy ra chợ.' },
     ],
     more: [

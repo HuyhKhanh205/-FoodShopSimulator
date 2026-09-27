@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,6 +7,27 @@ import type { HelpTopic } from '../../game/help';
 import { colors } from '../ui';
 
 const seenKey = (t: HelpTopic) => `quanan-help-seen:${t}`;
+
+/** Các hướng dẫn đã tự mở trong lần chơi này (không mở lại khi đổi màn / vào–ra bếp). */
+const shownThisSession = new Set<HelpTopic>();
+/** Đang có một hướng dẫn tự mở — không mở chồng hai bảng. */
+let autoOpenBusy = false;
+
+function seenInLocal(t: HelpTopic): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(seenKey(t)) === '1';
+  } catch {
+    return false;
+  }
+}
+function rememberSeen(t: HelpTopic) {
+  AsyncStorage.setItem(seenKey(t), '1').catch(() => {});
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(seenKey(t), '1');
+  } catch {
+    // Không lưu được thì vẫn nhớ trong lần chơi này.
+  }
+}
 
 /** Máy đọc to hướng dẫn (chỉ có trên trình duyệt hỗ trợ). */
 function canSpeak() {
@@ -76,21 +97,43 @@ export function HelpSheet({ topic, visible, onClose }: { topic: HelpTopic; visib
 export default function HelpButton({ topic, autoOpen = true, style }: { topic: HelpTopic; autoOpen?: boolean; style?: StyleProp<ViewStyle> }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    if (!autoOpen) return;
+    if (!autoOpen || shownThisSession.has(topic) || autoOpenBusy) return;
     let alive = true;
+    // Chỉ tự mở MỘT lần: đánh dấu ngay khi mở (không đợi đóng), cả trong bộ nhớ lẫn bộ lưu.
+    const openOnce = () => {
+      if (!alive || shownThisSession.has(topic) || autoOpenBusy) return;
+      shownThisSession.add(topic);
+      autoOpenBusy = true;
+      rememberSeen(topic);
+      setOpen(true);
+    };
+    if (seenInLocal(topic)) {
+      shownThisSession.add(topic);
+      return;
+    }
     AsyncStorage.getItem(seenKey(topic))
       .then((v) => {
-        if (alive && !v) setOpen(true);
+        if (v) shownThisSession.add(topic);
+        else openOnce();
       })
-      .catch(() => {});
+      .catch(openOnce);
     return () => {
       alive = false;
     };
   }, [topic, autoOpen]);
   const close = () => {
     setOpen(false);
-    AsyncStorage.setItem(seenKey(topic), '1').catch(() => {});
+    autoOpenBusy = false;
   };
+  // Màn bị đóng khi bảng đang mở: nhả cờ để màn khác còn mở được hướng dẫn của nó.
+  const openRef = useRef(open);
+  openRef.current = open;
+  useEffect(
+    () => () => {
+      if (openRef.current) autoOpenBusy = false;
+    },
+    []
+  );
   return (
     <>
       <Pressable

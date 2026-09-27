@@ -25,6 +25,11 @@ function repWeight(c: Customer): number {
   return 1;
 }
 
+/** Ngày làm quen: lượng khách ngày 1 ≈ 1/3, ngày 2 ≈ 1/2, ngày 3 ≈ 3/4, từ ngày 4 bình thường. */
+export function introFactor(day: number): number {
+  return day <= 1 ? 0.33 : day === 2 ? 0.5 : day === 3 ? 0.75 : 1;
+}
+
 export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, groupOrder?: { recipeId: RecipeId; qty: number }): Customer | null {
   const menu = menuRecipes(s);
   const mains = menu.filter((r) => !r.drink);
@@ -34,8 +39,13 @@ export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, grou
   const present = new Set(s.run!.customers.map((c) => c.name));
   const regularsAvailable = REGULARS.filter((r) => !present.has(r.name) && s.unlockedRecipes.includes(r.favorite));
 
+  // Ngày làm quen (1–3): khách lẻ, dễ tính, gọi ít món.
+  const easy = s.day <= 3 && !forced;
   const kind: CustomerKind =
     forced ??
+    (easy
+      ? weightedPick<CustomerKind>(rng, { normal: 80, allergic: s.day >= 2 ? 10 : 0, picky: s.day === 3 ? 6 : 0, delivery: s.day === 3 ? 6 : 0 })
+      : null) ??
     weightedPick<CustomerKind>(rng, {
       normal: 55,
       picky: 8,
@@ -71,7 +81,7 @@ export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, grou
     if (drinks.length && rng() < 0.4) items.push(item(pick(rng, drinks).id));
   } else {
     // Khách đi theo nhóm 1–3 người, mỗi người một món chính và có thể gọi thêm nước.
-    size = Number(weightedPick(rng, { '1': 45, '2': 40, '3': 15 }));
+    size = easy ? 1 : Number(weightedPick(rng, { '1': 45, '2': 40, '3': 15 }));
     for (let p = 0; p < size; p += 1) {
       if (kind === 'allergic' && p === 0) {
         const withGarnish = mains.filter((r) => r.garnish);
@@ -80,11 +90,12 @@ export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, grou
       } else {
         items.push(item(pick(rng, mains).id));
       }
-      if (drinks.length && rng() < 0.6) items.push(item(pick(rng, drinks).id));
+      if (drinks.length && rng() < (easy ? (s.day === 3 ? 0.3 : 0) : 0.6)) items.push(item(pick(rng, drinks).id));
     }
   }
 
-  const patience = (BASE_PATIENCE[kind] + 12_000 * (size - 1)) * PATIENCE_BONUS * (1 + 0.2 * s.upgrades.aircon);
+  const patience =
+    (BASE_PATIENCE[kind] + 12_000 * (size - 1)) * PATIENCE_BONUS * (1 + 0.2 * s.upgrades.aircon) * (1 + 0.5 * (1 - introFactor(s.day)));
   return {
     id: nextId(s, 'c'),
     name,
@@ -133,7 +144,7 @@ function completeCustomer(s: GameState, c: Customer, rng: Rng) {
 
   const staffOnDuty = s.staff.filter((st) => !st.absent && s.run!.elapsed >= st.lateUntil);
   const charming = staffOnDuty.some((st) => st.role === 'waiter' && st.trait === 'charming');
-  let tipMult = (c.kind === 'regular' ? 2 : 1) + (charming ? 0.3 : 0);
+  let tipMult = (c.kind === 'regular' ? 2 : 1) + (charming ? 0.3 : 0) + (c.tipBonus ?? 0);
   let tip = base * 0.15 * patienceRatio * qAvg * tipMult;
 
   if (c.kind === 'picky') {

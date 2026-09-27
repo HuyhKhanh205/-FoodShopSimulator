@@ -7,7 +7,8 @@ export const CLOSE_HOUR = 21;
 
 export const START_MONEY = 2_000_000;
 export const START_DEBT = 10_000_000;
-export const DEBT_DUE_DAY = 30;
+/** Hạn trả nợ: 30 ngày kinh doanh + 3 ngày làm quen. */
+export const DEBT_DUE_DAY = 33;
 export const BANKRUPT_AT = -1_000_000;
 export const RENT_PER_DAY = 200_000;
 export const UTILITY_PER_STOVE = 20_000;

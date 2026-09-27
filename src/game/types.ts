@@ -135,6 +135,14 @@ export interface Customer {
   patience: number;
   maxPatience: number;
   arrivedAt: number;
+  /** Câu đang nói (bong bóng trò chuyện), hết hạn lúc `until` (ms trong ngày). */
+  chat?: { text: string; icon: string; until: number };
+  /** Câu đang hỏi chủ quán (id trong QUESTIONS), hết hạn lúc `until`. */
+  question?: { id: string; until: number };
+  /** Đã hỏi chủ quán rồi (mỗi khách tối đa 1 câu). */
+  asked?: boolean;
+  /** Hệ số boa thêm nhờ trò chuyện vui vẻ. */
+  tipBonus?: number;
 }
 
 export type DishQuality = 'perfect' | 'raw' | 'burnt';
@@ -297,6 +305,8 @@ export interface GameState {
   reputation: number;
   cleanliness: number;
   stock: StockBatch[];
+  /** Đồ đã mua hôm nay (để bớt lại nếu mua dư). */
+  boughtToday?: Partial<Record<IngredientId, { qty: number; cost: number; expiresOnDay: number }>>;
   prices: Record<IngredientId, number>;
   staff: Staff[];
   candidates: Staff[];
