@@ -3,6 +3,8 @@ export type RootStackParamList = {
   Game: undefined;
   Staff: undefined;
   Upgrades: undefined;
+  /** first = vừa bấm Chơi mới: lưu xong thì vào game. */
+  Character: { first?: boolean } | undefined;
 };
 
 declare global {

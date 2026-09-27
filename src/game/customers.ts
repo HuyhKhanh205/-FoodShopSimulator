@@ -4,15 +4,16 @@ import type { Customer, CustomerKind, GameState, OrderItem, RecipeId, Rng, Staff
 
 const QUALITY_SCORE = { perfect: 1, raw: 0.35, burnt: 0.05 } as const;
 
+/** Thời gian khách chịu chờ (ms) trước khi bỏ về. */
 const BASE_PATIENCE: Record<CustomerKind, number> = {
-  normal: 50_000,
-  picky: 32_000,
-  reviewer: 45_000,
-  allergic: 50_000,
-  regular: 60_000,
-  delivery: 80_000,
-  dasher: 50_000,
-  group: 100_000,
+  normal: 75_000,
+  picky: 48_000,
+  reviewer: 68_000,
+  allergic: 75_000,
+  regular: 90_000,
+  delivery: 120_000,
+  dasher: 75_000,
+  group: 150_000,
 };
 
 function repWeight(c: Customer): number {
@@ -80,7 +81,7 @@ export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, grou
     }
   }
 
-  const patience = (BASE_PATIENCE[kind] + 8_000 * (size - 1)) * (1 + 0.2 * s.upgrades.aircon);
+  const patience = (BASE_PATIENCE[kind] + 12_000 * (size - 1)) * (1 + 0.2 * s.upgrades.aircon);
   return {
     id: nextId(s, 'c'),
     name,

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEFAULT_PROFILE } from './profile';
 import type { GameState } from './types';
 
 const SAVE_KEY = 'foodshop.save.v1';
@@ -19,7 +20,9 @@ export async function loadGame(): Promise<GameState | null> {
     if (!raw) return null;
     const data = JSON.parse(raw) as GameState;
     if (data.version !== 1) return null;
-    return { ...data, run: null, phase: data.phase === 'open' ? 'market' : data.phase };
+    // Bản lưu cũ chưa có nhân vật: dùng nhân vật mặc định.
+    const profile = { ...DEFAULT_PROFILE, ...(data.profile ?? {}) };
+    return { ...data, profile, run: null, phase: data.phase === 'open' ? 'market' : data.phase };
   } catch {
     return null;
   }

@@ -40,6 +40,7 @@ import {
   takeStock,
   usableQty,
 } from './helpers';
+import { DEFAULT_PROFILE } from './profile';
 import type {
   CookJob,
   CookSlot,
@@ -48,6 +49,7 @@ import type {
   DishQuality,
   GameState,
   IngredientId,
+  PlayerProfile,
   RecipeId,
   Rng,
   Staff,
@@ -94,6 +96,7 @@ function emptyMods(): DayModifiers {
 export function newGame(rng: Rng): GameState {
   const s: GameState = {
     version: 1,
+    profile: { ...DEFAULT_PROFILE },
     phase: 'market',
     day: 1,
     money: START_MONEY,
@@ -215,6 +218,10 @@ export function unlockRecipe(s: GameState, id: RecipeId): boolean {
   return true;
 }
 
+export function setProfile(s: GameState, profile: PlayerProfile) {
+  s.profile = { ...profile, name: profile.name.trim() || DEFAULT_PROFILE.name, shopName: profile.shopName.trim() || DEFAULT_PROFILE.shopName };
+}
+
 export function payDebt(s: GameState, amount: number) {
   const pay = Math.min(amount, s.money, s.debt);
   if (pay <= 0) return;
@@ -247,7 +254,7 @@ export function openShop(s: GameState, rng: Rng) {
     nextEventCheck: 20_000,
     log: [],
   };
-  log(s, `🏮 Ngày ${s.day}: mở cửa đón khách!`, 'info');
+  log(s, `🏮 Ngày ${s.day}: ${s.profile.shopName} mở cửa đón khách!`, 'info');
   for (const st of s.staff) {
     st.task = null;
     st.lateUntil = 0;

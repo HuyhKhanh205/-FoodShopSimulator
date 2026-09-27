@@ -63,9 +63,9 @@ export default function Character({
           </mesh>
         </group>
       ))}
-      {/* Thân */}
+      {/* Thân (nữ: vai hẹp, eo thon hơn) */}
       <mesh position={[0, 0.52, 0]} castShadow={cast}>
-        <cylinderGeometry args={[0.17, 0.2, 0.38, 10]} />
+        <cylinderGeometry args={look.female ? [0.15, 0.19, 0.38, 10] : [0.17, 0.2, 0.38, 10]} />
         <meshLambertMaterial color={look.shirt} />
       </mesh>
       {look.apron && (
@@ -108,10 +108,21 @@ export default function Character({
         <sphereGeometry args={[0.175, 14, 10]} />
         <meshLambertMaterial color={look.skin} />
       </mesh>
-      <mesh position={[0, 0.94, -0.02]} rotation={[-0.25, 0, 0]}>
-        <sphereGeometry args={[0.185, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2.1]} />
-        <meshLambertMaterial color={look.hair} />
-      </mesh>
+      <Hair style={look.hairStyle ?? 'short'} color={look.hair} cast={cast} />
+      {look.glasses && (
+        <group position={[0, 0.9, 0.17]}>
+          {[-0.065, 0.065].map((x) => (
+            <mesh key={x} position={[x, 0, 0]}>
+              <torusGeometry args={[0.045, 0.01, 6, 14]} />
+              <meshBasicMaterial color="#212121" />
+            </mesh>
+          ))}
+          <mesh>
+            <boxGeometry args={[0.04, 0.01, 0.01]} />
+            <meshBasicMaterial color="#212121" />
+          </mesh>
+        </group>
+      )}
       {[-0.065, 0.065].map((x) => (
         <mesh key={x} position={[x, 0.9, 0.158]}>
           <sphereGeometry args={[0.028, 6, 5]} />
@@ -141,6 +152,24 @@ export default function Character({
           <meshLambertMaterial color={look.hatColor ?? '#2E7D32'} />
         </mesh>
       )}
+      {look.hat === 'conical' && (
+        <mesh position={[0, 1.1, 0]} castShadow={cast}>
+          <coneGeometry args={[0.36, 0.22, 18]} />
+          <meshLambertMaterial color={look.hatColor ?? '#E6C98A'} />
+        </mesh>
+      )}
+      {look.hat === 'bandana' && (
+        <group position={[0, 0.97, 0]}>
+          <mesh rotation={[-0.2, 0, 0]}>
+            <sphereGeometry args={[0.19, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2.3]} />
+            <meshLambertMaterial color={look.hatColor ?? '#C62828'} />
+          </mesh>
+          <mesh position={[0, -0.02, -0.19]} rotation={[0.6, 0, 0]}>
+            <coneGeometry args={[0.06, 0.14, 4]} />
+            <meshLambertMaterial color={look.hatColor ?? '#C62828'} />
+          </mesh>
+        </group>
+      )}
       {look.hat === 'cap' && (
         <group position={[0, 0.99, 0]}>
           <mesh>
@@ -155,4 +184,57 @@ export default function Character({
       )}
     </group>
   );
+}
+
+/** Các kiểu tóc low-poly. */
+function Hair({ style, color, cast }: { style: string; color: string; cast: boolean }) {
+  if (style === 'bald') return null;
+  const cap = (
+    <mesh position={[0, 0.94, -0.02]} rotation={[-0.25, 0, 0]} castShadow={cast}>
+      <sphereGeometry args={[0.185, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2.1]} />
+      <meshLambertMaterial color={color} />
+    </mesh>
+  );
+  if (style === 'spiky') {
+    return (
+      <group>
+        {cap}
+        {[
+          [0, 0.1, 0],
+          [-0.09, 0.07, 0.02],
+          [0.09, 0.07, 0.02],
+          [0, 0.07, -0.1],
+          [0, 0.06, 0.1],
+        ].map(([x, y, z], i) => (
+          <mesh key={i} position={[x, 0.98 + y, z - 0.02]} rotation={[z * 4, 0, -x * 5]}>
+            <coneGeometry args={[0.05, 0.12, 5]} />
+            <meshLambertMaterial color={color} />
+          </mesh>
+        ))}
+      </group>
+    );
+  }
+  if (style === 'long') {
+    return (
+      <group>
+        {cap}
+        <mesh position={[0, 0.76, -0.1]} castShadow={cast}>
+          <boxGeometry args={[0.34, 0.36, 0.12]} />
+          <meshLambertMaterial color={color} />
+        </mesh>
+      </group>
+    );
+  }
+  if (style === 'bun') {
+    return (
+      <group>
+        {cap}
+        <mesh position={[0, 1.02, -0.16]} castShadow={cast}>
+          <sphereGeometry args={[0.08, 10, 8]} />
+          <meshLambertMaterial color={color} />
+        </mesh>
+      </group>
+    );
+  }
+  return cap;
 }

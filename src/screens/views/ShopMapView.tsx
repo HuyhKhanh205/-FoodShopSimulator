@@ -12,6 +12,7 @@ import { MAX_CARRY, autoServeCarried, playerTakeOut } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
 import { formatClock } from '../../game/helpers';
 import { MapStation, Tile, buildLayout, findPath, isWalkable, stationAt, stationNextTo } from '../../game/layout';
+import { hasWebGL } from '../../three/webgl';
 import { useWalker } from './useWalker';
 
 const KEY_DIRS: Record<string, Tile> = {
@@ -25,17 +26,6 @@ const KEY_DIRS: Record<string, Tile> = {
   d: { x: 1, y: 0 },
 };
 
-/** Trình duyệt có WebGL không (trên iOS/Android luôn có qua expo-gl). */
-function detectWebGL(): boolean {
-  if (Platform.OS !== 'web') return true;
-  try {
-    const canvas = document.createElement('canvas');
-    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
-  } catch {
-    return false;
-  }
-}
-
 export default function ShopMapView() {
   const game = useGameState();
   const { act } = useGame();
@@ -43,7 +33,7 @@ export default function ShopMapView() {
   const wide = width >= 900;
   const run = game.run!;
   const layout = useMemo(() => buildLayout(game.upgrades), [game.upgrades]);
-  const has3D = useMemo(detectWebGL, []);
+  const has3D = useMemo(hasWebGL, []);
 
   // ---------- Khung cảnh & camera ----------
   const [size, setSize] = useState({ w: 0, h: 0 });

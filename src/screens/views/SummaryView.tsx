@@ -36,7 +36,7 @@ export default function SummaryView() {
     <View style={styles.flex}>
       <Hud game={game} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>🌙 Tổng kết ngày {r.day}</Text>
+        <Text style={styles.heading}>🌙 {game.profile.shopName} · tổng kết ngày {r.day}</Text>
 
         {game.gameOver === 'bankrupt' && (
           <Panel style={{ backgroundColor: colors.badBg }}>

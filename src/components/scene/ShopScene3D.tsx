@@ -10,7 +10,8 @@ import type { Customer, GameState, Staff } from '../../game/types';
 import type { WalkerState } from '../../screens/views/useWalker';
 import type { CameraCam } from './camera';
 import Character from './Character';
-import { FOOD_COLOR, PLAYER_LOOK, customerLook, staffLook } from './looks';
+import { FOOD_COLOR, customerLook, profileLook, staffLook } from './looks';
+import type { Look } from './looks';
 import { Floor, Highlight, SEATS, StationMesh, Walls } from './Stations3D';
 
 const SHADOWS = Platform.OS === 'web';
@@ -59,7 +60,7 @@ function lerpAngle(a: number, b: number, t: number) {
   return a + d * t;
 }
 
-function Player({ walker, carrying }: { walker: React.MutableRefObject<WalkerState>; carrying: string[] }) {
+function Player({ walker, carrying, look }: { walker: React.MutableRefObject<WalkerState>; carrying: string[]; look: Look }) {
   const ref = useRef<Group>(null);
   const ring = useRef<Group>(null);
   useFrame(({ clock }, dt) => {
@@ -79,7 +80,7 @@ function Player({ walker, carrying }: { walker: React.MutableRefObject<WalkerSta
           <meshBasicMaterial color="#FFB300" transparent opacity={0.9} />
         </mesh>
       </group>
-      <Character look={PLAYER_LOOK} isMoving={() => walker.current.moving} carrying={carrying} shadows={SHADOWS} />
+      <Character look={look} isMoving={() => walker.current.moving} carrying={carrying} shadows={SHADOWS} />
     </group>
   );
 }
@@ -220,7 +221,7 @@ export default function ShopScene3D({ game, layout, walker, cam, hereId, walking
         return <StaffPerson key={st.id} staff={st} to={to} carrying={holding} />;
       })}
 
-      <Player walker={walker} carrying={carried} />
+      <Player walker={walker} carrying={carried} look={profileLook(game.profile)} />
     </Canvas>
   );
 }

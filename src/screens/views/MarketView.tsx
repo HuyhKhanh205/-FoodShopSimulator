@@ -35,7 +35,7 @@ export default function MarketView() {
     <View style={styles.flex}>
       <Hud game={game} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>☀️ Buổi sáng ngày {game.day} — đi chợ</Text>
+        <Text style={styles.heading}>☀️ {game.profile.shopName} · sáng ngày {game.day}</Text>
         {game.mods.labels.length > 0 && (
           <View style={styles.tags}>
             {game.mods.labels.map((l) => (
@@ -126,6 +126,7 @@ export default function MarketView() {
             <View style={styles.navBtns}>
               <Button variant="secondary" label={`👥 Nhân viên (${game.staff.length})`} onPress={() => navigation.navigate('Staff')} />
               <Button variant="secondary" label="🔧 Nâng cấp & công thức" onPress={() => navigation.navigate('Upgrades')} />
+              <Button variant="secondary" label={`🧑‍🍳 Nhân vật: ${game.profile.name}`} onPress={() => navigation.navigate('Character')} />
               <Button label="🏮 Mở cửa bán hàng" onPress={() => act((s, rng) => openShop(s, rng))} disabled={Boolean(game.activeEvent)} />
               <Button variant="ghost" label="🏠 Về menu (đã tự lưu)" onPress={() => navigation.navigate('Home')} />
             </View>

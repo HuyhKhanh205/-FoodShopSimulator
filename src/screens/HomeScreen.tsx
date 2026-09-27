@@ -22,7 +22,7 @@ export default function HomeScreen() {
     }
     startNewGame();
     setConfirmNew(false);
-    navigation.navigate('Game');
+    navigation.navigate('Character', { first: true });
   };
 
   return (

@@ -1,4 +1,4 @@
-import type { Customer, RecipeId, StaffRole } from '../../game/types';
+import type { Customer, HairStyle, PlayerProfile, RecipeId, StaffRole } from '../../game/types';
 
 /** Ngoại hình nhân vật low-poly. */
 export interface Look {
@@ -7,8 +7,11 @@ export interface Look {
   shirt: string;
   pants: string;
   apron?: string;
-  hat?: 'chef' | 'helmet' | 'cap';
+  hat?: 'chef' | 'helmet' | 'cap' | 'conical' | 'bandana';
   hatColor?: string;
+  hairStyle?: HairStyle;
+  glasses?: boolean;
+  female?: boolean;
 }
 
 const SKINS = ['#F2C9A0', '#E0AC7E', '#C68A5E', '#F6D5B5', '#A86E47'];
@@ -24,11 +27,15 @@ function hash(s: string) {
 
 export function customerLook(c: Customer, seat = 0): Look {
   const h = hash(c.id + ':' + seat);
+  const female = ((h >> 13) & 1) === 1;
   const base: Look = {
     skin: SKINS[h % SKINS.length],
     hair: HAIRS[(h >> 3) % HAIRS.length],
     shirt: SHIRTS[(h >> 6) % SHIRTS.length],
     pants: PANTS[(h >> 10) % PANTS.length],
+    female,
+    hairStyle: female ? (((h >> 14) & 1) === 1 ? 'long' : 'bun') : (['short', 'spiky', 'short', 'bald'] as const)[(h >> 14) % 4],
+    glasses: (h >> 17) % 6 === 0,
   };
   if (c.kind === 'delivery') return { ...base, shirt: '#43A047', hat: 'helmet', hatColor: '#2E7D32' };
   if (c.kind === 'group') return { ...base, shirt: '#ECEFF1', pants: '#263238', apron: '#37474F' };
@@ -36,15 +43,21 @@ export function customerLook(c: Customer, seat = 0): Look {
   return base;
 }
 
-export const PLAYER_LOOK: Look = {
-  skin: '#F2C9A0',
-  hair: '#2B1B12',
-  shirt: '#FFF8F0',
-  pants: '#3E2723',
-  apron: '#E65100',
-  hat: 'chef',
-  hatColor: '#FFFFFF',
-};
+/** Ngoại hình chủ quán theo nhân vật người chơi tự tạo. */
+export function profileLook(p: PlayerProfile): Look {
+  return {
+    skin: p.skin,
+    hair: p.hairColor,
+    shirt: p.shirt,
+    pants: p.pants,
+    apron: p.apron,
+    hat: p.hat === 'none' ? undefined : p.hat,
+    hatColor: p.hatColor,
+    hairStyle: p.hairStyle,
+    glasses: p.glasses,
+    female: p.gender === 'female',
+  };
+}
 
 export function staffLook(role: StaffRole, id: string): Look {
   const h = hash(id);

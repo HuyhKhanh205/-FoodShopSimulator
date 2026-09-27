@@ -8,6 +8,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import GameScreen from './src/screens/GameScreen';
 import StaffScreen from './src/screens/StaffScreen';
 import UpgradeScreen from './src/screens/UpgradeScreen';
+import CharacterScreen from './src/screens/CharacterScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -22,6 +23,7 @@ export default function App() {
             <Stack.Screen name="Game" component={GameScreen} />
             <Stack.Screen name="Staff" component={StaffScreen} />
             <Stack.Screen name="Upgrades" component={UpgradeScreen} />
+            <Stack.Screen name="Character" component={CharacterScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </GameProvider>

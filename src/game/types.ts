@@ -257,8 +257,29 @@ export type Phase = 'market' | 'open' | 'summary';
 
 export type GameOver = null | 'bankrupt' | 'debt';
 
+export type Gender = 'male' | 'female';
+export type HairStyle = 'short' | 'spiky' | 'long' | 'bun' | 'bald';
+export type HatKind = 'none' | 'chef' | 'cap' | 'conical' | 'bandana';
+
+/** Nhân vật chủ quán do người chơi tự tạo. */
+export interface PlayerProfile {
+  name: string;
+  shopName: string;
+  gender: Gender;
+  hairStyle: HairStyle;
+  hairColor: string;
+  skin: string;
+  shirt: string;
+  apron: string;
+  pants: string;
+  hat: HatKind;
+  hatColor: string;
+  glasses: boolean;
+}
+
 export interface GameState {
   version: 1;
+  profile: PlayerProfile;
   phase: Phase;
   day: number;
   money: number;
