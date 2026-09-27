@@ -6,6 +6,7 @@ import { useCharacter } from '../../three/models';
 import type { CharacterModel } from '../../three/models';
 import Character, { Hat } from './Character';
 import type { Look } from './looks';
+import DishModel from './Dish';
 
 /** Chiều cao nhân vật mong muốn (ô). */
 const HEIGHT = 1.08;
@@ -34,7 +35,11 @@ export default function ModelCharacter({
   hat?: Look;
   shadows?: boolean;
 }) {
-  const inst = useCharacter(model);
+  const tint = useMemo(
+    () => ({ shirt: fallback.shirt, shirt2: fallback.apron ?? fallback.accent, pants: fallback.pants, hair: fallback.hair, skin: fallback.skin }),
+    [fallback.shirt, fallback.apron, fallback.accent, fallback.pants, fallback.hair, fallback.skin]
+  );
+  const inst = useCharacter(model, tint);
   const mixer = useMemo(() => (inst ? new AnimationMixer(inst.scene) : null), [inst]);
   const actions = useRef<Record<string, AnimationAction>>({});
   const current = useRef<string>('');
@@ -86,16 +91,9 @@ export default function ModelCharacter({
           <Hat look={hat} cast={shadows} />
         </group>
       )}
-      {carrying.slice(0, 2).map((color, i) => (
-        <group key={i} position={[carrying.length > 1 ? (i === 0 ? -0.17 : 0.17) : 0, 0.55, 0.34]}>
-          <mesh castShadow={shadows}>
-            <cylinderGeometry args={[0.15, 0.12, 0.03, 20]} />
-            <meshStandardMaterial color="#FFFFFF" roughness={0.3} />
-          </mesh>
-          <mesh position={[0, 0.03, 0]}>
-            <sphereGeometry args={[0.1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color={color} roughness={0.6} />
-          </mesh>
+      {carrying.slice(0, 2).map((dish, i) => (
+        <group key={i} position={[carrying.length > 1 ? (i === 0 ? -0.17 : 0.17) : 0, 0.53, 0.34]}>
+          <DishModel dish={dish} scale={0.85} />
         </group>
       ))}
     </group>

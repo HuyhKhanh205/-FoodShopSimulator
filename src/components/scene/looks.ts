@@ -8,6 +8,8 @@ export interface Look {
   shirt: string;
   pants: string;
   apron?: string;
+  /** Màu phụ (khăn, viền áo) cho nhân vật KayKit khi không có tạp dề. */
+  accent?: string;
   hat?: 'chef' | 'helmet' | 'cap' | 'conical' | 'bandana';
   hatColor?: string;
   hairStyle?: HairStyle;
@@ -15,10 +17,16 @@ export interface Look {
   female?: boolean;
 }
 
-const SKINS = ['#F2C9A0', '#E0AC7E', '#C68A5E', '#F6D5B5', '#A86E47'];
-const HAIRS = ['#2B1B12', '#3E2723', '#5D4037', '#1B1B1B', '#8D6E63', '#B0BEC5'];
-const SHIRTS = ['#E57373', '#64B5F6', '#81C784', '#FFB74D', '#BA68C8', '#4DB6AC', '#F06292', '#A1887F', '#90A4AE', '#FFD54F'];
-const PANTS = ['#37474F', '#3E4A6B', '#5D4037', '#263238', '#546E7A'];
+const SKINS = ['#F2C9A0', '#E0AC7E', '#C68A5E', '#F6D5B5', '#A86E47', '#FFDCC2'];
+const HAIRS = ['#2B1B12', '#3E2723', '#5D4037', '#1B1B1B', '#8D6E63', '#B0BEC5', '#A0522D', '#D4A017', '#6D2E1F'];
+/** Màu áo tươi cho khách — nhiều màu để quán nhộn nhịp. */
+const SHIRTS = [
+  '#E53935', '#FB8C00', '#FDD835', '#43A047', '#00ACC1', '#1E88E5', '#3949AB', '#8E24AA',
+  '#D81B60', '#F06292', '#26A69A', '#7CB342', '#FF7043', '#5C6BC0', '#FFFFFF', '#FFCA28',
+];
+const ACCENTS = ['#FFFFFF', '#212121', '#FFEB3B', '#E53935', '#1E88E5', '#43A047', '#FF9800', '#EC407A'];
+const PANTS = ['#37474F', '#3E4A6B', '#5D4037', '#263238', '#546E7A', '#1565C0', '#C8B08A', '#6D4C41', '#2E7D32', '#424242'];
+const HAT_COLORS = ['#E53935', '#1E88E5', '#FDD835', '#43A047', '#FFFFFF', '#FF7043', '#8E24AA', '#212121'];
 
 function hash(s: string) {
   let h = 2166136261;
@@ -37,9 +45,16 @@ export function customerLook(c: Customer, seat = 0): Look {
     female,
     hairStyle: female ? (((h >> 14) & 1) === 1 ? 'long' : 'bun') : (['short', 'spiky', 'short', 'bald'] as const)[(h >> 14) % 4],
     glasses: (h >> 17) % 6 === 0,
+    accent: ACCENTS[(h >> 19) % ACCENTS.length],
   };
-  if (c.kind === 'delivery') return { ...base, shirt: '#43A047', hat: 'helmet', hatColor: '#2E7D32' };
-  if (c.kind === 'group') return { ...base, shirt: '#ECEFF1', pants: '#263238', apron: '#37474F' };
+  // Khoảng 1/3 khách đội mũ lưỡi trai / nón lá / khăn.
+  const hatRoll = (h >> 22) % 9;
+  if (hatRoll < 3) {
+    base.hat = (['cap', 'conical', 'bandana'] as const)[hatRoll];
+    base.hatColor = hatRoll === 1 ? '#E6C98A' : HAT_COLORS[(h >> 25) % HAT_COLORS.length];
+  }
+  if (c.kind === 'delivery') return { ...base, shirt: '#43A047', accent: '#FFFFFF', hat: 'helmet', hatColor: '#2E7D32' };
+  if (c.kind === 'group') return { ...base, shirt: '#ECEFF1', pants: '#263238', accent: '#1E88E5', hat: undefined };
   if (c.kind === 'regular') return { ...base, hat: 'cap', hatColor: '#FFB300' };
   return base;
 }
@@ -74,9 +89,10 @@ export function staffLook(role: StaffRole, id: string): Look {
   const h = hash(id);
   const skin = SKINS[h % SKINS.length];
   const hair = HAIRS[(h >> 3) % HAIRS.length];
-  if (role === 'cook') return { skin, hair, shirt: '#FAFAFA', pants: '#424242', apron: '#ECEFF1', hat: 'chef', hatColor: '#FFFFFF' };
-  if (role === 'prep') return { skin, hair, shirt: '#A5D6A7', pants: '#37474F', apron: '#2E7D32', hat: 'cap', hatColor: '#2E7D32' };
-  return { skin, hair, shirt: '#FFFFFF', pants: '#212121', apron: '#212121' };
+  // Đồng phục theo vị trí: đầu bếp áo trắng khăn đỏ, phụ bếp áo xanh lá, phục vụ áo đỏ tạp dề đen.
+  if (role === 'cook') return { skin, hair, shirt: '#FAFAFA', pants: '#263238', apron: '#E53935', hat: 'chef', hatColor: '#FFFFFF' };
+  if (role === 'prep') return { skin, hair, shirt: '#43A047', pants: '#37474F', apron: '#FFEB3B', hat: 'cap', hatColor: '#2E7D32' };
+  return { skin, hair, shirt: '#E53935', pants: '#212121', apron: '#212121' };
 }
 
 /** Màu thức ăn trên đĩa/nồi theo món. */

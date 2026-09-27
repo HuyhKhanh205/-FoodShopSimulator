@@ -3,6 +3,7 @@ import { DoubleSide } from 'three';
 import type { Group } from 'three';
 import { useFrame } from '../../three/fiber';
 import type { Look } from './looks';
+import DishModel from './Dish';
 
 /** Vật liệu mịn, hơi mờ như vải/da (đổ bóng mềm thay vì mặt phẳng). */
 function Mat({ color, rough = 0.78, opacity }: { color: string; rough?: number; opacity?: number }) {
@@ -123,16 +124,9 @@ export default function Character({
         </group>
       ))}
       {/* Món đang cầm */}
-      {carrying.slice(0, 2).map((color, i) => (
-        <group key={i} position={[carrying.length > 1 ? (i === 0 ? -0.16 : 0.16) : 0, 0.62, 0.36]}>
-          <mesh castShadow={cast}>
-            <cylinderGeometry args={[0.15, 0.12, 0.03, 20]} />
-            <Mat color="#FFFFFF" rough={0.3} />
-          </mesh>
-          <mesh position={[0, 0.03, 0]}>
-            <sphereGeometry args={[0.1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <Mat color={color} rough={0.6} />
-          </mesh>
+      {carrying.slice(0, 2).map((dish, i) => (
+        <group key={i} position={[carrying.length > 1 ? (i === 0 ? -0.16 : 0.16) : 0, 0.6, 0.36]}>
+          <DishModel dish={dish} scale={0.85} />
         </group>
       ))}
       {/* Cổ + đầu */}

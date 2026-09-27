@@ -5,19 +5,43 @@ import { MAX_CARRY, playerChop, playerCook, playerPrep, playerStir, playerTakeOu
 import type { GameMutation } from '../../game/GameContext';
 import { canMake, missingFor, prepIngredients, usableQty } from '../../game/helpers';
 import type { MapStation } from '../../game/layout';
-import type { GameState, IngredientId } from '../../game/types';
+import type { CookSlot, GameState, IngredientId } from '../../game/types';
 import { Canvas } from '../../three/fiber';
 import { Button, ProgressBar, colors } from '../ui';
-import { BoardScene, CounterScene, EyeCamera, StoveScene } from './FPScenes';
+import { Backdrop, BoardScene, CounterScene, KitchenRig, STEP, StoveScene } from './FPScenes';
+import type { PulseRef } from './FPScenes';
 
 const SHADOWS = Platform.OS === 'web';
+const IDLE: PulseRef = { current: 0 };
+
+/** Trạng thái một nồi / ly để vẽ huy hiệu trên thanh chọn trạm. */
+function slotInfo(run: NonNullable<GameState['run']>, slot: CookSlot | undefined) {
+  const job = slot?.job ?? null;
+  const recipe = job ? RECIPES[job.recipeId] : null;
+  const cookRatio = job ? job.progress / job.cookTime : 0;
+  const burnRatio = job ? (job.progress - job.cookTime) / (job.cookTime * (BURN_FACTOR - 1)) : -1;
+  const done = Boolean(job && job.progress >= job.cookTime);
+  const warn = Boolean(recipe?.burns && burnRatio > 0.5);
+  const blocked = slot?.station === 'stove' && (run.elapsed < run.powerOutUntil || run.elapsed < run.gasOutUntil);
+  return { job, recipe, cookRatio, burnRatio, done, warn, blocked, mine: job?.by === 'player' };
+}
+
+/** Tên ngắn của trạm trên thanh chọn. */
+function tabLabel(st: MapStation, stations: MapStation[]) {
+  if (st.kind === 'board') return '🔪 Thớt';
+  const same = stations.filter((x) => x.kind === st.kind);
+  const n = same.length > 1 ? ` ${same.indexOf(st) + 1}` : '';
+  return st.kind === 'stove' ? `🔥 Bếp${n}` : `🧋 Quầy${n}`;
+}
 
 /**
- * Góc nhìn thứ nhất khi đứng ở thớt / bếp / quầy pha chế.
- * Chạm vào cảnh để thái (thớt) hoặc khuấy (bếp, quầy) — game vẫn chạy trong lúc này.
+ * "Bếp của tôi": góc nhìn thứ nhất cho cả dãy bếp — thớt, các bếp và quầy pha chế nằm cạnh nhau.
+ * Chọn trạm ở thanh trên (hoặc ← →) để camera lướt sang; chạm vào cảnh để thái / khuấy.
+ * Game vẫn chạy trong lúc này, nhấc món ra thì cầm trên tay và vẫn ở lại bếp.
  */
 export default function FirstPersonView({
-  station,
+  station: initial,
+  stations,
   game,
   act,
   onExit,
@@ -25,6 +49,8 @@ export default function FirstPersonView({
   setNoGarnish,
 }: {
   station: MapStation;
+  /** Các trạm làm được ở góc nhìn thứ nhất (thớt, bếp, quầy đang hoạt động). */
+  stations: MapStation[];
   game: GameState;
   act: (fn: GameMutation) => void;
   onExit: () => void;
@@ -34,20 +60,16 @@ export default function FirstPersonView({
   const run = game.run!;
   const pulse = useRef(0);
   const [lastPrep, setLastPrep] = useState<IngredientId | null>(null);
+  const [tab, setTab] = useState(() => Math.max(0, stations.findIndex((s) => s.id === initial.id)));
+  const index = Math.min(tab, stations.length - 1);
+  const station = stations[index] ?? initial;
   const isBoard = station.kind === 'board';
   const slot = station.slotId ? run.slots.find((s) => s.id === station.slotId) : undefined;
-  const job = slot?.job ?? null;
-  const mine = job?.by === 'player';
-  const recipe = job ? RECIPES[job.recipeId] : null;
-  const blocked = slot?.station === 'stove' && (run.elapsed < run.powerOutUntil || run.elapsed < run.gasOutUntil);
+  const { job, recipe, cookRatio, burnRatio, done, warn, blocked, mine } = slotInfo(run, slot);
 
   // ---------- Trạng thái hiển thị ----------
   const prep = run.playerPrep;
   const prepProgress = prep ? Math.min(1, 1 - (prep.endsAt - run.elapsed) / PLAYER_PREP_MS) : null;
-  const cookRatio = job ? job.progress / job.cookTime : 0;
-  const burnRatio = job ? (job.progress - job.cookTime) / (job.cookTime * (BURN_FACTOR - 1)) : -1;
-  const done = Boolean(job && job.progress >= job.cookTime);
-  const warn = Boolean(recipe?.burns && burnRatio > 0.5);
 
   useEffect(() => {
     if (prep) setLastPrep(prep.ingredientId);
@@ -64,28 +86,39 @@ export default function FirstPersonView({
 
   const takeOut = () => {
     if (!slot) return;
+    // Món lên tay; vẫn ở lại bếp để làm tiếp, bấm "Ra phục vụ" khi muốn mang ra.
     act((s) => playerTakeOut(s, slot.id, true));
-    // Món đã lên tay: quay lại quán để mang ra cho khách.
-    setTimeout(onExit, 450);
   };
 
-  // Phím trên máy tính: Space / E để thái – khuấy, Esc để về quán.
+  // Phím trên máy tính: Space / E để thái – khuấy, ← → (A D) hoặc 1–9 để đổi trạm, Esc để về quán.
   const tapRef = useRef(tap);
   tapRef.current = tap;
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
     const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      const k = e.key.toLowerCase();
       if (e.key === 'Escape') {
         e.preventDefault();
         onExit();
-      } else if (e.key === ' ' || e.key.toLowerCase() === 'e') {
+      } else if (e.key === ' ' || k === 'e') {
         e.preventDefault();
         tapRef.current();
+      } else if (e.key === 'ArrowLeft' || k === 'a') {
+        e.preventDefault();
+        setTab((i) => Math.max(0, i - 1));
+      } else if (e.key === 'ArrowRight' || k === 'd') {
+        e.preventDefault();
+        setTab((i) => Math.min(stations.length - 1, i + 1));
+      } else if (/^[1-9]$/.test(e.key) && +e.key <= stations.length) {
+        e.preventDefault();
+        setTab(+e.key - 1);
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onExit]);
+  }, [onExit, stations.length]);
 
   // ---------- Tiêu đề, tiến độ, gợi ý ----------
   let title = '';
@@ -119,38 +152,45 @@ export default function FirstPersonView({
     }
   }
 
-  // ---------- Cảnh 3D ----------
-  let scene: React.ReactNode;
-  if (isBoard) {
-    const bowlId = lastPrep ?? null;
-    scene = (
-      <BoardScene
-        ingredient={prep?.ingredientId ?? null}
-        progress={prepProgress}
-        bowl={!prep && bowlId ? { id: bowlId, count: run.prepped[bowlId] ?? 0 } : null}
-        pulse={pulse}
-      />
+  // ---------- Cảnh 3D: cả dãy bếp ----------
+  const bowlId = lastPrep ?? null;
+  const scenes = stations.map((st, i) => {
+    const active = i === index;
+    const p = active ? pulse : IDLE;
+    let node: React.ReactNode;
+    if (st.kind === 'board') {
+      node = (
+        <BoardScene
+          ingredient={prep?.ingredientId ?? null}
+          progress={prepProgress}
+          bowl={!prep && bowlId ? { id: bowlId, count: run.prepped[bowlId] ?? 0 } : null}
+          pulse={p}
+          active={active}
+        />
+      );
+    } else {
+      const sl = run.slots.find((x) => x.id === st.slotId);
+      const info = slotInfo(run, sl);
+      node =
+        sl?.station === 'stove' ? (
+          <StoveScene
+            recipeId={info.job?.recipeId ?? null}
+            cooking={Boolean(info.job) && !info.done}
+            cookRatio={info.cookRatio}
+            burnRatio={info.job ? info.burnRatio : -1}
+            blocked={Boolean(info.blocked)}
+            pulse={p}
+          />
+        ) : (
+          <CounterScene recipeId={info.job?.recipeId ?? null} drink={info.recipe?.drink ?? true} progress={Math.min(1, info.cookRatio)} pulse={p} />
+        );
+    }
+    return (
+      <group key={st.id} position={[i * STEP, 0, 0]}>
+        {node}
+      </group>
     );
-  } else if (slot?.station === 'stove') {
-    scene = (
-      <StoveScene
-        recipeId={job?.recipeId ?? null}
-        cooking={Boolean(job) && !done}
-        burnRatio={job ? burnRatio : -1}
-        blocked={Boolean(blocked)}
-        pulse={pulse}
-      />
-    );
-  } else {
-    scene = (
-      <CounterScene
-        recipeId={job?.recipeId ?? null}
-        drink={recipe?.drink ?? true}
-        progress={Math.min(1, cookRatio)}
-        pulse={pulse}
-      />
-    );
-  }
+  });
 
   // ---------- Điều khiển ----------
   let controls: React.ReactNode = null;
@@ -188,7 +228,7 @@ export default function FirstPersonView({
             const ok = canMake(game, r.id, off);
             return (
               <View key={r.id}>
-                <Button small style={styles.btn} label={`${r.emoji} ${r.name}`} disabled={!ok} onPress={() => act((s) => playerCook(s, r.id, noGarnish))} />
+                <Button small style={styles.btn} label={`${r.emoji} ${r.name}`} disabled={!ok} onPress={() => act((s) => playerCook(s, r.id, noGarnish, slot.id))} />
                 {!ok && <Text style={styles.missing}>Thiếu: {missingFor(game, r.id, off).map((m) => INGREDIENTS[m].name).join(', ')}</Text>}
               </View>
             );
@@ -209,20 +249,59 @@ export default function FirstPersonView({
     );
   }
 
+  const carrying = run.carrying.length;
   return (
     <View style={styles.root}>
+      {/* Thanh chọn trạm */}
+      <ScrollView horizontal style={styles.tabs} contentContainerStyle={styles.tabsContent} showsHorizontalScrollIndicator={false}>
+        {stations.map((st, i) => {
+          const sl = st.slotId ? run.slots.find((x) => x.id === st.slotId) : undefined;
+          const info = slotInfo(run, sl);
+          const badge =
+            st.kind === 'board'
+              ? prep
+                ? '⏳'
+                : ''
+              : !info.job
+                ? ''
+                : !info.mine
+                  ? '👤'
+                  : info.warn
+                    ? '⚠️'
+                    : info.done
+                      ? '✅'
+                      : `${Math.round(Math.min(1, info.cookRatio) * 100)}%`;
+          const on = i === index;
+          return (
+            <Pressable
+              key={st.id}
+              onPress={() => setTab(i)}
+              style={[styles.tab, on && styles.tabOn, info.warn && styles.tabWarn]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+            >
+              <Text style={[styles.tabText, on && styles.tabTextOn]}>
+                {tabLabel(st, stations)}
+                {info.job ? ` ${info.recipe!.emoji}` : ''}
+              </Text>
+              {badge ? <Text style={[styles.badge, on && styles.tabTextOn]}>{badge}</Text> : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
       <View style={styles.stage}>
         <Canvas shadows={SHADOWS ? 'percentage' : false} dpr={[1, 2]} camera={{ fov: 52, near: 0.05, far: 30 }} style={{ flex: 1 }}>
           <color attach="background" args={['#FFF3E0']} />
-          <EyeCamera />
-          {scene}
+          <KitchenRig x={index * STEP} />
+          <Backdrop from={-STEP / 2 - 1.5} to={(stations.length - 0.5) * STEP + 1.5} />
+          {scenes}
         </Canvas>
         {/* Vùng chạm toàn cảnh */}
         <Pressable accessibilityLabel={isBoard ? 'Thái' : 'Khuấy'} onPress={tap} style={StyleSheet.absoluteFill} />
         <View pointerEvents="box-none" style={styles.top}>
           <View style={styles.topRow}>
-            <Pressable onPress={onExit} style={styles.exit} accessibilityRole="button">
-              <Text style={styles.exitText}>⬅ Về quán</Text>
+            <Pressable onPress={onExit} style={[styles.exit, carrying > 0 && styles.exitServe]} accessibilityRole="button">
+              <Text style={styles.exitText}>{carrying > 0 ? `🍽️ Ra phục vụ (${carrying})` : '⬅ Rời bếp'}</Text>
             </Pressable>
             <View pointerEvents="none" style={styles.titleBox}>
               <Text style={styles.title}>{title}</Text>
@@ -237,6 +316,17 @@ export default function FirstPersonView({
             </View>
           )}
         </View>
+        {/* Nút chuyển trạm hai bên */}
+        {index > 0 && (
+          <Pressable onPress={() => setTab(index - 1)} style={[styles.arrow, { left: 8 }]} accessibilityLabel="Trạm bên trái">
+            <Text style={styles.arrowText}>‹</Text>
+          </Pressable>
+        )}
+        {index < stations.length - 1 && (
+          <Pressable onPress={() => setTab(index + 1)} style={[styles.arrow, { right: 8 }]} accessibilityLabel="Trạm bên phải">
+            <Text style={styles.arrowText}>›</Text>
+          </Pressable>
+        )}
         {hint ? (
           <View pointerEvents="none" style={styles.hintBox}>
             <Text style={styles.hint}>{hint}</Text>
@@ -268,6 +358,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   exitText: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  exitServe: { backgroundColor: colors.good },
+  tabs: { flexGrow: 0, backgroundColor: '#3E2723' },
+  tabsContent: { paddingHorizontal: 8, paddingVertical: 6, gap: 6 },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)' },
+  tabOn: { backgroundColor: colors.primary },
+  tabWarn: { borderWidth: 2, borderColor: '#FF5252' },
+  tabText: { color: '#FFE0B2', fontWeight: '800', fontSize: 13 },
+  tabTextOn: { color: '#fff' },
+  badge: { color: '#FFE0B2', fontWeight: '900', fontSize: 11 },
+  arrow: {
+    position: 'absolute',
+    top: '45%',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(62,39,35,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowText: { color: '#fff', fontSize: 28, fontWeight: '900', marginTop: -4 },
   titleBox: { flex: 1, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
   title: { fontSize: 16, fontWeight: '900', color: colors.text },
   status: { fontSize: 13, fontWeight: '700', color: colors.primaryDark },

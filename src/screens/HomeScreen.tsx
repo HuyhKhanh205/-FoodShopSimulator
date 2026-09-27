@@ -57,6 +57,11 @@ export default function HomeScreen() {
             Thịt, rau, hành phải sơ chế trước. Chọn món để nấu trên bếp, nhấc ra đúng lúc (sớm quá thì sống, lâu quá thì cháy). Chọn món
             đã xong rồi bấm vào khách để mang ra. Khách dặn "không hành" thì nhớ bật nút 🚫 Không hành!
           </Text>
+          <Text style={styles.h}>👀 Bếp của tôi</Text>
+          <Text style={styles.p}>
+            Tới thớt, bếp hay quầy là vào màn bếp nhìn qua mắt chủ quán: thớt, các bếp và quầy nằm chung một dãy, chọn trạm ở thanh trên để
+            vừa thái vừa canh nồi. Chạm liên tục để thái / khuấy nhanh hơn. Nhấc món ra thì cầm trên tay, bấm "Ra phục vụ" để mang ra.
+          </Text>
           <Text style={styles.h}>🗺️ Góc nhìn nhân vật</Text>
           <Text style={styles.p}>
             Khi mở cửa, bạn điều khiển chủ quán đi trong bản đồ quán: chạm vào thớt, bếp, quầy ra món, bàn khách để đi tới và thao tác. Trên máy tính

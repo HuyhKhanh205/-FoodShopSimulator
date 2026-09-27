@@ -175,6 +175,11 @@ export default function ShopMapView() {
       .map((c) => (c.tableIndex === undefined ? 'door' : `table${c.tableIndex}`))
   );
   const hereId = here?.id ?? null;
+  // Dãy bếp ở góc nhìn thứ nhất: thớt trước, rồi các bếp, rồi quầy pha chế.
+  const kitchenStations = useMemo(() => {
+    const order = { board: 0, stove: 1, counter: 2 } as Record<string, number>;
+    return layout.stations.filter((s) => s.active && s.kind in order).sort((a, b) => order[a.kind] - order[b.kind] || a.x - b.x);
+  }, [layout]);
   const hereStation = here ? layout.stations.find((s) => s.id === here.id) ?? null : null;
 
   const scene = (
@@ -182,6 +187,7 @@ export default function ShopMapView() {
       {size.w > 0 && fp ? (
         <FirstPersonView
           station={layout.stations.find((x) => x.id === fp.id) ?? fp}
+          stations={kitchenStations}
           game={game}
           act={act}
           onExit={() => setFp(null)}

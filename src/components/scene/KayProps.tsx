@@ -6,6 +6,7 @@ import { useProp } from '../../three/models';
 import { BURN_FACTOR } from '../../game/data';
 import type { CookJob, Dish } from '../../game/types';
 import { FOOD_COLOR } from './looks';
+import DishModel, { dishKey } from './Dish';
 
 /** KayKit dùng ô lưới 2 đơn vị; game dùng ô 1 đơn vị. */
 export const KAY = 0.5;
@@ -203,11 +204,7 @@ export function KayPass({ width, dishes, fallback }: { width: number; dishes: Di
       ))}
       {dishes.slice(0, 10).map((d, i) => (
         <group key={d.id} position={[-width / 2 + 0.45 + i * 0.55, KAY, 0]}>
-          <Prop name="plate" scale={KAY * 0.8} />
-          <mesh position={[0, 0.07, 0]}>
-            <sphereGeometry args={[0.13, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color={d.quality === 'burnt' ? '#212121' : FOOD_COLOR[d.recipeId]} roughness={0.55} />
-          </mesh>
+          <DishModel dish={dishKey(d.recipeId, d.quality === 'burnt')} />
         </group>
       ))}
     </group>
@@ -222,13 +219,9 @@ export function KayTable({ seats, served, fallback }: { seats: [number, number][
         <Prop key={i} name="chair_A" position={[sx * 1.1, 0, sz * 1.1]} rotation={Math.atan2(-sx, -sz)} />
       ))}
       <Prop name="menu" position={[0.12, KAY, -0.1]} scale={KAY * 0.6} />
-      {served.slice(0, 4).map((color, i) => (
+      {served.slice(0, 4).map((dish, i) => (
         <group key={i} position={[seats[i][0] * 0.38, KAY, seats[i][1] * 0.38]}>
-          <Prop name="plate" scale={KAY * 0.6} />
-          <mesh position={[0, 0.05, 0]}>
-            <sphereGeometry args={[0.09, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color={color} roughness={0.55} />
-          </mesh>
+          <DishModel dish={dish} scale={0.75} />
         </group>
       ))}
     </group>

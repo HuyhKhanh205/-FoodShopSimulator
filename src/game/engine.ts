@@ -284,11 +284,13 @@ function pushDish(s: GameState, recipeId: RecipeId, quality: DishQuality, noGarn
 
 // ---------- Hành động của người chơi ----------
 
-export function playerCook(s: GameState, recipeId: RecipeId, noGarnish: boolean): string | null {
+/** Chủ quán nấu một món; `slotId` = bếp / quầy cụ thể đang đứng (không có thì lấy chỗ trống đầu tiên). */
+export function playerCook(s: GameState, recipeId: RecipeId, noGarnish: boolean, slotId?: string): string | null {
   if (s.phase !== 'open' || !s.run) return 'Quán chưa mở cửa';
   const recipe = RECIPES[recipeId];
   const garnishOff = noGarnish && Boolean(recipe.garnish);
-  const slot = freeSlot(s, recipe.station);
+  const chosen = slotId ? s.run.slots.find((x) => x.id === slotId) : undefined;
+  const slot = chosen ? (chosen.station === recipe.station && !chosen.job ? chosen : null) : freeSlot(s, recipe.station);
   if (!slot) return recipe.station === 'stove' ? 'Hết bếp trống' : 'Quầy pha chế đang bận';
   if (!canMake(s, recipeId, garnishOff)) return 'Thiếu nguyên liệu (nhớ sơ chế!)';
   consumeFor(s, recipeId, garnishOff);

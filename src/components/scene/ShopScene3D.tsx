@@ -12,8 +12,9 @@ import { followCamera } from './camera';
 import type { CameraCam, CameraFrame } from './camera';
 import Character from './Character';
 import ModelCharacter from './ModelCharacter';
+import { dishKey } from './Dish';
 import { Decor, HangingLamp, ShopSign } from './KayProps';
-import { FOOD_COLOR, STAFF_MODEL, customerLook, customerModel, profileLook, staffLook } from './looks';
+import { STAFF_MODEL, customerLook, customerModel, profileLook, staffLook } from './looks';
 import type { Look } from './looks';
 import { Floor, Highlight, SEATS, StationMesh, Walls } from './Stations3D';
 
@@ -142,7 +143,7 @@ function StaffPerson({ staff, to, carrying }: { staff: Staff; to: Tile; carrying
       <ModelCharacter
         model={STAFF_MODEL[staff.role]}
         fallback={staffLook(staff.role, staff.id)}
-        hat={staff.role === 'cook' ? staffLook('cook', staff.id) : undefined}
+        hat={staff.role === 'waiter' ? undefined : staffLook(staff.role, staff.id)}
         isMoving={() => moving.current}
         carrying={carrying}
         shadows={SHADOWS}
@@ -158,7 +159,7 @@ function SeatedCustomers({ st, customer }: { st: MapStation; customer: Customer 
       {SEATS.slice(0, n).map(([sx, sz], i) => (
         <group key={i} position={[sx * 1.1, 0, sz * 1.1]} rotation-y={Math.atan2(-sx, -sz)}>
           <group position={[0, 0, -0.05]}>
-            <ModelCharacter model={customerModel(customer, i)} fallback={customerLook(customer, i)} seated shadows={SHADOWS} />
+            <ModelCharacter model={customerModel(customer, i)} fallback={customerLook(customer, i)} hat={customerLook(customer, i)} seated shadows={SHADOWS} />
           </group>
         </group>
       ))}
@@ -190,7 +191,7 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
   const run = game.run!;
   const dishColor = (id: string) => {
     const d = run.pass.find((x) => x.id === id);
-    return d ? (d.quality === 'burnt' ? '#212121' : FOOD_COLOR[d.recipeId]) : '#FFFFFF';
+    return d ? dishKey(d.recipeId, d.quality === 'burnt') : 'unknown';
   };
   const carried = run.carrying.map(dishColor);
   const blocked = run.elapsed < run.powerOutUntil || run.elapsed < run.gasOutUntil;
@@ -236,7 +237,7 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
               blocked={st.kind === 'stove' && blocked}
               prepping={st.kind === 'board' && Boolean(run.playerPrep)}
               dishes={st.kind === 'pass' ? onPassDishes : undefined}
-              served={customer?.items.filter((i) => i.served).map((i) => FOOD_COLOR[i.recipeId])}
+              served={customer?.items.filter((i) => i.served).map((i) => dishKey(i.recipeId))}
             />
           );
         })}
@@ -259,7 +260,7 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
 
       {doorCustomers.slice(0, DOOR_QUEUE.length).map((c, i) => (
         <group key={c.id} position={[DOOR_QUEUE[i][0], 0, DOOR_QUEUE[i][1]]} rotation-y={Math.PI}>
-          <ModelCharacter model={customerModel(c)} fallback={customerLook(c)} shadows={SHADOWS} />
+          <ModelCharacter model={customerModel(c)} fallback={customerLook(c)} hat={customerLook(c)} shadows={SHADOWS} />
         </group>
       ))}
 

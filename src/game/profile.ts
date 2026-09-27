@@ -5,6 +5,7 @@ export const HAIR_COLORS = ['#1B1B1B', '#2B1B12', '#5D4037', '#8D6E63', '#C49A6C
 export const CLOTH_COLORS = [
   '#FFF8F0', '#FFFFFF', '#212121', '#E65100', '#C62828', '#AD1457', '#6A1B9A',
   '#1565C0', '#00838F', '#2E7D32', '#9E9D24', '#F9A825', '#E6C98A', '#5D4037', '#546E7A',
+  '#FF7043', '#F06292', '#29B6F6', '#66BB6A', '#FFEE58', '#AB47BC',
 ];
 
 export const HAIR_STYLES: { key: HairStyle; label: string }[] = [

@@ -110,4 +110,34 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check(run5(withStaff, r6) > 0, 'có nhân viên: vẫn có khách mới');
 }
 
+// Bếp gộp: đứng một chỗ vẫn vừa thái vừa nấu hai nồi, nhấc món lên tay rồi nấu tiếp.
+{
+  const r7 = seededRng(5);
+  const g = E.newGame(r7);
+  g.activeEvent = null;
+  for (const id of ['thit_bo', 'hanh', 'rau', 'banh_pho', 'trung', 'banh_mi', 'pate'] as const) E.buy(g, id, 10);
+  E.openShop(g, r7);
+  const k = g.run!;
+  k.slots.forEach((sl) => (sl.job = null));
+  const prepAll = (id: 'thit_bo' | 'hanh' | 'rau') => {
+    E.playerPrep(g, id);
+    for (let i = 0; i < 20; i += 1) E.playerChop(g);
+    E.tick(g, 50, r7);
+  };
+  prepAll('thit_bo');
+  prepAll('hanh');
+  prepAll('rau');
+  const stoves = k.slots.filter((sl) => sl.station === 'stove');
+  check(stoves.length >= 2, `có ít nhất 2 bếp (${stoves.length})`);
+  check(E.playerCook(g, 'pho_bo', false) === null, 'nấu phở ở bếp 1');
+  E.playerPrep(g, 'thit_bo');
+  check(k.playerPrep !== null && stoves[0].job !== null, 'vừa thái vừa có nồi đang nấu');
+  check(E.playerCook(g, 'banh_mi_trung', false, stoves[0].id) !== null, 'không nấu chồng lên bếp đang bận');
+  const err = E.playerCook(g, 'banh_mi_trung', false, stoves[1].id);
+  check(err === null && stoves[1].job?.recipeId === 'banh_mi_trung', `nấu bánh mì đúng bếp 2 đang chọn ${err ?? ''}`);
+  for (let i = 0; i < 100; i += 1) E.playerStir(g, stoves[0].id);
+  E.playerTakeOut(g, stoves[0].id, true);
+  check(k.carrying.length === 1 && stoves[0].job === null, 'nhấc phở lên tay, bếp 1 trống để nấu tiếp');
+}
+
 process.exit(failed ? 1 : 0);

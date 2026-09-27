@@ -6,6 +6,7 @@ import { MAP_COLS, MAP_ROWS, PASS_ROW } from '../../game/layout';
 import type { MapStation } from '../../game/layout';
 import type { CookJob, Dish } from '../../game/types';
 import { FOOD_COLOR } from './looks';
+import DishModel from './Dish';
 import { KayBoard, KayCounter, KayDoor, KayFridge, KayPass, KaySink, KayStove, KayTable } from './KayProps';
 import { checkerTileTexture, wallTileTexture, woodTexture } from './textures';
 
@@ -408,16 +409,9 @@ function Table({ served }: { served: string[] }) {
           ))}
         </group>
       ))}
-      {served.slice(0, 4).map((color, i) => (
+      {served.slice(0, 4).map((dish, i) => (
         <group key={i} position={[SEATS[i][0] * 0.4, 0.77, SEATS[i][1] * 0.4]}>
-          <mesh>
-            <cylinderGeometry args={[0.13, 0.1, 0.02, 12]} />
-            <meshLambertMaterial color="#FFFFFF" />
-          </mesh>
-          <mesh position={[0, 0.03, 0]}>
-            <sphereGeometry args={[0.08, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshLambertMaterial color={color} />
-          </mesh>
+          <DishModel dish={dish} scale={0.8} />
         </group>
       ))}
     </group>

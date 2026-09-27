@@ -116,18 +116,21 @@ export default function CharacterScreen() {
         <Text style={[styles.label, { marginTop: 8 }]}>
           {draft.model === 'custom'
             ? 'Tự tạo: đổi được giới tính, kiểu tóc, màu da, màu quần áo và kính.'
-            : 'Nhân vật 3D có hoạt ảnh (mô hình KayKit). Có thể đội thêm mũ ở phần bên dưới.'}
+            : 'Nhân vật 3D có hoạt ảnh (mô hình KayKit). Màu tóc, da, áo, khăn, quần bên dưới được tô lên mô hình; có thể đội thêm mũ.'}
         </Text>
       </Panel>
 
-      {draft.model === 'custom' && (
       <Panel title="🧑 Ngoại hình">
-        <Field label="Giới tính">
-          <Chips items={GENDERS} value={draft.gender} onChange={(v) => set('gender', v)} />
-        </Field>
-        <Field label="Kiểu tóc">
-          <Chips items={HAIR_STYLES} value={draft.hairStyle} onChange={(v) => set('hairStyle', v)} />
-        </Field>
+        {draft.model === 'custom' && (
+          <>
+            <Field label="Giới tính">
+              <Chips items={GENDERS} value={draft.gender} onChange={(v) => set('gender', v)} />
+            </Field>
+            <Field label="Kiểu tóc">
+              <Chips items={HAIR_STYLES} value={draft.hairStyle} onChange={(v) => set('hairStyle', v)} />
+            </Field>
+          </>
+        )}
         <Field label="Màu tóc">
           <Swatches colors={HAIR_COLORS} value={draft.hairColor} onChange={(c) => set('hairColor', c)} />
         </Field>
@@ -136,22 +139,17 @@ export default function CharacterScreen() {
         </Field>
       </Panel>
 
-      )}
-
-      {draft.model === 'custom' && (
       <Panel title="👕 Trang phục">
         <Field label="Áo">
           <Swatches colors={CLOTH_COLORS} value={draft.shirt} onChange={(c) => set('shirt', c)} />
         </Field>
-        <Field label="Tạp dề">
+        <Field label={draft.model === 'custom' ? 'Tạp dề' : 'Khăn / viền áo'}>
           <Swatches colors={CLOTH_COLORS} value={draft.apron} onChange={(c) => set('apron', c)} />
         </Field>
         <Field label="Quần">
           <Swatches colors={CLOTH_COLORS} value={draft.pants} onChange={(c) => set('pants', c)} />
         </Field>
       </Panel>
-
-      )}
 
       <Panel title="🎩 Mũ & phụ kiện">
         <Field label="Mũ">

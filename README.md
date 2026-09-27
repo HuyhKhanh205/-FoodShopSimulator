@@ -59,7 +59,8 @@ Giờ mở cửa hiển thị quán dạng **3D nhìn chéo từ trên** (three.
 
 - **Thớt** 🔪: sơ chế · **Bếp** 🔥 / **Quầy** 🥤: chọn món để nấu, tới lại khi chín là tự nhấc lên tay · **Quầy ra món** 🛎️: cầm / đặt món · **Bàn** 🪑 / **Cửa** 🚪: tới nơi là tự đưa món đang cầm khớp đơn (không bao giờ tự đưa món có hành cho khách dặn "không hành") · **Thùng rác** 🗑️ · **Lau dọn** 🧽 · **Kho** 🧊: xem tồn kho.
 - Cầm tối đa **2 món**. Bàn có viền xanh = khách đang chờ món bạn cầm.
-- Nhân viên cũng hiện trên bản đồ: đầu bếp đứng bếp, phụ bếp ở thớt, phục vụ chạy tới bàn.
+- Nhân viên cũng hiện trên bản đồ, mặc đồng phục theo vị trí: đầu bếp áo trắng khăn đỏ đội mũ đầu bếp (đứng bếp), phụ bếp áo xanh lá mũ lưỡi trai (ở thớt), phục vụ áo đỏ tạp dề đen (chạy tới bàn).
+- Khách mỗi người một màu áo, quần, tóc, da khác nhau, nhiều người đội mũ lưỡi trai / nón lá / khăn — mô hình KayKit được tô lại màu theo từng vùng (áo, khăn, quần, tóc, da) bằng shader.
 - Nút **📋 Bảng / 🗺️ Bản đồ** trên thanh đồng hồ để chuyển qua lại với bảng điều khiển bấm nút (lựa chọn được ghi nhớ).
 
 ### 🛒 Đi chợ giữa giờ bán
@@ -68,16 +69,18 @@ Hết nguyên liệu giữa ngày? Bấm **🛒** trên màn chơi để chạy 
 - **Có nhân viên** → quán vẫn bán bình thường trong lúc bạn đi chợ.
 - Bấm **🏃 Về quán** để quay lại.
 
-### 👀 Góc nhìn thứ nhất khi sơ chế / nấu
-Tới **thớt**, **bếp** hoặc **quầy pha chế** là chuyển sang góc nhìn qua mắt chủ quán (kiểu Kebab Chefs, không vẽ tay): chỉ thấy con dao và thớt, cái muôi trong nồi trên lửa, bình rót và ly nước; vụn thức ăn văng khi thái, dầu bắn khi nấu.
-- Thớt: chọn nguyên liệu rồi **chạm liên tục** để thái nhanh hơn (mỗi nhát rút 0,35 giây), lát cắt rơi ra, xong thì vào bát.
-- Bếp: chọn món, **chạm để khuấy** (món chín nhanh hơn, khuấy không làm cháy), sắp cháy thì món sẫm lại và bốc khói đen — bấm **Nhấc ra** để cầm món trên tay.
-- Quầy pha chế: ly đầy dần, chạm để lắc bình. Nút **⬅ Về quán** (hoặc phím Esc) để quay lại; Space / E để thái – khuấy trên máy tính.
+### 👀 Bếp của tôi — góc nhìn thứ nhất (thớt + bếp + quầy chung một màn)
+Tới **thớt**, **bếp** hoặc **quầy pha chế** là vào màn **Bếp của tôi**: nhìn qua mắt chủ quán (kiểu Kebab Chefs, không vẽ tay) cả dãy bếp — thớt, các bếp, quầy pha chế nằm cạnh nhau. Không cần đi qua lại trên bản đồ nữa:
+- Thanh trên cùng **🔪 Thớt · 🔥 Bếp 1 · 🔥 Bếp 2 · 🧋 Quầy** (hoặc nút ‹ › hai bên, phím ← → / A D / 1–9) để camera lướt sang trạm khác. Mỗi trạm có huy hiệu: % đang nấu, ✅ chín, ⚠️ sắp cháy (viền đỏ), 👤 nhân viên đang nấu — thái rau mà vẫn canh được nồi phở.
+- Thớt: chọn nguyên liệu rồi **chạm liên tục** để thái nhanh hơn (mỗi nhát rút 0,35 giây). Nguyên liệu vẽ chi tiết: miếng bò bít tết, ba chỉ heo nhiều lớp nạc – mỡ – bì, đùi gà, hành lá gốc trắng có rễ, xà lách, tôm có đốt – đuôi – râu; thái tới đâu nguyên liệu ngắn lại tới đó, đống thịt thái / hành cắt khoanh / tôm bóc vỏ to dần, xong thì vào bát.
+- Bếp: chọn món (nấu đúng bếp đang đứng), **chạm để khuấy**. Phở, cơm gà nấu trong nồi; bún chả, bánh mì trứng làm trên chảo. Món đổi màu dần từ sống → chín → cháy: thịt bò tái chuyển nâu, chả nướng có vệt cháy, trứng từ trong sang trắng; sắp cháy thì bốc khói đen.
+- **Nhấc ra** thì món lên tay (tối đa 2) và **vẫn ở lại bếp** để làm tiếp; bấm **🍽️ Ra phục vụ** (hoặc **⬅ Rời bếp**, phím Esc) để quay ra quán. Space / E để thái – khuấy trên máy tính.
+- Món mang ra bàn, đặt trên quầy ra món hay cầm trên tay đều là mô hình chi tiết: bát phở có bánh, thịt, hành; đĩa cơm gà; bún chả; ổ bánh mì; gỏi cuốn thấy tôm bên trong; ly trà đá, cà phê sữa có đá.
 
 Trên điện thoại cảnh quán được phóng to 30% và camera đi theo nhân vật.
 
 ### 🧑‍🍳 Tạo nhân vật
-Khi bấm **Chơi mới**, bạn tạo chủ quán (xem trước 3D xoay tròn): tên chủ quán, tên quán, giới tính, kiểu tóc (ngắn, dựng, dài, búi, trọc), màu tóc, màu da, màu áo / tạp dề / quần, mũ (mũ đầu bếp, lưỡi trai, nón lá, khăn trùm) và kính; có nút 🎲 Ngẫu nhiên. Sửa lại được mỗi buổi sáng bằng nút **🧑‍🍳 Nhân vật** ở màn chợ.
+Khi bấm **Chơi mới**, bạn tạo chủ quán (xem trước 3D xoay tròn): tên chủ quán, tên quán, giới tính, kiểu tóc (ngắn, dựng, dài, búi, trọc), màu tóc, màu da, màu áo / tạp dề (khăn – viền áo) / quần — **tô được lên cả 4 nhân vật KayKit**, mũ (mũ đầu bếp, lưỡi trai, nón lá, khăn trùm) và kính; có nút 🎲 Ngẫu nhiên. Sửa lại được mỗi buổi sáng bằng nút **🧑‍🍳 Nhân vật** ở màn chợ.
 
 ### Nhân viên (có tỉ lệ làm sai)
 - **Đầu bếp** tự nấu, **phụ bếp** tự sơ chế, **phục vụ** tự mang món, lau dọn, chặn khách bùng tiền.
