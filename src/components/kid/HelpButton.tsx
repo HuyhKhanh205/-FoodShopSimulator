@@ -1,0 +1,137 @@
+import { useEffect, useState } from 'react';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { HELP } from '../../game/help';
+import type { HelpTopic } from '../../game/help';
+import { colors } from '../ui';
+
+const seenKey = (t: HelpTopic) => `quanan-help-seen:${t}`;
+
+/** Máy đọc to hướng dẫn (chỉ có trên trình duyệt hỗ trợ). */
+function canSpeak() {
+  return Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window;
+}
+function speak(text: string) {
+  if (!canSpeak()) return;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'vi-VN';
+    u.rate = 0.9;
+    window.speechSynthesis.speak(u);
+  } catch {
+    // Không đọc được thì thôi.
+  }
+}
+
+/** Bảng hướng dẫn bằng hình. */
+export function HelpSheet({ topic, visible, onClose }: { topic: HelpTopic; visible: boolean; onClose: () => void }) {
+  const [more, setMore] = useState(false);
+  const h = HELP[topic];
+  const steps = more && h.more ? [...h.steps, ...h.more] : h.steps;
+  const close = () => {
+    if (canSpeak()) window.speechSynthesis.cancel();
+    setMore(false);
+    onClose();
+  };
+  return (
+    <Modal transparent animationType="none" visible={visible} onRequestClose={close}>
+      <View style={styles.backdrop}>
+        <View style={styles.card} accessibilityLabel={`Hướng dẫn: ${h.title}`}>
+          <Text style={styles.title}>❗ {h.title}</Text>
+          <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ gap: 10 }}>
+            {steps.map((s, i) => (
+              <View key={i} style={styles.step}>
+                <Text style={styles.stepIcon}>{s.icon}</Text>
+                <Text style={styles.stepText}>{s.text}</Text>
+              </View>
+            ))}
+          </ScrollView>
+          <View style={styles.row}>
+            {canSpeak() && (
+              <Pressable style={[styles.btn, styles.btnSoft]} onPress={() => speak(`${h.title}. ${steps.map((s) => s.text).join(' ')}`)} accessibilityRole="button">
+                <Text style={styles.btnSoftText}>🔊 Đọc</Text>
+              </Pressable>
+            )}
+            {h.more && !more && (
+              <Pressable style={[styles.btn, styles.btnSoft]} onPress={() => setMore(true)} accessibilityRole="button">
+                <Text style={styles.btnSoftText}>➕ Thêm</Text>
+              </Pressable>
+            )}
+            <Pressable style={[styles.btn, styles.btnMain]} onPress={close} accessibilityRole="button">
+              <Text style={styles.btnMainText}>👍 Hiểu rồi</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/**
+ * Nút "!" tròn màu cam: bấm để xem hướng dẫn bằng hình của màn này.
+ * Lần đầu vào màn, hướng dẫn tự mở một lần (ghi nhớ trên máy).
+ */
+export default function HelpButton({ topic, autoOpen = true, style }: { topic: HelpTopic; autoOpen?: boolean; style?: StyleProp<ViewStyle> }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!autoOpen) return;
+    let alive = true;
+    AsyncStorage.getItem(seenKey(topic))
+      .then((v) => {
+        if (alive && !v) setOpen(true);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [topic, autoOpen]);
+  const close = () => {
+    setOpen(false);
+    AsyncStorage.setItem(seenKey(topic), '1').catch(() => {});
+  };
+  return (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Hướng dẫn"
+        style={({ pressed }) => [styles.bang, pressed && { transform: [{ scale: 0.92 }] }, style]}
+      >
+        <Text style={styles.bangText}>!</Text>
+      </Pressable>
+      <HelpSheet topic={topic} visible={open} onClose={close} />
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  bang: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  bangText: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: -2 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  card: { backgroundColor: '#fff', borderRadius: 22, padding: 18, width: '100%', maxWidth: 440, gap: 12 },
+  title: { fontSize: 22, fontWeight: '900', color: colors.primaryDark, textAlign: 'center' },
+  step: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.warnBg, borderRadius: 16, padding: 10 },
+  stepIcon: { fontSize: 34, width: 48, textAlign: 'center' },
+  stepText: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.text, lineHeight: 23 },
+  row: { flexDirection: 'row', gap: 8, justifyContent: 'center', flexWrap: 'wrap' },
+  btn: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, minHeight: 50, justifyContent: 'center' },
+  btnMain: { backgroundColor: colors.primary, flexGrow: 1, alignItems: 'center' },
+  btnMainText: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  btnSoft: { backgroundColor: colors.warnBg, borderWidth: 1, borderColor: colors.border },
+  btnSoftText: { color: colors.text, fontSize: 16, fontWeight: '800' },
+});

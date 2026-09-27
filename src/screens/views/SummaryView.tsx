@@ -1,8 +1,10 @@
-import React from 'react';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Hud from '../../components/Hud';
-import { Button, Panel, Stars, colors } from '../../components/ui';
+import HelpButton from '../../components/kid/HelpButton';
+import IconTile from '../../components/kid/IconTile';
+import { Panel, Stars, colors } from '../../components/ui';
 import { nextDay } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
 import { formatMoney } from '../../game/helpers';
@@ -23,6 +25,7 @@ export default function SummaryView() {
   const game = useGameState();
   const { act, startNewGame } = useGame();
   const { width } = useWindowDimensions();
+  const [details, setDetails] = useState(false);
   const r = game.history[game.history.length - 1];
   if (!r) return null;
 
@@ -36,7 +39,10 @@ export default function SummaryView() {
     <View style={styles.flex}>
       <Hud game={game} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>🌙 {game.profile.shopName} · tổng kết ngày {r.day}</Text>
+        <View style={styles.headRow}>
+          <Text style={styles.heading}>🌙 Ngày {r.day}</Text>
+          <HelpButton topic="summary" />
+        </View>
 
         {game.gameOver === 'bankrupt' && (
           <Panel style={{ backgroundColor: colors.badBg }}>
@@ -57,6 +63,34 @@ export default function SummaryView() {
           </Panel>
         )}
 
+        {/* Tóm tắt bằng hình */}
+        <View style={styles.bigRow}>
+          <View style={styles.bigCard}>
+            <Stars value={r.reviews.length ? avgStars : r.repEnd} size={30} />
+          </View>
+          <View style={[styles.bigCard, { backgroundColor: profit >= 0 ? colors.goodBg : colors.badBg }]}>
+            <Text style={[styles.bigNum, { color: profit >= 0 ? colors.good : colors.bad }]}>
+              💰 {profit >= 0 ? '+' : ''}
+              {formatMoney(profit)}
+            </Text>
+          </View>
+          <View style={styles.bigCard}>
+            <Text style={styles.bigNum}>
+              😊 {r.served} · 😡 {r.lost}
+            </Text>
+          </View>
+        </View>
+        {game.gameOver ? (
+          <IconTile icon="🔄" label="Chơi lại" name="Chơi lại từ đầu" size="lg" tone="primary" onPress={startNewGame} style={styles.nextBtn} />
+        ) : (
+          <IconTile icon="☀️" label="Ngày mới" name="Sang ngày mới" size="lg" tone="primary" onPress={() => act((s, rng) => nextDay(s, rng))} style={styles.nextBtn} />
+        )}
+        <View style={styles.smallRow}>
+          <IconTile icon="📊" label="Chi tiết" name="Xem chi tiết" size="sm" selected={details} onPress={() => setDetails((v) => !v)} />
+          <IconTile icon="🏠" label="Menu" name="Về menu" size="sm" onPress={() => navigation.navigate('Home')} />
+        </View>
+
+        {details && (
         <View style={[styles.columns, width >= 900 && styles.columnsWide]}>
           <View style={styles.flex}>
             <Panel title="💰 Thu chi">
@@ -116,14 +150,9 @@ export default function SummaryView() {
                 ))}
             </Panel>
 
-            {game.gameOver ? (
-              <Button label="🔄 Chơi lại từ đầu" onPress={startNewGame} />
-            ) : (
-              <Button label="☀️ Sang ngày mới" onPress={() => act((s, rng) => nextDay(s, rng))} />
-            )}
-            <Button variant="ghost" label="🏠 Về menu" onPress={() => navigation.navigate('Home')} style={{ marginTop: 8 }} />
           </View>
         </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -132,7 +161,13 @@ export default function SummaryView() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: 12, paddingBottom: 40 },
-  heading: { fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: 10 },
+  heading: { fontSize: 24, fontWeight: '900', color: colors.text },
+  headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  bigRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
+  bigCard: { flexGrow: 1, backgroundColor: '#fff', borderRadius: 18, borderWidth: 2, borderColor: colors.border, padding: 14, alignItems: 'center', justifyContent: 'center' },
+  bigNum: { fontSize: 24, fontWeight: '900', color: colors.text },
+  nextBtn: { alignSelf: 'stretch', minHeight: 100, marginBottom: 12 },
+  smallRow: { flexDirection: 'row', gap: 12, marginBottom: 12, paddingTop: 6 },
   columns: { gap: 12 },
   columnsWide: { flexDirection: 'row', alignItems: 'flex-start' },
   line: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },

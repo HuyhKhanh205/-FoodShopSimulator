@@ -21,18 +21,17 @@ export default function GoMarketButton({ render }: { render: (onPress: () => voi
     <>
       {render(() => (noStaff ? setConfirm(true) : go()))}
       {confirm && (
-        <Modal transparent animationType="fade" visible onRequestClose={() => setConfirm(false)}>
+        <Modal transparent animationType="none" visible onRequestClose={() => setConfirm(false)}>
           <Pressable style={styles.backdrop} onPress={() => setConfirm(false)}>
             <Pressable style={styles.card} onPress={() => {}}>
               <Text style={styles.emoji}>🚪</Text>
-              <Text style={styles.title}>Quán sẽ treo biển tạm đóng</Text>
-              <Text style={styles.body}>
-                Bạn chưa có nhân viên nào đang làm. Trong lúc đi chợ, quán không đón khách mới; khách đang ngồi vẫn chờ và có thể bỏ về, món
-                trên bếp vẫn có thể cháy. Thời gian vẫn trôi.
+              <Text style={styles.title}>Quán đóng tạm</Text>
+              <Text style={styles.body} accessibilityLabel="Chưa có nhân viên: trong lúc đi chợ quán không đón khách mới, món trên bếp vẫn có thể cháy.">
+                👥 ❌ → 🚪🔒 · 🔥⚠️
               </Text>
               <View style={styles.row}>
                 <Button label="🛒 Vẫn đi chợ" onPress={go} style={{ flex: 1 }} />
-                <Button label="Ở lại" variant="secondary" onPress={() => setConfirm(false)} style={{ flex: 1 }} />
+                <Button label="🏠 Ở lại" variant="secondary" onPress={() => setConfirm(false)} style={{ flex: 1 }} />
               </View>
             </Pressable>
           </Pressable>

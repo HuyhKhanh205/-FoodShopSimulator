@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import HelpButton from '../components/kid/HelpButton';
 import { Button, Panel, colors } from '../components/ui';
 import { INGREDIENTS, RECIPES, RECIPE_IDS, UPGRADES } from '../game/data';
 import { buyUpgrade, unlockRecipe, upgradeInfo } from '../game/engine';
@@ -17,12 +18,13 @@ export default function UpgradeScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Button small variant="ghost" label="← Quay lại" onPress={() => navigation.goBack()} />
-        <Text style={styles.title}>🔧 Nâng cấp quán</Text>
-        <Text style={styles.money}>{formatMoney(game.money)}</Text>
+        <Button small variant="ghost" label="⬅" onPress={() => navigation.goBack()} />
+        <Text style={styles.title}>🔧</Text>
+        <Text style={styles.money}>💰 {formatMoney(game.money)}</Text>
+        <HelpButton topic="upgrades" />
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <Panel title="🏠 Trang thiết bị">
+        <Panel title="🏠">
           {UPGRADES.map((u) => {
             const { level, next, cost } = upgradeInfo(game, u.key);
             return (
@@ -30,40 +32,42 @@ export default function UpgradeScreen() {
                 <Text style={styles.emoji}>{u.emoji}</Text>
                 <View style={styles.flex}>
                   <Text style={styles.name}>{u.name}</Text>
-                  <Text style={styles.muted}>Hiện tại: {u.describe(level)}</Text>
-                  {next !== undefined && <Text style={styles.next}>Nâng lên: {u.describe(next)}</Text>}
+                  <Text style={styles.muted}>
+                    {u.describe(level)}
+                    {next !== undefined ? `  ➡  ${u.describe(next)}` : ''}
+                  </Text>
                 </View>
                 {next !== undefined && cost !== undefined ? (
                   <Button small label={formatMoney(cost)} disabled={game.money < cost} onPress={() => act((s) => void buyUpgrade(s, u.key))} />
                 ) : (
-                  <Text style={styles.max}>Tối đa</Text>
+                  <Text style={styles.max}>⭐ MAX</Text>
                 )}
               </View>
             );
           })}
         </Panel>
 
-        <Panel title="📖 Công thức mới">
+        <Panel title="📖">
           {RECIPE_IDS.filter((id) => RECIPES[id].unlock).map((id) => {
             const r = RECIPES[id];
             const owned = game.unlockedRecipes.includes(id);
             const need = r.unlock!;
             const repOk = game.reputation >= need.reputation;
-            const ingredients = (Object.keys(r.ingredients) as IngredientId[]).map((i) => INGREDIENTS[i].name).join(', ');
+            const ingredients = (Object.keys(r.ingredients) as IngredientId[]).map((i) => INGREDIENTS[i].emoji).join(' ');
             return (
               <View key={id} style={styles.row}>
                 <Text style={styles.emoji}>{r.emoji}</Text>
                 <View style={styles.flex}>
                   <Text style={styles.name}>
-                    {r.name} — bán {formatMoney(r.price)}
+                    {r.name} · 💰 {formatMoney(r.price)}
                   </Text>
-                  <Text style={styles.muted}>Nguyên liệu: {ingredients}</Text>
+                  <Text style={styles.ingr}>{ingredients}</Text>
                   {!owned && (
-                    <Text style={[styles.muted, !repOk && { color: colors.bad }]}>Cần danh tiếng ≥ {need.reputation.toFixed(1)}</Text>
+                    <Text style={[styles.muted, !repOk && { color: colors.bad }]}>⭐ ≥ {need.reputation.toFixed(1)}</Text>
                   )}
                 </View>
                 {owned ? (
-                  <Text style={styles.max}>Đã có</Text>
+                  <Text style={styles.max}>✅</Text>
                 ) : (
                   <Button
                     small
@@ -87,6 +91,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '800', color: colors.text },
   money: { fontWeight: '800', color: colors.primary, marginRight: 8 },
   content: { padding: 12, paddingBottom: 40, maxWidth: 760, width: '100%', alignSelf: 'center' },
+  ingr: { fontSize: 18 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F7EDE2' },
   emoji: { fontSize: 28, width: 36, textAlign: 'center' },
   flex: { flex: 1 },

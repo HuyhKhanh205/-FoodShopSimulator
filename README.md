@@ -60,7 +60,7 @@ Giờ mở cửa hiển thị quán dạng **3D nhìn chéo từ trên** (three.
 - **Thớt** 🔪: sơ chế · **Bếp** 🔥 / **Quầy** 🥤: chọn món để nấu, tới lại khi chín là tự nhấc lên tay · **Quầy ra món** 🛎️: cầm / đặt món · **Bàn** 🪑 / **Cửa** 🚪: tới nơi là tự đưa món đang cầm khớp đơn (không bao giờ tự đưa món có hành cho khách dặn "không hành") · **Thùng rác** 🗑️ · **Lau dọn** 🧽 · **Kho** 🧊: xem tồn kho.
 - Cầm tối đa **2 món**. Bàn có viền xanh = khách đang chờ món bạn cầm.
 - Nhân viên cũng hiện trên bản đồ, mặc đồng phục theo vị trí: đầu bếp áo trắng khăn đỏ đội mũ đầu bếp (đứng bếp), phụ bếp áo xanh lá mũ lưỡi trai (ở thớt), phục vụ áo đỏ tạp dề đen (chạy tới bàn).
-- Khách mỗi người một màu áo, quần, tóc, da khác nhau, nhiều người đội mũ lưỡi trai / nón lá / khăn — mô hình KayKit được tô lại màu theo từng vùng (áo, khăn, quần, tóc, da) bằng texture bảng màu sinh sẵn (`scripts/build-palettes.mjs`), không dùng shader tự viết nên chạy được cả trên Safari iPhone.
+- Khách mỗi người một màu áo, quần, tóc, da khác nhau, nhiều người đội mũ lưỡi trai / nón lá / khăn — mô hình KayKit được tô lại màu theo từng vùng (áo, khăn, quần, tóc, da) bằng texture bảng màu sinh sẵn (`scripts/build-palettes.mjs`). Ảnh texture trong file GLB được bỏ khi nhúng (`scripts/embed-models.mjs`) và thay bằng bảng màu này — Safari iPhone trong khung Artifact không nạp được ảnh qua `blob:` nên trước đây nội thất bị mất màu.
 - Nút **📋 Bảng / 🗺️ Bản đồ** trên thanh đồng hồ để chuyển qua lại với bảng điều khiển bấm nút (lựa chọn được ghi nhớ).
 
 ### 🛒 Đi chợ giữa giờ bán
@@ -81,6 +81,10 @@ Tới **thớt** hoặc **bếp** là vào màn **Bếp của tôi**: nhìn qua 
 
 Trên điện thoại cảnh quán được phóng to 30% và camera đi theo nhân vật.
 
+### 🧒 Dễ chơi cho bé (ít chữ, nhiều hình)
+Luồng chơi giữ nguyên (chợ → mở cửa → thái → nấu → mang món → tổng kết) nhưng giao diện dùng **ô hình to**: nguyên liệu ở chợ là thẻ có 📦 số trong kho và nút **+1 / +5**; món nấu là ô hình món, thiếu gì thì hiện hình nhỏ của thứ thiếu; thanh chỉ số bằng biểu tượng (📅 💰 💳 ⭐ 🧽); tổng kết chỉ còn ⭐, 💰 lãi/lỗ, 😊/😡 và nút ☀️ Ngày mới (bấm 📊 để xem chi tiết).
+- Nút **❗** tròn màu cam ở mỗi màn mở **hướng dẫn bằng hình** (mỗi bước một hình to + một câu ngắn, có **🔊 Đọc** để máy đọc to trên trình duyệt, **➕ Thêm** cho phần dành cho người lớn). Lần đầu vào mỗi màn, hướng dẫn tự mở một lần.
+
 ### 🧑‍🍳 Tạo nhân vật
 Khi bấm **Chơi mới**, bạn tạo chủ quán (xem trước 3D xoay tròn): tên chủ quán, tên quán, giới tính, kiểu tóc (ngắn, dựng, dài, búi, trọc), màu tóc, màu da, màu áo / tạp dề (khăn – viền áo) / quần — **tô được lên cả 4 nhân vật KayKit**, mũ (mũ đầu bếp, lưỡi trai, nón lá, khăn trùm) và kính; có nút 🎲 Ngẫu nhiên. Sửa lại được mỗi buổi sáng bằng nút **🧑‍🍳 Nhân vật** ở màn chợ.
 
@@ -97,6 +101,9 @@ Khi bấm **Chơi mới**, bạn tạo chủ quán (xem trước 3D xoay tròn):
 - **Trong ngày:** cúp điện, hết gas, thanh tra vệ sinh (phạt nếu bẩn/có đồ hết hạn), chuột trong kho, nhân viên cãi khách / đòi tăng lương / ăn vụng, em bé làm vỡ bát, có tóc trong đồ ăn.
 
 Mỗi tình huống có nhiều lựa chọn với hậu quả khác nhau (tiền, danh tiếng, tâm trạng nhân viên).
+
+## 👫 Chơi online co-op
+Đang ở giai đoạn kế hoạch — xem [`docs/COOP_PLAN.md`](docs/COOP_PLAN.md).
 
 ## Cấu trúc mã
 

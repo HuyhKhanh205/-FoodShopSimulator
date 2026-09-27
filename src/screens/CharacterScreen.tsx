@@ -5,6 +5,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import CharacterPreview from '../components/scene/CharacterPreview';
 import { profileLook } from '../components/scene/looks';
+import HelpButton from '../components/kid/HelpButton';
+import IconTile from '../components/kid/IconTile';
 import { Button, Panel, colors } from '../components/ui';
 import { setProfile } from '../game/engine';
 import { useGame } from '../game/GameContext';
@@ -66,6 +68,7 @@ export default function CharacterScreen() {
   const { width } = useWindowDimensions();
   const wide = width >= 800;
   const [draft, setDraft] = useState<PlayerProfile>(() => ({ ...game!.profile }));
+  const [showNames, setShowNames] = useState(false);
   const gl = useMemo(hasWebGL, []);
   if (!game) return null;
 
@@ -82,13 +85,18 @@ export default function CharacterScreen() {
       <CharacterPreview look={profileLook(draft)} model={draft.model === 'custom' ? undefined : draft.model} enabled={gl} />
       <Text style={styles.nameBig}>{draft.name.trim() || 'Chủ quán'}</Text>
       <Text style={styles.shopBig}>🏮 {draft.shopName.trim() || 'Quán Ăn Của Tôi'}</Text>
-      <Button variant="secondary" label="🎲 Ngẫu nhiên" onPress={() => setDraft((d) => randomProfile(defaultRng, d))} />
+      <View style={styles.previewBtns}>
+        <IconTile icon="🎲" label="Đổi" name="Ngẫu nhiên" onPress={() => setDraft((d) => randomProfile(defaultRng, d))} />
+        <IconTile icon="✏️" label="Tên" name="Đặt tên" selected={showNames} onPress={() => setShowNames((v) => !v)} />
+        <IconTile icon="🏮" label={first ? 'Vào quán' : 'Lưu'} name={first ? 'Vào quán' : 'Lưu nhân vật'} tone="primary" onPress={save} />
+      </View>
     </View>
   );
 
   const form = (
     <View style={{ gap: 4 }}>
-      <Panel title="📛 Tên">
+      {showNames && (
+      <Panel title="✏️">
         <Field label="Tên chủ quán">
           <TextInput
             nativeID="player-name"
@@ -110,49 +118,45 @@ export default function CharacterScreen() {
           />
         </Field>
       </Panel>
+      )}
 
-      <Panel title="🎭 Kiểu nhân vật">
+      <Panel title="👤">
         <Chips items={PROFILE_MODELS} value={draft.model} onChange={(v) => set('model', v)} />
-        <Text style={[styles.label, { marginTop: 8 }]}>
-          {draft.model === 'custom'
-            ? 'Tự tạo: đổi được giới tính, kiểu tóc, màu da, màu quần áo và kính.'
-            : 'Nhân vật 3D có hoạt ảnh (mô hình KayKit). Màu tóc, da, áo, khăn, quần bên dưới được tô lên mô hình; có thể đội thêm mũ.'}
-        </Text>
       </Panel>
 
-      <Panel title="🧑 Ngoại hình">
+      <Panel>
         {draft.model === 'custom' && (
           <>
-            <Field label="Giới tính">
+            <Field label="🚻">
               <Chips items={GENDERS} value={draft.gender} onChange={(v) => set('gender', v)} />
             </Field>
-            <Field label="Kiểu tóc">
+            <Field label="💇">
               <Chips items={HAIR_STYLES} value={draft.hairStyle} onChange={(v) => set('hairStyle', v)} />
             </Field>
           </>
         )}
-        <Field label="Màu tóc">
+        <Field label="💇 🎨">
           <Swatches colors={HAIR_COLORS} value={draft.hairColor} onChange={(c) => set('hairColor', c)} />
         </Field>
-        <Field label="Màu da">
+        <Field label="🖐️">
           <Swatches colors={SKIN_TONES} value={draft.skin} onChange={(c) => set('skin', c)} />
         </Field>
       </Panel>
 
-      <Panel title="👕 Trang phục">
-        <Field label="Áo">
+      <Panel>
+        <Field label="👕">
           <Swatches colors={CLOTH_COLORS} value={draft.shirt} onChange={(c) => set('shirt', c)} />
         </Field>
-        <Field label={draft.model === 'custom' ? 'Tạp dề' : 'Khăn / viền áo'}>
+        <Field label={draft.model === 'custom' ? '🥼' : '🧣'}>
           <Swatches colors={CLOTH_COLORS} value={draft.apron} onChange={(c) => set('apron', c)} />
         </Field>
-        <Field label="Quần">
+        <Field label="👖">
           <Swatches colors={CLOTH_COLORS} value={draft.pants} onChange={(c) => set('pants', c)} />
         </Field>
       </Panel>
 
-      <Panel title="🎩 Mũ & phụ kiện">
-        <Field label="Mũ">
+      <Panel>
+        <Field label="🎩">
           <Chips
             items={HATS}
             value={draft.hat}
@@ -163,16 +167,16 @@ export default function CharacterScreen() {
           />
         </Field>
         {draft.hat !== 'none' && (
-          <Field label="Màu mũ">
+          <Field label="🎩 🎨">
             <Swatches colors={CLOTH_COLORS} value={draft.hatColor} onChange={(c) => set('hatColor', c)} />
           </Field>
         )}
         {draft.model === 'custom' && (
-        <Field label="Kính">
+        <Field label="👓">
           <Chips
             items={[
-              { key: 'no', label: 'Không đeo' },
-              { key: 'yes', label: '👓 Đeo kính' },
+              { key: 'no', label: '🚫' },
+              { key: 'yes', label: '👓' },
             ]}
             value={draft.glasses ? 'yes' : 'no'}
             onChange={(v) => set('glasses', v === 'yes')}
@@ -181,7 +185,7 @@ export default function CharacterScreen() {
         )}
       </Panel>
 
-      <Button label={first ? '🏮 Vào quán' : '✅ Lưu nhân vật'} onPress={save} />
+      <Button label={first ? '🏮 Vào quán' : '✅ Lưu'} onPress={save} />
       {!first && <Button variant="ghost" label="Huỷ" onPress={() => navigation.goBack()} />}
     </View>
   );
@@ -189,7 +193,8 @@ export default function CharacterScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.title}>{first ? '🧑‍🍳 Tạo nhân vật của bạn' : '🧑‍🍳 Nhân vật & tên quán'}</Text>
+        <Text style={styles.title}>🧑‍🍳 {first ? 'Chủ quán mới' : 'Chủ quán'}</Text>
+        <HelpButton topic="character" />
       </View>
       <ScrollView contentContainerStyle={[styles.content, wide && styles.contentWide]}>
         <View style={wide ? styles.colPreview : undefined}>{preview}</View>
@@ -201,7 +206,8 @@ export default function CharacterScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { padding: 14, backgroundColor: colors.primary },
+  header: { padding: 10, paddingHorizontal: 14, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  previewBtns: { flexDirection: 'row', justifyContent: 'center', gap: 10 },
   title: { fontSize: 18, fontWeight: '900', color: '#fff' },
   content: { padding: 16, gap: 16, paddingBottom: 40 },
   contentWide: { flexDirection: 'row', alignItems: 'flex-start', maxWidth: 1000, width: '100%', alignSelf: 'center' },
@@ -210,7 +216,7 @@ const styles = StyleSheet.create({
   nameBig: { fontSize: 22, fontWeight: '900', color: colors.text, textAlign: 'center' },
   shopBig: { fontSize: 15, fontWeight: '700', color: colors.primaryDark, textAlign: 'center' },
   field: { gap: 6, marginBottom: 12 },
-  label: { fontSize: 13, fontWeight: '700', color: colors.muted },
+  label: { fontSize: 20, fontWeight: '700', color: colors.muted },
   input: {
     borderWidth: 1,
     borderColor: colors.border,

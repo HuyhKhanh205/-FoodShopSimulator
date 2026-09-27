@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { INGREDIENTS, KIND_LABEL, RECIPES } from '../../game/data';
 import {
   discardDish,
@@ -15,44 +15,61 @@ import type { GameMutation } from '../../game/GameContext';
 import { canMake, missingFor, prepIngredients, usableQty } from '../../game/helpers';
 import type { MapStation } from '../../game/layout';
 import type { Customer, Dish, GameState } from '../../game/types';
-import { Button, colors } from '../ui';
+import IconTile from '../kid/IconTile';
+import { colors } from '../ui';
 
 const TITLES: Record<MapStation['kind'], string> = {
   stove: '🔥 Bếp',
-  counter: '🥤 Quầy pha chế',
-  fridge: '🧊 Kho nguyên liệu',
-  board: '🔪 Thớt sơ chế',
-  trash: '🗑️ Thùng rác',
-  mop: '🧽 Chỗ lau dọn',
-  pass: '🛎️ Quầy ra món',
+  counter: '🧋 Quầy',
+  fridge: '🧊 Kho',
+  board: '🔪 Thớt',
+  trash: '🗑️',
+  mop: '🧽',
+  pass: '🛎️',
   table: '🪑 Bàn',
-  door: '🚪 Cửa ra vào',
+  door: '🚪',
 };
 
-function dishLabel(d: Dish) {
+function dishIcon(d: Dish) {
+  const r = RECIPES[d.recipeId];
+  return `${r.emoji}${d.quality === 'raw' ? '🩸' : d.quality === 'burnt' ? '🔥' : ''}${d.noGarnish ? '🚫' : ''}`;
+}
+function dishName(d: Dish) {
   const r = RECIPES[d.recipeId];
   const q = d.quality === 'raw' ? ' (sống)' : d.quality === 'burnt' ? ' (cháy)' : '';
-  return `${r.emoji} ${r.name}${d.noGarnish ? ' 🚫hành' : ''}${q}`;
+  return `${r.name}${d.noGarnish ? ' không hành' : ''}${q}`;
 }
 
 function CustomerBlock({ c, held, act }: { c: Customer; held: Dish[]; act: (fn: GameMutation) => void }) {
   const label = KIND_LABEL[c.kind];
   return (
-    <View style={styles.customer}>
-      <Text style={styles.bold}>
-        {c.emoji} {c.name} {c.size > 1 ? `(${c.size} người)` : ''} {label ? `· ${label}` : ''}
-      </Text>
-      <Text style={styles.text}>
-        Gọi:{' '}
-        {c.items
-          .map((i) => `${i.served ? '✅' : RECIPES[i.recipeId].emoji} ${RECIPES[i.recipeId].name}${i.noGarnish && !i.served ? ' 🚫hành' : ''}`)
-          .join(' · ')}
-      </Text>
+    <View style={styles.customer} accessibilityLabel={`${c.name}${label ? ` · ${label}` : ''}`}>
       <View style={styles.wrap}>
-        {held.map((d) => (
-          <Button key={d.id} small style={styles.big} label={`Đưa ${dishLabel(d)}`} onPress={() => act((s, rng) => playerServe(s, d.id, c.id, rng))} />
+        <Text style={styles.custEmoji}>{c.emoji}</Text>
+        {c.size > 1 && <Text style={styles.bold}>×{c.size}</Text>}
+        <Text style={styles.orderArrow}>💬</Text>
+        {c.items.map((i, k) => (
+          <Text key={k} style={[styles.order, i.served && styles.orderDone]}>
+            {i.served ? '✅' : RECIPES[i.recipeId].emoji}
+            {i.noGarnish && !i.served ? '🚫' : ''}
+          </Text>
         ))}
       </View>
+      {held.length > 0 && (
+        <View style={styles.wrap}>
+          {held.map((d) => (
+            <IconTile
+              key={d.id}
+              icon={dishIcon(d)}
+              label="Đưa"
+              name={`Đưa ${dishName(d)}`}
+              tone="primary"
+              size="sm"
+              onPress={() => act((s, rng) => playerServe(s, d.id, c.id, rng))}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -74,8 +91,8 @@ export default function ActionSheet({
   const held = run.carrying.map((id) => run.pass.find((d) => d.id === id)).filter((d): d is Dish => Boolean(d));
 
   const handRow = (
-    <Text style={styles.hands}>
-      🤲 Trên tay: {held.length ? held.map(dishLabel).join(', ') : 'trống'}
+    <Text style={styles.hands} accessibilityLabel={`Trên tay: ${held.length ? held.map(dishName).join(', ') : 'trống'}`}>
+      🤲 {held.length ? held.map(dishIcon).join('  ') : '—'}
     </Text>
   );
 
@@ -83,7 +100,7 @@ export default function ActionSheet({
     return (
       <View style={styles.sheet}>
         {handRow}
-        <Text style={styles.muted}>Chạm vào bếp, thớt, quầy ra món hoặc bàn khách để đi tới đó.</Text>
+        <Text style={styles.hint}>👆 🔪 🔥 🍽️ 🪑</Text>
       </View>
     );
   }
@@ -91,7 +108,7 @@ export default function ActionSheet({
   let body: React.ReactNode = null;
 
   if (!station.active) {
-    body = <Text style={styles.muted}>Chưa mua. Nâng cấp quán vào buổi sáng để dùng chỗ này.</Text>;
+    body = <Text style={styles.hint}>🔒 → 🔧</Text>;
   } else if (station.slotId) {
     const slot = run.slots.find((s) => s.id === station.slotId);
     const job = slot?.job;
@@ -100,18 +117,17 @@ export default function ActionSheet({
       const done = job.progress >= job.cookTime;
       const byStaff = job.by !== 'player' ? game.staff.find((s) => s.id === job.by) : undefined;
       body = byStaff ? (
-        <Text style={styles.text}>
-          {byStaff.name} đang nấu {r.emoji} {r.name}.
+        <Text style={styles.hint} accessibilityLabel={`${byStaff.name} đang nấu ${r.name}`}>
+          👤 {byStaff.name} → {r.emoji}
         </Text>
       ) : (
         <View style={styles.wrap}>
-          <Text style={styles.text}>
-            {r.emoji} {r.name} — {done ? 'chín rồi!' : `${Math.round((job.progress / job.cookTime) * 100)}%`}
-          </Text>
-          <Button
-            small style={styles.big}
-            label={done ? 'Nhấc ra (cầm trên tay)' : 'Nhấc sớm (sẽ bị sống)'}
-            variant={done ? 'primary' : 'secondary'}
+          <IconTile icon={r.emoji} name={r.name} badge={done ? '✅' : `${Math.round((job.progress / job.cookTime) * 100)}%`} size="sm" />
+          <IconTile
+            icon="🍽️"
+            label={done ? 'Lấy ra' : 'Lấy sớm'}
+            name={done ? 'Nhấc ra (cầm trên tay)' : 'Nhấc sớm (sẽ bị sống)'}
+            tone={done ? 'primary' : 'plain'}
             onPress={() => act((s) => playerTakeOut(s, slot!.id, true))}
           />
         </View>
@@ -119,73 +135,80 @@ export default function ActionSheet({
     } else {
       const recipes = game.unlockedRecipes.map((id) => RECIPES[id]).filter((r) => r.station === slot?.station);
       body = (
-        <>
-          <Pressable onPress={() => setNoGarnish(!noGarnish)} style={[styles.toggle, noGarnish && styles.toggleOn]}>
-            <Text style={[styles.toggleText, noGarnish && { color: '#fff' }]}>🚫 Không hành: {noGarnish ? 'BẬT' : 'tắt'}</Text>
-          </Pressable>
-          <View style={styles.wrap}>
-            {recipes.map((r) => {
-              const off = noGarnish && Boolean(r.garnish);
-              const ok = canMake(game, r.id, off);
-              const missing = ok ? [] : missingFor(game, r.id, off);
-              return (
-                <View key={r.id} style={styles.cookItem}>
-                  <Button small style={styles.big} label={`${r.emoji} ${r.name}`} disabled={!ok} onPress={() => act((s) => playerCook(s, r.id, noGarnish))} />
-                  {!ok && <Text style={styles.missing}>Thiếu: {missing.map((m) => INGREDIENTS[m].name).join(', ')}</Text>}
-                </View>
-              );
-            })}
-          </View>
-        </>
-      );
-    }
-  } else if (station.kind === 'board') {
-    body = (
-      <>
-        {run.playerPrep && <Text style={styles.text}>Đang sơ chế {INGREDIENTS[run.playerPrep.ingredientId].name}...</Text>}
         <View style={styles.wrap}>
-          {prepIngredients(game).map((id) => {
-            const ing = INGREDIENTS[id];
-            const raw = usableQty(game, id);
-            const ready = run.prepped[id] ?? 0;
+          <IconTile icon="🚫🧅" name={`Không hành: ${noGarnish ? 'bật' : 'tắt'}`} selected={noGarnish} tone={noGarnish ? 'danger' : 'plain'} size="sm" onPress={() => setNoGarnish(!noGarnish)} />
+          {recipes.map((r) => {
+            const off = noGarnish && Boolean(r.garnish);
+            const ok = canMake(game, r.id, off);
+            const missing = ok ? [] : missingFor(game, r.id, off);
             return (
-              <Button
-                key={id}
-                small style={styles.big}
-                variant={ready === 0 && raw > 0 ? 'primary' : 'secondary'}
-                label={`${ing.emoji} ${ing.name} (${ready} sẵn · ${raw} sống)`}
-                disabled={Boolean(run.playerPrep) || raw === 0}
-                onPress={() => act((s) => playerPrep(s, id))}
+              <IconTile
+                key={r.id}
+                icon={r.emoji}
+                name={r.name}
+                disabled={!ok}
+                missing={missing.map((m) => INGREDIENTS[m].emoji)}
+                tone={ok ? 'primary' : 'plain'}
+                onPress={() => act((s) => playerCook(s, r.id, noGarnish, slot?.id))}
               />
             );
           })}
         </View>
-      </>
+      );
+    }
+  } else if (station.kind === 'board') {
+    body = (
+      <View style={styles.wrap}>
+        {prepIngredients(game).map((id) => {
+          const ing = INGREDIENTS[id];
+          const raw = usableQty(game, id);
+          const ready = run.prepped[id] ?? 0;
+          const busy = run.playerPrep?.ingredientId === id;
+          return (
+            <IconTile
+              key={id}
+              icon={ing.emoji}
+              name={ing.name}
+              badge={ready}
+              sub={busy ? '🔪…' : `📦${raw}`}
+              tone={ready === 0 && raw > 0 ? 'primary' : 'plain'}
+              disabled={Boolean(run.playerPrep) || raw === 0}
+              onPress={() => act((s) => playerPrep(s, id))}
+            />
+          );
+        })}
+      </View>
     );
   } else if (station.kind === 'fridge') {
     const ids = new Set<string>();
     for (const rid of game.unlockedRecipes) for (const i of Object.keys(RECIPES[rid].ingredients)) ids.add(i);
     body = (
-      <Text style={styles.text}>
-        {[...ids]
-          .map((i) => {
-            const ing = INGREDIENTS[i as keyof typeof INGREDIENTS];
-            const extra = ing.needsPrep ? ` (+${run.prepped[ing.id] ?? 0} đã sơ chế)` : '';
-            return `${ing.emoji} ${usableQty(game, ing.id)}${extra}`;
-          })
-          .join('   ')}
-      </Text>
+      <View style={styles.wrap}>
+        {[...ids].map((i) => {
+          const ing = INGREDIENTS[i as keyof typeof INGREDIENTS];
+          return (
+            <IconTile
+              key={i}
+              size="sm"
+              icon={ing.emoji}
+              name={ing.name}
+              badge={usableQty(game, ing.id)}
+              sub={ing.needsPrep ? `🔪${run.prepped[ing.id] ?? 0}` : undefined}
+            />
+          );
+        })}
+      </View>
     );
   } else if (station.kind === 'pass') {
     const onCounter = run.pass.filter((d) => !run.carrying.includes(d.id));
     body = (
       <View style={styles.wrap}>
-        {onCounter.length === 0 && held.length === 0 && <Text style={styles.muted}>Chưa có món nào xong.</Text>}
+        {onCounter.length === 0 && held.length === 0 && <Text style={styles.hint}>🛎️ —</Text>}
         {onCounter.map((d) => (
-          <Button key={d.id} small style={styles.big} label={`Cầm ${dishLabel(d)}`} onPress={() => act((s) => pickUpDish(s, d.id))} />
+          <IconTile key={d.id} icon={dishIcon(d)} label="Cầm" name={`Cầm ${dishName(d)}`} tone="primary" onPress={() => act((s) => pickUpDish(s, d.id))} />
         ))}
         {held.map((d) => (
-          <Button key={d.id} small style={styles.big} variant="secondary" label={`Đặt xuống ${dishLabel(d)}`} onPress={() => act((s) => putDownDish(s, d.id))} />
+          <IconTile key={d.id} icon={dishIcon(d)} label="Đặt ⬇️" name={`Đặt xuống ${dishName(d)}`} onPress={() => act((s) => putDownDish(s, d.id))} />
         ))}
       </View>
     );
@@ -194,20 +217,15 @@ export default function ActionSheet({
       station.kind === 'table'
         ? run.customers.filter((c) => c.tableIndex === station.tableIndex)
         : run.customers.filter((c) => c.tableIndex === undefined);
-    body =
-      here.length === 0 ? (
-        <Text style={styles.muted}>{station.kind === 'table' ? 'Bàn trống.' : 'Không có ai chờ ở cửa.'}</Text>
-      ) : (
-        here.map((c) => <CustomerBlock key={c.id} c={c} held={held} act={act} />)
-      );
+    body = here.length === 0 ? <Text style={styles.hint}>{station.kind === 'table' ? '🪑 —' : '🚪 —'}</Text> : here.map((c) => <CustomerBlock key={c.id} c={c} held={held} act={act} />);
   } else if (station.kind === 'trash') {
     body =
       held.length === 0 ? (
-        <Text style={styles.muted}>Tay không có gì để bỏ.</Text>
+        <Text style={styles.hint}>🗑️ —</Text>
       ) : (
         <View style={styles.wrap}>
           {held.map((d) => (
-            <Button key={d.id} small style={styles.big} variant="danger" label={`Bỏ ${dishLabel(d)}`} onPress={() => act((s) => discardDish(s, d.id))} />
+            <IconTile key={d.id} icon={dishIcon(d)} label="Bỏ 🗑️" name={`Bỏ ${dishName(d)}`} tone="danger" onPress={() => act((s) => discardDish(s, d.id))} />
           ))}
         </View>
       );
@@ -215,8 +233,7 @@ export default function ActionSheet({
     const ready = run.elapsed >= run.cleanReadyAt;
     body = (
       <View style={styles.wrap}>
-        <Text style={styles.text}>Vệ sinh: {Math.round(game.cleanliness)}%</Text>
-        <Button small style={styles.big} label={ready ? '🧽 Lau dọn quán (+20%)' : 'Đang nghỉ tay...'} disabled={!ready} onPress={() => act((s) => playerClean(s))} />
+        <IconTile icon="🧽" label={ready ? 'Lau' : '…'} name="Lau dọn quán" badge={`${Math.round(game.cleanliness)}%`} tone="primary" disabled={!ready} onPress={() => act((s) => playerClean(s))} />
       </View>
     );
   }
@@ -234,18 +251,15 @@ export default function ActionSheet({
 }
 
 const styles = StyleSheet.create({
-  sheet: { gap: 8 },
-  big: { paddingVertical: 11, paddingHorizontal: 12, borderRadius: 12, minHeight: 44 },
+  sheet: { gap: 10 },
   title: { fontSize: 18, fontWeight: '900', color: colors.text },
-  hands: { fontSize: 13, color: colors.primaryDark, fontWeight: '700' },
-  text: { color: colors.text },
-  bold: { fontWeight: '800', color: colors.text },
-  muted: { color: colors.muted, fontSize: 13 },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  hands: { fontSize: 20, color: colors.primaryDark, fontWeight: '800' },
+  hint: { fontSize: 26, color: colors.muted, letterSpacing: 4 },
+  bold: { fontWeight: '900', color: colors.text, fontSize: 16 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center', paddingTop: 6 },
   customer: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 6, gap: 4 },
-  cookItem: { alignItems: 'flex-start' },
-  missing: { fontSize: 10, color: colors.bad, maxWidth: 160 },
-  toggle: { alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.bad, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
-  toggleOn: { backgroundColor: colors.bad },
-  toggleText: { color: colors.bad, fontWeight: '700', fontSize: 12 },
+  custEmoji: { fontSize: 32 },
+  orderArrow: { fontSize: 18 },
+  order: { fontSize: 28 },
+  orderDone: { opacity: 0.6 },
 });

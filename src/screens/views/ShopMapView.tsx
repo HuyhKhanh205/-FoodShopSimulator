@@ -238,7 +238,7 @@ export default function ShopMapView() {
 
   const sheet = <ActionSheet station={hereStation} game={game} act={act} noGarnish={noGarnish} setNoGarnish={setNoGarnish} />;
   const hint =
-    Platform.OS === 'web' ? 'Chạm để đi · WASD / phím mũi tên để đi · E hoặc Space để thao tác' : 'Chạm vào đồ vật hoặc sàn để đi tới đó';
+    Platform.OS === 'web' ? '👆 · ⌨️ WASD · E' : '👆';
 
   if (wide) {
     return (

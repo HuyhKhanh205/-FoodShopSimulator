@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { BURN_FACTOR, INGREDIENTS, PLAYER_PREP_MS, RECIPES } from '../../game/data';
 import { MAX_CARRY, playerChop, playerCook, playerPrep, playerStir, playerTakeOut } from '../../game/engine';
 import type { GameMutation } from '../../game/GameContext';
@@ -8,7 +8,9 @@ import type { MapStation } from '../../game/layout';
 import type { CookSlot, GameState, IngredientId } from '../../game/types';
 import { Canvas } from '../../three/fiber';
 import type { ThreeEvent } from '../../three/fiber';
-import { Button, ProgressBar, colors } from '../ui';
+import HelpButton from '../kid/HelpButton';
+import IconTile from '../kid/IconTile';
+import { ProgressBar, colors } from '../ui';
 import { BOARD_Z, Backdrop, BoardScene, CounterScene, EyeRig, Kitchen, KitchenCounter, STOVE_GAP, STOVE_SCALE, STOVE_Z, StoveScene, TOP_Y } from './FPScenes';
 import type { PulseRef } from './FPScenes';
 
@@ -29,14 +31,15 @@ function slotInfo(run: Run, slot: CookSlot | undefined) {
 }
 type SlotInfo = ReturnType<typeof slotInfo>;
 
+/** Trạng thái bếp bằng hình: món + ⏳ / ✅ / ⚠️ / 🔌 / 👤. */
 function slotStatus(game: GameState, info: SlotInfo) {
   const { job, recipe, mine, blocked, done, warn } = info;
-  if (!job || !recipe) return 'Trống — chọn món để nấu';
-  if (!mine) return `${game.staff.find((s) => s.id === job.by)?.name ?? 'Nhân viên'} đang nấu ${recipe.name}`;
-  if (blocked) return `${recipe.name}: bếp tắt (cúp điện / hết gas)`;
-  if (warn) return `⚠️ ${recipe.name} sắp cháy! Nhấc ra ngay!`;
-  if (done) return `✅ ${recipe.name} chín rồi!`;
-  return `Đang nấu ${recipe.emoji} ${recipe.name}`;
+  if (!job || !recipe) return '—';
+  if (!mine) return `${recipe.emoji} 👤 ${game.staff.find((s) => s.id === job.by)?.name ?? ''}`;
+  if (blocked) return `${recipe.emoji} 🔌`;
+  if (warn) return `${recipe.emoji} ⚠️ sắp cháy!`;
+  if (done) return `${recipe.emoji} ✅ chín rồi!`;
+  return `${recipe.emoji} ⏳`;
 }
 
 function slotBar(info: SlotInfo) {
@@ -47,10 +50,15 @@ function slotBar(info: SlotInfo) {
 }
 
 function takeOutLabel(run: Run, info: SlotInfo) {
-  if (run.carrying.length >= MAX_CARRY) return '🤲 Tay đã cầm đủ 2 món';
+  if (run.carrying.length >= MAX_CARRY) return 'Tay đầy';
+  if (!info.done) return 'Lấy sớm';
+  if (info.warn) return 'Lấy ngay!';
+  return 'Lấy ra';
+}
+function takeOutName(run: Run, info: SlotInfo) {
+  if (run.carrying.length >= MAX_CARRY) return 'Tay đã cầm đủ 2 món';
   if (!info.done) return 'Nhấc sớm (món sẽ bị sống)';
-  if (info.warn) return '⚠️ Nhấc ra ngay kẻo cháy!';
-  return '🍽️ Nhấc ra, cầm trên tay';
+  return 'Nhấc ra, cầm trên tay';
 }
 
 /** Phím trên máy tính: Esc về quán, Space / E thao tác, 1–9 chọn bếp. */
@@ -100,22 +108,26 @@ export default function FirstPersonView(props: Props) {
 function Header({
   onExit,
   carrying,
-  title,
+  topic,
   lines,
 }: {
   onExit: () => void;
   carrying: number;
-  title: string;
+  topic: 'kitchen' | 'counter';
   lines: { text: string; bar: { value: number; color: string } | null }[];
 }) {
   return (
     <View pointerEvents="box-none" style={styles.top}>
       <View style={styles.topRow}>
-        <Pressable onPress={onExit} style={[styles.exit, carrying > 0 && styles.exitServe]} accessibilityRole="button">
-          <Text style={styles.exitText}>{carrying > 0 ? `🍽️ Ra phục vụ (${carrying})` : '⬅ Rời bếp'}</Text>
+        <Pressable
+          onPress={onExit}
+          style={[styles.exit, carrying > 0 && styles.exitServe]}
+          accessibilityRole="button"
+          accessibilityLabel={carrying > 0 ? `Ra phục vụ (${carrying})` : 'Rời bếp'}
+        >
+          <Text style={styles.exitText}>{carrying > 0 ? `🍽️×${carrying} ➡` : '⬅'}</Text>
         </Pressable>
         <View pointerEvents="none" style={styles.titleBox}>
-          <Text style={styles.title}>{title}</Text>
           {lines.map((l, i) => (
             <View key={i} style={{ gap: 3 }}>
               <Text style={styles.status} numberOfLines={1}>
@@ -125,8 +137,29 @@ function Header({
             </View>
           ))}
         </View>
+        <HelpButton topic={topic} />
       </View>
     </View>
+  );
+}
+
+/** Ngón tay nhún nhảy chỉ chỗ cần chạm (thay cho câu hướng dẫn). */
+function Pointer({ icon }: { icon: string }) {
+  const y = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(y, { toValue: -8, duration: 350, useNativeDriver: true }),
+        Animated.timing(y, { toValue: 0, duration: 350, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [y]);
+  return (
+    <Animated.View pointerEvents="none" style={[styles.hintBox, { transform: [{ translateY: y }] }]}>
+      <Text style={styles.hint}>{icon}</Text>
+    </Animated.View>
   );
 }
 
@@ -183,66 +216,66 @@ function KitchenView({ station: initial, stations, game, act, onExit, noGarnish,
 
   // ---------- Tiêu đề ----------
   const prepLine = prep
-    ? { text: `🔪 Đang thái ${INGREDIENTS[prep.ingredientId].name} (${prep.qty} phần)`, bar: { value: prepProgress ?? 0, color: colors.info } }
-    : {
-        text: lastPrep ? `🔪 Xong! Đã có ${run.prepped[lastPrep] ?? 0} phần ${INGREDIENTS[lastPrep].name}` : '🔪 Thớt: chọn nguyên liệu để sơ chế',
-        bar: null,
-      };
-  const stoveLine = selSlot ? { text: `🔥 Bếp ${selIndex + 1}: ${slotStatus(game, selInfo)}`, bar: slotBar(selInfo) } : { text: '🔥 Chưa có bếp', bar: null };
-  const hint = prep
-    ? '👆 Chạm thớt liên tục để thái nhanh'
-    : selInfo.mine && !selInfo.done && !selInfo.blocked
-      ? '👆 Chạm vào nồi để khuấy — chín nhanh hơn'
-      : '👆 Chạm vào nồi để chọn bếp';
+    ? { text: `🔪 ${INGREDIENTS[prep.ingredientId].emoji} ⏳`, bar: { value: prepProgress ?? 0, color: colors.info } }
+    : { text: lastPrep ? `🔪 ${INGREDIENTS[lastPrep].emoji} ✅ ×${run.prepped[lastPrep] ?? 0}` : '🔪 —', bar: null };
+  const stoveLine = selSlot ? { text: `🔥${selIndex + 1}  ${slotStatus(game, selInfo)}`, bar: slotBar(selInfo) } : { text: '🔥 —', bar: null };
+  const hint = prep ? '👆🔪' : selInfo.mine && !selInfo.done && !selInfo.blocked ? '👆🥄' : null;
 
   // ---------- Điều khiển: bếp ở trên, thớt ở dưới ----------
   const recipes = game.unlockedRecipes.map((id) => RECIPES[id]).filter((r) => r.station === 'stove');
   const stoveControls = (
-    <View style={{ gap: 8 }}>
-      <View style={styles.wrap}>
-        {stoves.map((st, i) => {
-          const info = slotInfo(run, run.slots.find((x) => x.id === st.slotId));
-          const badge = !info.job ? 'trống' : !info.mine ? '👤' : info.warn ? '⚠️' : info.done ? '✅' : `${Math.round(Math.min(1, info.cookRatio) * 100)}%`;
-          const on = st.slotId === selSlotId;
-          return (
-            <Pressable
-              key={st.id}
-              onPress={() => setSel(st.slotId!)}
-              style={[styles.chip, on && styles.chipOn, info.warn && styles.chipWarn]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-            >
-              <Text style={[styles.chipText, on && styles.chipTextOn]}>
-                🔥 Bếp {i + 1} {info.recipe ? info.recipe.emoji : ''} {badge}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+    <View style={styles.wrap}>
+      {stoves.map((st, i) => {
+        const info = slotInfo(run, run.slots.find((x) => x.id === st.slotId));
+        const badge = !info.job ? '' : !info.mine ? '👤' : info.warn ? '⚠️' : info.done ? '✅' : `${Math.round(Math.min(1, info.cookRatio) * 100)}%`;
+        return (
+          <IconTile
+            key={st.id}
+            size="sm"
+            icon={info.recipe ? info.recipe.emoji : '🔥'}
+            label={`Bếp ${i + 1}`}
+            name={`Bếp ${i + 1}`}
+            badge={badge}
+            selected={st.slotId === selSlotId}
+            tone={info.warn ? 'danger' : 'plain'}
+            onPress={() => setSel(st.slotId!)}
+          />
+        );
+      })}
+      <View style={styles.divider} />
       {selSlot && !selInfo.job && (
         <>
-          <Pressable onPress={() => setNoGarnish(!noGarnish)} style={[styles.toggle, noGarnish && styles.toggleOn]}>
-            <Text style={[styles.toggleText, noGarnish && { color: '#fff' }]}>🚫 Không hành: {noGarnish ? 'BẬT' : 'tắt'}</Text>
-          </Pressable>
-          <View style={styles.wrap}>
-            {recipes.map((r) => {
-              const off = noGarnish && Boolean(r.garnish);
-              const ok = canMake(game, r.id, off);
-              return (
-                <View key={r.id}>
-                  <Button small style={styles.btn} label={`${r.emoji} ${r.name}`} disabled={!ok} onPress={() => act((s) => playerCook(s, r.id, noGarnish, selSlot.id))} />
-                  {!ok && <Text style={styles.missing}>Thiếu: {missingFor(game, r.id, off).map((m) => INGREDIENTS[m].name).join(', ')}</Text>}
-                </View>
-              );
-            })}
-          </View>
+          <IconTile
+            size="sm"
+            icon="🚫🧅"
+            name={`Không hành: ${noGarnish ? 'bật' : 'tắt'}`}
+            selected={noGarnish}
+            tone={noGarnish ? 'danger' : 'plain'}
+            onPress={() => setNoGarnish(!noGarnish)}
+          />
+          {recipes.map((r) => {
+            const off = noGarnish && Boolean(r.garnish);
+            const ok = canMake(game, r.id, off);
+            return (
+              <IconTile
+                key={r.id}
+                icon={r.emoji}
+                name={r.name}
+                disabled={!ok}
+                missing={ok ? undefined : missingFor(game, r.id, off).map((m) => INGREDIENTS[m].emoji)}
+                tone={ok ? 'primary' : 'plain'}
+                onPress={() => act((s) => playerCook(s, r.id, noGarnish, selSlot.id))}
+              />
+            );
+          })}
         </>
       )}
       {selSlot && selInfo.mine && (
-        <Button
-          style={styles.btn}
-          variant={!selInfo.done ? 'secondary' : selInfo.warn ? 'danger' : 'primary'}
+        <IconTile
+          icon="🍽️"
           label={takeOutLabel(run, selInfo)}
+          name={takeOutName(run, selInfo)}
+          tone={!selInfo.done ? 'plain' : selInfo.warn ? 'danger' : 'good'}
           disabled={run.carrying.length >= MAX_CARRY}
           onPress={() => act((s) => playerTakeOut(s, selSlot.id, true))}
         />
@@ -256,12 +289,13 @@ function KitchenView({ station: initial, stations, game, act, onExit, noGarnish,
         const raw = usableQty(game, id);
         const ready = run.prepped[id] ?? 0;
         return (
-          <Button
+          <IconTile
             key={id}
-            small
-            style={styles.btn}
-            variant={ready === 0 && raw > 0 ? 'primary' : 'secondary'}
-            label={`${ing.emoji} ${ing.name} · ${ready} sẵn / ${raw} sống`}
+            icon={ing.emoji}
+            name={ing.name}
+            badge={ready}
+            sub={`📦${raw}`}
+            tone={ready === 0 && raw > 0 ? 'primary' : 'plain'}
             disabled={Boolean(prep) || raw === 0}
             onPress={() => act((s) => playerPrep(s, id))}
           />
@@ -341,15 +375,12 @@ function KitchenView({ station: initial, stations, game, act, onExit, noGarnish,
             </mesh>
           </group>
         </Canvas>
-        <Header onExit={onExit} carrying={run.carrying.length} title="👨‍🍳 Bếp của tôi" lines={[stoveLine, prepLine]} />
-        <View pointerEvents="none" style={styles.hintBox}>
-          <Text style={styles.hint}>{hint}</Text>
-        </View>
+        <Header onExit={onExit} carrying={run.carrying.length} topic="kitchen" lines={[stoveLine, prepLine]} />
+        {hint && <Pointer icon={hint} />}
       </View>
       <ScrollView style={styles.controls} contentContainerStyle={styles.controlsContent}>
-        <Text style={styles.section}>🔥 Bếp</Text>
         {stoveControls}
-        <Text style={[styles.section, { marginTop: 10 }]}>🔪 Sơ chế trên thớt</Text>
+        <View style={styles.hr} />
         {boardControls}
       </ScrollView>
     </View>
@@ -380,23 +411,32 @@ function CounterView({ station, game, act, onExit, noGarnish }: Props) {
         {recipes.map((r) => {
           const ok = canMake(game, r.id, false);
           return (
-            <View key={r.id}>
-              <Button small style={styles.btn} label={`${r.emoji} ${r.name}`} disabled={!ok} onPress={() => act((s) => playerCook(s, r.id, noGarnish, slot.id))} />
-              {!ok && <Text style={styles.missing}>Thiếu: {missingFor(game, r.id, false).map((m) => INGREDIENTS[m].name).join(', ')}</Text>}
-            </View>
+            <IconTile
+              key={r.id}
+              icon={r.emoji}
+              name={r.name}
+              disabled={!ok}
+              missing={ok ? undefined : missingFor(game, r.id, false).map((m) => INGREDIENTS[m].emoji)}
+              tone={ok ? 'primary' : 'plain'}
+              onPress={() => act((s) => playerCook(s, r.id, noGarnish, slot.id))}
+            />
           );
         })}
       </View>
     );
   } else if (slot && info.mine) {
     controls = (
-      <Button
-        style={styles.bigBtn}
-        variant={!info.done ? 'secondary' : 'primary'}
-        label={takeOutLabel(run, info)}
-        disabled={run.carrying.length >= MAX_CARRY}
-        onPress={() => act((s) => playerTakeOut(s, slot.id, true))}
-      />
+      <View style={styles.wrap}>
+        <IconTile
+          icon="🍽️"
+          label={takeOutLabel(run, info)}
+          name={takeOutName(run, info)}
+          size="lg"
+          tone={!info.done ? 'plain' : 'good'}
+          disabled={run.carrying.length >= MAX_CARRY}
+          onPress={() => act((s) => playerTakeOut(s, slot.id, true))}
+        />
+      </View>
     );
   }
 
@@ -411,17 +451,8 @@ function CounterView({ station, game, act, onExit, noGarnish }: Props) {
           <CounterScene recipeId={info.job?.recipeId ?? null} drink={info.recipe?.drink ?? true} progress={Math.min(1, info.cookRatio)} pulse={pulse} />
         </Canvas>
         <Pressable accessibilityLabel="Lắc" onPress={tap} style={StyleSheet.absoluteFill} />
-        <Header
-          onExit={onExit}
-          carrying={run.carrying.length}
-          title="🧋 Quầy pha chế"
-          lines={[{ text: info.job ? slotStatus(game, info) : 'Chọn món để pha', bar: slotBar(info) }]}
-        />
-        {info.mine && !info.done && (
-          <View pointerEvents="none" style={styles.hintBox}>
-            <Text style={styles.hint}>👆 Chạm để lắc — pha nhanh hơn</Text>
-          </View>
-        )}
+        <Header onExit={onExit} carrying={run.carrying.length} topic="counter" lines={[{ text: `🧋  ${slotStatus(game, info)}`, bar: slotBar(info) }]} />
+        {info.mine && !info.done && <Pointer icon="👆🧋" />}
       </View>
       {controls && (
         <ScrollView style={styles.controls} contentContainerStyle={styles.controlsContent}>
@@ -448,16 +479,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   exitServe: { backgroundColor: colors.good },
-  exitText: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  exitText: { color: '#fff', fontWeight: '900', fontSize: 20 },
   titleBox: { flex: 1, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, gap: 4 },
   title: { fontSize: 15, fontWeight: '900', color: colors.text },
-  status: { fontSize: 12, fontWeight: '700', color: colors.primaryDark },
-  hintBox: { position: 'absolute', bottom: 8, alignSelf: 'center', backgroundColor: 'rgba(62,39,35,0.78)', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 7 },
-  hint: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  controls: { maxHeight: 260, flexGrow: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: colors.border },
+  status: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
+  hintBox: { position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(62,39,35,0.7)', borderRadius: 22, paddingHorizontal: 14, paddingVertical: 4 },
+  hint: { fontSize: 30 },
+  divider: { width: 2, alignSelf: 'stretch', backgroundColor: colors.border, marginHorizontal: 2 },
+  hr: { height: 2, backgroundColor: colors.border, marginVertical: 6 },
+  controls: { maxHeight: 280, flexGrow: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: colors.border },
   controlsContent: { padding: 10, gap: 6 },
   section: { fontSize: 13, fontWeight: '900', color: colors.text },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingTop: 6, alignItems: 'center' },
   btn: { paddingVertical: 9, paddingHorizontal: 11, borderRadius: 12, minHeight: 40 },
   bigBtn: { paddingVertical: 16, borderRadius: 14 },
   missing: { fontSize: 10, color: colors.bad, maxWidth: 170 },

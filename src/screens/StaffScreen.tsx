@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import HelpButton from '../components/kid/HelpButton';
 import { Button, Panel, ProgressBar, colors } from '../components/ui';
 import { ROLE_EMOJI, ROLE_LABEL, TRAITS } from '../game/data';
 import { MAX_STAFF, fire, hire, raiseWage, toggleDayOff } from '../game/engine';
@@ -26,25 +27,20 @@ function StaffCard({ st, game, children }: { st: Staff; game: GameState; childre
           <Text style={styles.name}>
             {st.name} · {ROLE_LABEL[st.role]}
           </Text>
-          <Text style={styles.muted}>{ROLE_DESC[st.role]}</Text>
         </View>
       </View>
-      <Text style={styles.stat}>Tay nghề {st.skill}/100</Text>
+      <Text style={styles.stat}>🛠️ {st.skill}</Text>
       <ProgressBar value={st.skill / 100} color={colors.info} />
-      <Text style={styles.stat}>Tâm trạng {Math.round(st.mood)}/100</Text>
+      <Text style={styles.stat}>😊 {Math.round(st.mood)}</Text>
       <ProgressBar value={st.mood / 100} color={st.mood < 30 ? colors.bad : st.mood < 60 ? colors.accent : colors.good} />
-      <Text style={styles.line}>
-        Tính cách: <Text style={styles.bold}>{TRAITS[st.trait].name}</Text> — {TRAITS[st.trait].desc}
+      <Text style={styles.line} accessibilityLabel={`Tính cách: ${TRAITS[st.trait].name} — ${TRAITS[st.trait].desc}`}>
+        🎭 <Text style={styles.bold}>{TRAITS[st.trait].name}</Text>
       </Text>
       <Text style={styles.line}>
-        Lương: <Text style={styles.bold}>{formatMoney(st.wage)}/ngày</Text>
-        <Text style={st.wage < fair * 0.9 ? { color: colors.bad } : styles.muted}> (mặt bằng chung ~{formatMoney(fair)})</Text>
+        💰 <Text style={[styles.bold, st.wage < fair * 0.9 && { color: colors.bad }]}>{formatMoney(st.wage)}</Text>
+        {'   '}❌ <Text style={[styles.bold, { color: err > 0.15 ? colors.bad : err > 0.08 ? colors.primary : colors.good }]}>{Math.round(err * 100)}%</Text>
       </Text>
-      <Text style={styles.line}>
-        Tỉ lệ làm sai ước tính: <Text style={[styles.bold, { color: err > 0.15 ? colors.bad : err > 0.08 ? colors.primary : colors.good }]}>{Math.round(err * 100)}%</Text>
-        <Text style={styles.muted}> (tăng khi đông khách)</Text>
-      </Text>
-      {st.absent && <Text style={[styles.line, { color: colors.bad }]}>Nghỉ hôm nay</Text>}
+      {st.absent && <Text style={[styles.line, { color: colors.bad }]}>😴</Text>}
       <View style={styles.actions}>{children}</View>
     </View>
   );
@@ -59,34 +55,32 @@ export default function StaffScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Button small variant="ghost" label="← Quay lại" onPress={() => navigation.goBack()} />
-        <Text style={styles.title}>👥 Nhân viên</Text>
-        <Text style={styles.money}>{formatMoney(game.money)}</Text>
+        <Button small variant="ghost" label="⬅" onPress={() => navigation.goBack()} />
+        <Text style={styles.title}>👥</Text>
+        <Text style={styles.money}>💰 {formatMoney(game.money)}</Text>
+        <HelpButton topic="staff" />
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <Panel title={`Đang làm (${game.staff.length}/${MAX_STAFF})`}>
-          {game.staff.length === 0 && <Text style={styles.muted}>Chưa có nhân viên. Bạn đang tự làm tất cả!</Text>}
+        <Panel title={`👥 ${game.staff.length}/${MAX_STAFF}`}>
+          {game.staff.length === 0 && <Text style={styles.muted}>—</Text>}
           <View style={styles.grid}>
             {game.staff.map((st) => (
               <StaffCard key={st.id} st={st} game={game}>
-                <Button small label="Tăng lương 10%" onPress={() => act((s) => raiseWage(s, st.id))} />
+                <Button small label="💰 +10%" onPress={() => act((s) => raiseWage(s, st.id))} />
                 {game.phase === 'market' && (
-                  <Button small variant="secondary" label={st.absent ? 'Gọi đi làm' : 'Cho nghỉ hôm nay'} onPress={() => act((s) => toggleDayOff(s, st.id))} />
+                  <Button small variant="secondary" label={st.absent ? '🏃 Đi làm' : '😴 Nghỉ'} onPress={() => act((s) => toggleDayOff(s, st.id))} />
                 )}
-                <Button small variant="danger" label={`Sa thải (-${formatMoney(st.wage)})`} onPress={() => act((s) => fire(s, st.id))} />
+                <Button small variant="danger" label={`👋 (-${formatMoney(st.wage)})`} onPress={() => act((s) => fire(s, st.id))} />
               </StaffCard>
             ))}
           </View>
         </Panel>
 
-        <Panel title="📄 Ứng viên hôm nay">
-          <Text style={[styles.muted, { marginBottom: 8 }]}>
-            Lương trả cuối mỗi ngày. Tay nghề cao thì ít sai nhưng lương cao. Mỗi ngày có ứng viên mới.
-          </Text>
+        <Panel title="🆕"> 
           <View style={styles.grid}>
             {game.candidates.map((st) => (
               <StaffCard key={st.id} st={st} game={game}>
-                <Button small label={full ? 'Đã đủ người' : 'Thuê'} disabled={full} onPress={() => act((s) => void hire(s, st.id))} />
+                <Button small label={full ? '🚫' : '✅ Thuê'} disabled={full} onPress={() => act((s) => void hire(s, st.id))} />
               </StaffCard>
             ))}
           </View>
