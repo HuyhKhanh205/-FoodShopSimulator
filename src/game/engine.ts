@@ -56,6 +56,7 @@ import type {
 } from './types';
 
 export const MAX_STAFF = 6;
+export const MAX_CARRY = 2;
 
 // ================= Khởi tạo =================
 
@@ -236,6 +237,7 @@ export function openShop(s: GameState, rng: Rng) {
     customers: [],
     slots,
     pass: [],
+    carrying: [],
     prepped: {},
     playerPrep: null,
     cleanReadyAt: 0,
@@ -280,14 +282,52 @@ export function playerCook(s: GameState, recipeId: RecipeId, noGarnish: boolean)
   return null;
 }
 
-/** Nhấc món khỏi bếp: chưa đủ thời gian → sống. */
-export function playerTakeOut(s: GameState, slotId: string) {
-  const slot = s.run?.slots.find((x) => x.id === slotId);
+/** Nhấc món khỏi bếp: chưa đủ thời gian → sống. `toHand`: cầm luôn trên tay nếu còn tay trống. */
+export function playerTakeOut(s: GameState, slotId: string, toHand = false) {
+  const run = s.run;
+  const slot = run?.slots.find((x) => x.id === slotId);
   const job = slot?.job;
-  if (!slot || !job || job.by !== 'player') return;
+  if (!run || !slot || !job || job.by !== 'player') return;
   const quality: DishQuality = job.progress >= job.cookTime ? 'perfect' : 'raw';
   pushDish(s, job.recipeId, quality, job.noGarnish, 'Bạn');
   slot.job = null;
+  if (toHand && run.carrying.length < MAX_CARRY) run.carrying.push(run.pass[run.pass.length - 1].id);
+}
+
+// ---------- Cầm món trên tay (chế độ bản đồ) ----------
+
+export function pickUpDish(s: GameState, dishId: string): string | null {
+  const run = s.run;
+  if (!run || !run.pass.some((d) => d.id === dishId) || run.carrying.includes(dishId)) return null;
+  if (run.carrying.length >= MAX_CARRY) return 'Hai tay đã cầm đầy món!';
+  const busy = s.staff.some((st) => st.task?.dishId === dishId);
+  if (busy) return 'Nhân viên đang mang món này đi rồi';
+  run.carrying.push(dishId);
+  return null;
+}
+
+export function putDownDish(s: GameState, dishId: string) {
+  if (s.run) s.run.carrying = s.run.carrying.filter((id) => id !== dishId);
+}
+
+export function putDownAll(s: GameState) {
+  if (s.run) s.run.carrying = [];
+}
+
+/** Mang món đang cầm cho khách: ưu tiên món khớp cả ghi chú "không hành". */
+export function serveCarried(s: GameState, customerId: string, rng: Rng): string | null {
+  const run = s.run;
+  const c = run?.customers.find((x) => x.id === customerId);
+  if (!run || !c) return null;
+  if (run.carrying.length === 0) return 'Tay không — hãy lấy món ở quầy ra món';
+  const open = c.items.filter((i) => !i.served);
+  const held = run.carrying.map((id) => run.pass.find((d) => d.id === id)).filter((d): d is NonNullable<typeof d> => Boolean(d));
+  const dish =
+    held.find((d) => open.some((i) => i.recipeId === d.recipeId && i.noGarnish === d.noGarnish)) ??
+    held.find((d) => open.some((i) => i.recipeId === d.recipeId)) ??
+    held[0];
+  serveDish(s, dish.id, customerId, rng);
+  return null;
 }
 
 export function playerPrep(s: GameState, id: IngredientId): string | null {
@@ -306,9 +346,33 @@ export function playerServe(s: GameState, dishId: string, customerId: string, rn
   serveDish(s, dishId, customerId, rng);
 }
 
+/**
+ * Tới bàn là tự đưa những món đang cầm khớp đơn của khách (không đưa món cháy,
+ * không đưa món có hành cho khách dặn "không hành"). Trả về số món đã đưa.
+ */
+export function autoServeCarried(s: GameState, customerIds: string[], rng: Rng): number {
+  const run = s.run;
+  if (!run) return 0;
+  let served = 0;
+  for (const cid of customerIds) {
+    for (;;) {
+      const c = run.customers.find((x) => x.id === cid);
+      if (!c) break;
+      const dish = run.carrying
+        .map((id) => run.pass.find((d) => d.id === id))
+        .find((d) => d && d.quality !== 'burnt' && c.items.some((i) => !i.served && i.recipeId === d.recipeId && (!i.noGarnish || d.noGarnish)));
+      if (!dish) break;
+      serveDish(s, dish.id, cid, rng);
+      served += 1;
+    }
+  }
+  return served;
+}
+
 export function discardDish(s: GameState, dishId: string) {
   if (!s.run) return;
   s.run.pass = s.run.pass.filter((d) => d.id !== dishId);
+  s.run.carrying = s.run.carrying.filter((id) => id !== dishId);
 }
 
 export function playerClean(s: GameState) {
@@ -386,13 +450,13 @@ function startStaffTask(s: GameState, st: Staff, rng: Rng) {
   }
 
   // Phục vụ: bỏ món cháy, mang món cho khách, rảnh thì lau dọn.
-  const burnt = run.pass.find((d) => d.quality === 'burnt');
+  const burnt = run.pass.find((d) => d.quality === 'burnt' && !run.carrying.includes(d.id));
   if (burnt) {
     run.pass = run.pass.filter((d) => d.id !== burnt.id);
     log(s, `🗑️ ${st.name} bỏ món ${RECIPES[burnt.recipeId].name} bị cháy`, 'info');
     return;
   }
-  const taken = new Set(s.staff.map((x) => x.task?.dishId).filter(Boolean));
+  const taken = new Set([...s.staff.map((x) => x.task?.dishId).filter(Boolean), ...run.carrying]);
   const waiting = [...run.customers].sort((a, b) => a.arrivedAt - b.arrivedAt);
   for (const dish of run.pass) {
     if (taken.has(dish.id)) continue;
@@ -519,6 +583,15 @@ function spawnCustomers(s: GameState, dt: number, rng: Rng) {
     s.report.noSeat += 1;
     log(s, `🚶 Hết chỗ ngồi, một khách bỏ đi`, 'bad');
     return;
+  }
+  if (c.kind !== 'delivery' && c.kind !== 'group') {
+    const used = new Set(run.customers.map((x) => x.tableIndex));
+    for (let i = 0; i < s.upgrades.seats; i += 1) {
+      if (!used.has(i)) {
+        c.tableIndex = i;
+        break;
+      }
+    }
   }
   run.customers.push(c);
 }

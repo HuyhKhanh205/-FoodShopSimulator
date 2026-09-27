@@ -7,13 +7,14 @@ import Toast from '../components/Toast';
 import { colors } from '../components/ui';
 import { useGame } from '../game/GameContext';
 import MarketView from './views/MarketView';
+import ShopMapView from './views/ShopMapView';
 import ShopView from './views/ShopView';
 import SummaryView from './views/SummaryView';
 
 /** Màn chơi chính: hiển thị theo giai đoạn trong ngày (chợ → mở cửa → tổng kết). */
 export default function GameScreen() {
   const navigation = useNavigation();
-  const { game } = useGame();
+  const { game, viewMode } = useGame();
 
   useEffect(() => {
     if (!game) navigation.navigate('Home');
@@ -25,7 +26,7 @@ export default function GameScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.body}>
         {game.phase === 'market' && <MarketView />}
-        {game.phase === 'open' && <ShopView />}
+        {game.phase === 'open' && (viewMode === 'map' ? <ShopMapView /> : <ShopView />)}
         {game.phase === 'summary' && <SummaryView />}
       </View>
       <EventModal />

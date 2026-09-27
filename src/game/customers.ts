@@ -205,6 +205,7 @@ export function serveDish(s: GameState, dishId: string, customerId: string, rng:
   }
   const target = candidates.find((i) => i.noGarnish === dish.noGarnish) ?? candidates[0];
   run.pass = run.pass.filter((d) => d.id !== dish.id);
+  run.carrying = run.carrying.filter((id) => id !== dish.id);
 
   if (target.noGarnish && !dish.noGarnish) {
     s.report.allergic += 1;

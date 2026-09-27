@@ -129,6 +129,8 @@ export interface Customer {
   kind: CustomerKind;
   /** Số người trong bàn. */
   size: number;
+  /** Bàn đang ngồi; không có = đứng chờ ở cửa (shipper, đoàn công ty). */
+  tableIndex?: number;
   items: OrderItem[];
   patience: number;
   maxPatience: number;
@@ -239,6 +241,8 @@ export interface DayRuntime {
   customers: Customer[];
   slots: CookSlot[];
   pass: Dish[];
+  /** Id các món chủ quán đang cầm trên tay (vẫn nằm trong `pass`). */
+  carrying: string[];
   prepped: Partial<Record<IngredientId, number>>;
   playerPrep: PrepJob | null;
   cleanReadyAt: number;

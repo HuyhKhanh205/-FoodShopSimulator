@@ -53,6 +53,12 @@ export default function HomeScreen() {
             Thịt, rau, hành phải sơ chế trước. Chọn món để nấu trên bếp, nhấc ra đúng lúc (sớm quá thì sống, lâu quá thì cháy). Chọn món
             đã xong rồi bấm vào khách để mang ra. Khách dặn "không hành" thì nhớ bật nút 🚫 Không hành!
           </Text>
+          <Text style={styles.h}>🗺️ Góc nhìn nhân vật</Text>
+          <Text style={styles.p}>
+            Khi mở cửa, bạn điều khiển chủ quán đi trong bản đồ quán: chạm vào thớt, bếp, quầy ra món, bàn khách để đi tới và thao tác. Trên máy tính
+            dùng WASD / phím mũi tên để đi, E hoặc Space để thao tác. Cầm tối đa 2 món, tới bàn là tự đưa món khách gọi. Nút "📋 Bảng" để đổi sang
+            bảng điều khiển bấm nút.
+          </Text>
           <Text style={styles.h}>👥 Nhân viên</Text>
           <Text style={styles.p}>
             Thuê đầu bếp, phụ bếp, phục vụ để quán chạy nhanh hơn — nhưng họ có thể làm sai: nấu nhầm món, để cháy, quên ghi chú, mang nhầm bàn.

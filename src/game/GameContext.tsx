@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { newGame, tick } from './engine';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { newGame, putDownAll, tick } from './engine';
 import { defaultRng } from './helpers';
 import { clearSave, loadGame, saveGame } from './storage';
 import type { GameState, Rng } from './types';
@@ -46,6 +47,10 @@ function reducer(store: Store, action: Action): Store {
   }
 }
 
+/** map: điều khiển nhân vật trên bản đồ; panel: bảng điều khiển bấm nút. */
+export type ViewMode = 'map' | 'panel';
+const VIEW_MODE_KEY = 'foodshop.viewMode';
+
 interface GameContextValue {
   game: GameState | null;
   toast: Store['toast'];
@@ -53,6 +58,8 @@ interface GameContextValue {
   loading: boolean;
   paused: boolean;
   setPaused: (p: boolean) => void;
+  viewMode: ViewMode;
+  setViewMode: (m: ViewMode) => void;
   act: (fn: GameMutation) => void;
   startNewGame: () => void;
   continueGame: () => Promise<boolean>;
@@ -67,9 +74,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [hasSave, setHasSave] = useState(false);
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
+  const [viewMode, setViewModeState] = useState<ViewMode>('map');
   const game = store.game;
 
   useEffect(() => {
+    AsyncStorage.getItem(VIEW_MODE_KEY)
+      .then((v) => {
+        if (v === 'map' || v === 'panel') setViewModeState(v);
+      })
+      .catch(() => {});
     loadGame().then((saved) => {
       setHasSave(Boolean(saved));
       setLoading(false);
@@ -109,6 +122,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const act = useCallback((fn: GameMutation) => dispatch({ type: 'mutate', fn }), []);
 
+  const setViewMode = useCallback((m: ViewMode) => {
+    setViewModeState(m);
+    AsyncStorage.setItem(VIEW_MODE_KEY, m).catch(() => {});
+    // Bảng điều khiển không có khái niệm "cầm trên tay": đặt hết món về quầy.
+    if (m === 'panel') dispatch({ type: 'mutate', fn: (s) => putDownAll(s) });
+  }, []);
+
   const startNewGame = useCallback(() => {
     clearSave().catch(() => {});
     setPaused(false);
@@ -124,8 +144,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ game, toast: store.toast, hasSave, loading, paused, setPaused, act, startNewGame, continueGame }),
-    [game, store.toast, hasSave, loading, paused, act, startNewGame, continueGame]
+    () => ({ game, toast: store.toast, hasSave, loading, paused, setPaused, viewMode, setViewMode, act, startNewGame, continueGame }),
+    [game, store.toast, hasSave, loading, paused, viewMode, setViewMode, act, startNewGame, continueGame]
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

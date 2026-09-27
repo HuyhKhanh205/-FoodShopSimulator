@@ -32,7 +32,7 @@ npm run web          # mở http://localhost:8081
    rồi quét lại mã QR mới. Trên Windows, nếu hiện hộp thoại Firewall thì cho phép **Node.js** ở mạng **Private**.
 6. Expo Go báo *"incompatible SDK"* → cập nhật Expo Go lên bản mới nhất (dự án dùng Expo SDK 57).
 
-Kiểm tra kiểu: `npm run typecheck` · Mô phỏng cân bằng game (không cần giao diện): `npx tsx scripts/simulate.ts`
+Kiểm tra kiểu: `npm run typecheck` · Mô phỏng cân bằng game (không cần giao diện): `npx tsx scripts/simulate.ts` · Kiểm tra bản đồ: `npx tsx scripts/check-map.ts`
 
 ## Lối chơi
 
@@ -41,6 +41,19 @@ Kiểm tra kiểu: `npm run typecheck` · Mô phỏng cân bằng game (không c
 | ☀️ Chợ sáng | Mua nguyên liệu (giá dao động mỗi ngày, đồ tươi hỏng sau 1–2 ngày), thuê/sa thải nhân viên, nâng cấp quán, mở khóa món mới, trả nợ |
 | 🏮 Mở cửa | **Sơ chế** thịt/rau/hành → **nấu** trên bếp (nhấc sớm = sống, để lâu = cháy) → chọn món ở quầy ra món → **bấm vào khách** để phục vụ |
 | 🌙 Tổng kết | Thu chi, số bàn phục vụ/bỏ về, lỗi nhân viên, đánh giá sao của khách |
+
+### 🗺️ Góc nhìn nhân vật (chế độ bản đồ — mặc định)
+Giờ mở cửa hiển thị quán nhìn từ trên xuống: bếp, quầy pha chế, kho, thớt ở trên; quầy ra món ở giữa; bàn khách và cửa ra vào ở dưới. Bạn điều khiển chủ quán 🧑‍🍳 đi lại:
+
+| Thao tác | Điện thoại | Máy tính |
+|---|---|---|
+| Đi tới đồ vật / ô sàn | Chạm vào đó | Nhấp chuột, hoặc **WASD / phím mũi tên** |
+| Thao tác với đồ vật bên cạnh | Tự hiện bảng hành động khi tới nơi | **E / Space / Enter** |
+
+- **Thớt** 🔪: sơ chế · **Bếp** 🔥 / **Quầy** 🥤: chọn món để nấu, tới lại khi chín là tự nhấc lên tay · **Quầy ra món** 🛎️: cầm / đặt món · **Bàn** 🪑 / **Cửa** 🚪: tới nơi là tự đưa món đang cầm khớp đơn (không bao giờ tự đưa món có hành cho khách dặn "không hành") · **Thùng rác** 🗑️ · **Lau dọn** 🧽 · **Kho** 🧊: xem tồn kho.
+- Cầm tối đa **2 món**. Bàn có viền xanh = khách đang chờ món bạn cầm.
+- Nhân viên cũng hiện trên bản đồ: đầu bếp đứng bếp, phụ bếp ở thớt, phục vụ chạy tới bàn.
+- Nút **📋 Bảng / 🗺️ Bản đồ** trên thanh đồng hồ để chuyển qua lại với bảng điều khiển bấm nút (lựa chọn được ghi nhớ).
 
 ### Nhân viên (có tỉ lệ làm sai)
 - **Đầu bếp** tự nấu, **phụ bếp** tự sơ chế, **phục vụ** tự mang món, lau dọn, chặn khách bùng tiền.
@@ -64,11 +77,14 @@ src/game/          Logic thuần (không phụ thuộc React) — dễ kiểm th
   engine.ts        Vòng lặp tick, hành động người chơi, AI nhân viên, đóng/mở ngày
   customers.ts     Sinh khách, phục vụ, thanh toán, đánh giá
   events.ts        Các tình huống ngẫu nhiên và lựa chọn
+  layout.ts        Bố cục bản đồ quán + tìm đường (BFS) cho chế độ góc nhìn nhân vật
   storage.ts       Lưu/tải bằng AsyncStorage (tự lưu ngoài giờ mở cửa)
   GameContext.tsx  Kết nối engine với React (đồng hồ 200ms, tự lưu)
 src/screens/       Home, Game (Chợ / Mở cửa / Tổng kết), Nhân viên, Nâng cấp
-src/components/    CustomerCard, CookSlotCard, EventModal, Hud, ui
+src/components/    CustomerCard, CookSlotCard, EventModal, Hud, ShopTopBar, ui
+  map/             Vẽ bản đồ: đồ vật, bàn khách, nhân vật, nhân viên, bảng hành động
 scripts/simulate.ts  Bot chơi thử 30 ngày để cân bằng số liệu
+scripts/check-map.ts Kiểm tra bản đồ và việc cầm/đưa món
 ```
 
 Màn hình rộng (≥ 900px, máy tính) hiển thị 3 cột; màn hình hẹp (điện thoại) chia tab.

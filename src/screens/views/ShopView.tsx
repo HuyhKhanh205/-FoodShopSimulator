@@ -3,12 +3,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import CookSlotCard from '../../components/CookSlotCard';
 import CustomerCard from '../../components/CustomerCard';
 import Hud from '../../components/Hud';
+import ShopTopBar from '../../components/ShopTopBar';
 import { Button, Panel, ProgressBar, colors } from '../../components/ui';
 import { CLOSE_HOUR, DAY_MS, INGREDIENTS, OPEN_HOUR, PLAYER_PREP_MS, RECIPES, ROLE_EMOJI, ROLE_LABEL } from '../../game/data';
 import {
   discardDish,
-  isPeak,
-  playerClean,
   playerCook,
   playerPrep,
   playerServe,
@@ -48,7 +47,7 @@ function staffStatus(st: Staff, elapsed: number): string {
 
 export default function ShopView() {
   const game = useGameState();
-  const { act, paused, setPaused } = useGame();
+  const { act } = useGame();
   const { width } = useWindowDimensions();
   const wide = width >= 900;
   const [tab, setTab] = useState<Tab>('serve');
@@ -77,26 +76,8 @@ export default function ShopView() {
     setSelectedDish(null);
   };
 
-  const hour = formatClock(run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR);
-  const peak = isPeak(run.elapsed);
   const powerOut = run.elapsed < run.powerOutUntil;
   const gasOut = run.elapsed < run.gasOutUntil;
-  const cleanReady = run.elapsed >= run.cleanReadyAt;
-
-  const topBar = (
-    <View style={styles.topBar}>
-      <View style={styles.flex}>
-        <Text style={styles.clock}>
-          🕐 {hour} {peak ? <Text style={styles.peak}>· Giờ cao điểm!</Text> : null}
-          {powerOut ? <Text style={styles.warn}> · 🔌 Cúp điện</Text> : null}
-          {gasOut ? <Text style={styles.warn}> · 🛢️ Hết gas</Text> : null}
-        </Text>
-        <ProgressBar value={run.elapsed / DAY_MS} height={5} color={colors.primary} />
-      </View>
-      <Button small variant="secondary" label={cleanReady ? '🧽 Lau dọn' : '🧽 ...'} disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />
-      <Button small variant={paused ? 'primary' : 'secondary'} label={paused ? '▶️ Tiếp' : '⏸️ Dừng'} onPress={() => setPaused(!paused)} />
-    </View>
-  );
 
   const passPanel = (
     <Panel title={`🛎️ Quầy ra món (${run.pass.length})`} right={<Text style={styles.hint}>Chọn món → bấm vào khách</Text>}>
@@ -233,7 +214,7 @@ export default function ShopView() {
     return (
       <View style={styles.flex}>
         <Hud game={game} />
-        {topBar}
+        <ShopTopBar />
         <View style={styles.columns}>
           <ScrollView style={styles.col} contentContainerStyle={styles.colContent}>
             {passPanel}
@@ -254,7 +235,7 @@ export default function ShopView() {
   return (
     <View style={styles.flex}>
       <Hud game={game} />
-      {topBar}
+      <ShopTopBar />
       <View style={styles.tabs}>
         {TABS.map((t) => (
           <Pressable key={t.key} onPress={() => setTab(t.key)} style={[styles.tab, tab === t.key && styles.tabActive]}>
