@@ -13,7 +13,24 @@ npm install
 npm run web          # mở http://localhost:8081
 ```
 
-Chạy trên điện thoại: `npm start` rồi quét QR bằng app **Expo Go**.
+## 📱 Chạy trên điện thoại (Expo Go)
+
+1. Cài app **Expo Go** (App Store / CH Play), mở một lần. Trên iPhone, khi được hỏi quyền **"Mạng cục bộ / Local Network"** thì bấm **Cho phép**.
+2. Máy tính và điện thoại **cùng một mạng Wi-Fi**. Trong thư mục dự án chạy:
+   ```bash
+   npm start
+   ```
+   (không phải `npm run web`). Terminal sẽ in ra **một mã QR lớn** và dòng `Metro waiting on exp://192.168.x.x:8081`.
+3. Quét mã QR:
+   - **iPhone:** trong Expo Go **không có nút quét** — mở **app Camera mặc định** của iPhone, hướng vào mã QR trên màn hình máy tính, rồi bấm dòng thông báo **"Mở trong Expo Go"** hiện ra.
+   - **Android:** mở Expo Go → bấm **"Scan QR code"**.
+4. Camera không nhận mã? Mở Expo Go → **"Enter URL manually"** → gõ đúng địa chỉ `exp://192.168.x.x:8081` in trong terminal.
+5. Vẫn không vào được (Wi-Fi trường/quán cà phê chặn thiết bị kết nối với nhau, hoặc tường lửa): chạy
+   ```bash
+   npm run tunnel
+   ```
+   rồi quét lại mã QR mới. Trên Windows, nếu hiện hộp thoại Firewall thì cho phép **Node.js** ở mạng **Private**.
+6. Expo Go báo *"incompatible SDK"* → cập nhật Expo Go lên bản mới nhất (dự án dùng Expo SDK 57).
 
 Kiểm tra kiểu: `npm run typecheck` · Mô phỏng cân bằng game (không cần giao diện): `npx tsx scripts/simulate.ts`
 
