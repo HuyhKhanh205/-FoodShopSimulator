@@ -13,6 +13,13 @@ npm install
 npm run web          # mở http://localhost:8081
 ```
 
+## 🌐 Bản web một file (chơi không cần máy chủ)
+
+```bash
+npm run build:html   # tạo dist/foodshop.html
+```
+File `dist/foodshop.html` chứa toàn bộ game, mở bằng bất kỳ trình duyệt nào (kể cả điện thoại) là chơi được. Tiến trình lưu trong trình duyệt.
+
 ## 📱 Chạy trên điện thoại (Expo Go)
 
 1. Cài app **Expo Go** (App Store / CH Play), mở một lần. Trên iPhone, khi được hỏi quyền **"Mạng cục bộ / Local Network"** thì bấm **Cho phép**.

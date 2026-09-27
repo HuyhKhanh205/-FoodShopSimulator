@@ -9,7 +9,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:html": "expo export --platform web && node scripts/build-single-html.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
