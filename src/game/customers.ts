@@ -4,7 +4,10 @@ import type { Customer, CustomerKind, GameState, OrderItem, RecipeId, Rng, Staff
 
 const QUALITY_SCORE = { perfect: 1, raw: 0.35, burnt: 0.05 } as const;
 
-/** Thời gian khách chịu chờ (ms) trước khi bỏ về. */
+/** Hệ số kéo dài thời gian chờ của mọi khách. */
+const PATIENCE_BONUS = 1.3;
+
+/** Thời gian khách chịu chờ (ms) trước khi bỏ về (trước khi nhân PATIENCE_BONUS). */
 const BASE_PATIENCE: Record<CustomerKind, number> = {
   normal: 75_000,
   picky: 48_000,
@@ -81,7 +84,7 @@ export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, grou
     }
   }
 
-  const patience = (BASE_PATIENCE[kind] + 12_000 * (size - 1)) * (1 + 0.2 * s.upgrades.aircon);
+  const patience = (BASE_PATIENCE[kind] + 12_000 * (size - 1)) * PATIENCE_BONUS * (1 + 0.2 * s.upgrades.aircon);
   return {
     id: nextId(s, 'c'),
     name,

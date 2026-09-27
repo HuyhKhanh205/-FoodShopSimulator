@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, LayoutChangeEvent, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import FirstPersonView from '../../components/fp/FirstPersonView';
 import ActionSheet from '../../components/map/ActionSheet';
 import Map2D from '../../components/map/Map2D';
 import MapHud from '../../components/scene/MapHud';
@@ -43,16 +44,27 @@ export default function ShopMapView() {
   };
   const portrait = size.h > size.w * 1.05;
   const yaw = portrait ? PORTRAIT_YAW : LANDSCAPE_YAW;
+  // Điện thoại: phóng to cảnh 30% và camera đi theo nhân vật.
+  const zoom = width < 600 ? 1.3 : 1;
   const cam = useMemo(makeCamera, []);
-  useMemo(() => {
-    if (size.w > 0 && size.h > 0) fitCamera(cam, size.w, size.h, yaw);
-  }, [cam, size.w, size.h, yaw]);
+  const baseCam = useMemo(makeCamera, []);
+  const overlayPan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const frame = useMemo(() => {
+    const w = Math.max(1, size.w);
+    const h = Math.max(1, size.h);
+    fitCamera(baseCam, w, h, yaw, zoom);
+    return fitCamera(cam, w, h, yaw, zoom);
+  }, [cam, baseCam, size.w, size.h, yaw, zoom]);
 
   // ---------- Nhân vật chủ quán ----------
   const walker = useWalker(layout.start);
   const [here, setHere] = useState<MapStation | null>(null);
   const [walkingTo, setWalkingTo] = useState<string | null>(null);
   const [noGarnish, setNoGarnish] = useState(false);
+  /** Đồ vật đang thao tác ở góc nhìn thứ nhất (thớt / bếp / quầy). */
+  const [fp, setFp] = useState<MapStation | null>(null);
+  const fpOpen = useRef(false);
+  fpOpen.current = fp !== null;
   const gameRef = useRef(game);
   gameRef.current = game;
 
@@ -63,12 +75,16 @@ export default function ShopMapView() {
       if (!station || !station.active) return;
       const r = gameRef.current.run;
       if (!r) return;
-      // Tự động làm việc hiển nhiên khi tới nơi.
+      // Tự động làm việc hiển nhiên khi tới nơi; thớt / bếp / quầy thì mở góc nhìn thứ nhất.
       if (station.slotId) {
         const job = r.slots.find((s) => s.id === station.slotId)?.job;
         if (job && job.by === 'player' && job.progress >= job.cookTime && r.carrying.length < MAX_CARRY) {
           act((s) => playerTakeOut(s, station.slotId!, true));
+        } else if (has3D) {
+          setFp(station);
         }
+      } else if (station.kind === 'board' && has3D) {
+        setFp(station);
       } else if ((station.kind === 'table' || station.kind === 'door') && r.carrying.length) {
         const ids = r.customers
           .filter((c) => (station.kind === 'table' ? c.tableIndex === station.tableIndex : c.tableIndex === undefined))
@@ -76,7 +92,7 @@ export default function ShopMapView() {
         if (ids.length) act((s, rng) => void autoServeCarried(s, ids, rng));
       }
     },
-    [act]
+    [act, has3D]
   );
 
   const goToStation = useCallback(
@@ -118,6 +134,8 @@ export default function ShopMapView() {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
     const onKey = (e: KeyboardEvent) => {
+      // Góc nhìn thứ nhất tự xử lý phím của nó.
+      if (fpOpen.current) return;
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
       const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
@@ -126,7 +144,7 @@ export default function ShopMapView() {
         e.preventDefault();
         const dir = screenDirToTile(screenDir, keyYaw);
         walker.face(dir);
-        const p = walker.origin();
+        const p = walker.dest();
         const next = { x: p.x + dir.x, y: p.y + dir.y };
         if (!isWalkable(layout, next.x, next.y)) {
           arrive(stationAt(layout, next.x, next.y));
@@ -161,7 +179,16 @@ export default function ShopMapView() {
 
   const scene = (
     <View style={styles.scene} onLayout={onLayout}>
-      {size.w > 0 &&
+      {size.w > 0 && fp ? (
+        <FirstPersonView
+          station={layout.stations.find((x) => x.id === fp.id) ?? fp}
+          game={game}
+          act={act}
+          onExit={() => setFp(null)}
+          noGarnish={noGarnish}
+          setNoGarnish={setNoGarnish}
+        />
+      ) : size.w > 0 &&
         (has3D ? (
           <>
             <ShopScene3D
@@ -169,12 +196,14 @@ export default function ShopMapView() {
               layout={layout}
               walker={walker.state}
               cam={cam}
+              frame={frame}
+              overlayPan={overlayPan}
               hereId={hereId}
               walkingTo={walkingTo}
               wanted={wanted}
               onTapTile={goToTile}
             />
-            <SceneOverlay game={game} layout={layout} cam={cam} w={size.w} h={size.h} />
+            <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} />
           </>
         ) : (
           <Map2D
@@ -190,12 +219,14 @@ export default function ShopMapView() {
             onStation={goToStation}
           />
         ))}
-      <MapHud compact={!wide} />
-      <View pointerEvents="none" style={styles.hands}>
-        <Text style={styles.handsText}>
-          🤲 {carried.length ? carried.map((d) => RECIPES[d.recipeId].emoji + (d.noGarnish ? '🚫' : '')).join(' ') : 'Tay không'}
-        </Text>
-      </View>
+      {!fp && <MapHud compact={!wide} />}
+      {!fp && (
+        <View pointerEvents="none" style={styles.hands}>
+          <Text style={styles.handsText}>
+            🤲 {carried.length ? carried.map((d) => RECIPES[d.recipeId].emoji + (d.noGarnish ? '🚫' : '')).join(' ') : 'Tay không'}
+          </Text>
+        </View>
+      )}
     </View>
   );
 
@@ -238,13 +269,15 @@ export default function ShopMapView() {
   return (
     <View style={styles.flex}>
       {scene}
-      <View style={styles.sheet}>
-        <View style={styles.grabber} />
-        <ScrollView contentContainerStyle={styles.sheetContent}>
-          {sheet}
-          <Text style={styles.hint}>{hint}</Text>
-        </ScrollView>
-      </View>
+      {!fp && (
+        <View style={styles.sheet}>
+          <View style={styles.grabber} />
+          <ScrollView contentContainerStyle={styles.sheetContent}>
+            {sheet}
+            <Text style={styles.hint}>{hint}</Text>
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 }
@@ -270,7 +303,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12, gap: 4 },
   cardTitle: { fontWeight: '800', color: colors.text, marginBottom: 4 },
   sheet: {
-    maxHeight: '40%',
+    maxHeight: '32%',
     minHeight: 150,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,

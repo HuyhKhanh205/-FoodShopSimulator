@@ -62,6 +62,14 @@ Giờ mở cửa hiển thị quán dạng **3D nhìn chéo từ trên** (three.
 - Nhân viên cũng hiện trên bản đồ: đầu bếp đứng bếp, phụ bếp ở thớt, phục vụ chạy tới bàn.
 - Nút **📋 Bảng / 🗺️ Bản đồ** trên thanh đồng hồ để chuyển qua lại với bảng điều khiển bấm nút (lựa chọn được ghi nhớ).
 
+### 👀 Góc nhìn thứ nhất khi sơ chế / nấu
+Tới **thớt**, **bếp** hoặc **quầy pha chế** là chuyển sang góc nhìn qua mắt chủ quán: thấy hai tay, dao và thớt / nồi trên lửa / ly nước.
+- Thớt: chọn nguyên liệu rồi **chạm liên tục** để thái nhanh hơn (mỗi nhát rút 0,35 giây), lát cắt rơi ra, xong thì vào bát.
+- Bếp: chọn món, **chạm để khuấy** (món chín nhanh hơn, khuấy không làm cháy), sắp cháy thì món sẫm lại và bốc khói đen — bấm **Nhấc ra** để cầm món trên tay.
+- Quầy pha chế: ly đầy dần, chạm để lắc bình. Nút **⬅ Về quán** (hoặc phím Esc) để quay lại; Space / E để thái – khuấy trên máy tính.
+
+Trên điện thoại cảnh quán được phóng to 30% và camera đi theo nhân vật.
+
 ### 🧑‍🍳 Tạo nhân vật
 Khi bấm **Chơi mới**, bạn tạo chủ quán (xem trước 3D xoay tròn): tên chủ quán, tên quán, giới tính, kiểu tóc (ngắn, dựng, dài, búi, trọc), màu tóc, màu da, màu áo / tạp dề / quần, mũ (mũ đầu bếp, lưỡi trai, nón lá, khăn trùm) và kính; có nút 🎲 Ngẫu nhiên. Sửa lại được mỗi buổi sáng bằng nút **🧑‍🍳 Nhân vật** ở màn chợ.
 

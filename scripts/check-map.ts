@@ -52,4 +52,27 @@ for (let i = 0; i < 2000 && spawned < 3; i += 1) {
 const tables = s.run!.customers.filter((c) => c.kind !== 'delivery' && c.kind !== 'group').map((c) => c.tableIndex);
 check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.length, `khách ngồi bàn riêng: ${tables.join(', ')}`);
 
+// 4. Góc nhìn thứ nhất: thái và khuấy.
+{
+  const r2 = seededRng(3);
+  const g = E.newGame(r2);
+  g.activeEvent = null;
+  E.buy(g, 'thit_bo', 10);
+  E.openShop(g, r2);
+  const run2 = g.run!;
+  E.playerPrep(g, 'thit_bo');
+  const before = run2.playerPrep!.endsAt;
+  for (let i = 0; i < 20; i += 1) E.playerChop(g);
+  check(run2.playerPrep!.endsAt === run2.elapsed && before > run2.elapsed, 'chạm liên tục thì thái xong ngay, không âm thời gian');
+  E.tick(g, 50, r2);
+  check((run2.prepped.thit_bo ?? 0) === 4, 'thái xong có 4 phần thịt bò');
+
+  run2.slots[0].job = { recipeId: 'pho_bo', noGarnish: false, progress: 0, cookTime: 7000, by: 'player' };
+  for (let i = 0; i < 100; i += 1) E.playerStir(g, run2.slots[0].id);
+  check(run2.slots[0].job!.progress === 7000, 'khuấy nhiều cũng chỉ tới lúc chín, không làm cháy');
+  run2.slots[1].job = { recipeId: 'com_ga', noGarnish: false, progress: 0, cookTime: 6000, by: 'st99' };
+  E.playerStir(g, run2.slots[1].id);
+  check(run2.slots[1].job!.progress === 0, 'không khuấy được món nhân viên đang nấu');
+}
+
 process.exit(failed ? 1 : 0);

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import { BURN_FACTOR, PLAYER_PREP_MS, RECIPES } from '../../game/data';
 import type { MapLayout, MapStation } from '../../game/layout';
 import type { Customer, GameState } from '../../game/types';
@@ -31,7 +31,23 @@ function OrderBubble({ c, font }: { c: Customer; font: number }) {
  * Lớp chữ nổi trên cảnh 3D (không nhận chạm): món khách gọi, tiến độ nấu,
  * món trên quầy ra món, nhãn đồ vật. Vị trí được chiếu từ toạ độ 3D qua cùng camera.
  */
-export default function SceneOverlay({ game, layout, cam, w, h }: { game: GameState; layout: MapLayout; cam: CameraCam; w: number; h: number }) {
+export default function SceneOverlay({
+  game,
+  layout,
+  cam,
+  w,
+  h,
+  pan,
+}: {
+  game: GameState;
+  layout: MapLayout;
+  /** Camera gốc (không dời theo nhân vật). */
+  cam: CameraCam;
+  w: number;
+  h: number;
+  /** Độ dời màn hình hiện tại của camera đi theo nhân vật. */
+  pan: Animated.ValueXY;
+}) {
   const run = game.run!;
   const p = (x: number, y: number, z: number) => project(cam, x, y, z, w, h);
   // Số px cho 1 ô: dùng để co giãn cỡ chữ theo mức phóng.
@@ -111,8 +127,8 @@ export default function SceneOverlay({ game, layout, cam, w, h }: { game: GameSt
   }
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {items}
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: pan.x }, { translateY: pan.y }] }]}>{items}</Animated.View>
     </View>
   );
 }

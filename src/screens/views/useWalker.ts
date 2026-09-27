@@ -70,6 +70,12 @@ export function useWalker(start: Tile) {
   /** Ô đang đứng (làm tròn khi đang đi giữa hai ô). */
   const origin = useCallback((): Tile => ({ x: Math.round(state.current.x), y: Math.round(state.current.y) }), []);
 
+  /** Ô sẽ đứng khi đi hết đường hiện tại (để phím bấm liên tiếp nối tiếp nhau). */
+  const dest = useCallback((): Tile => {
+    const j = job.current;
+    return j ? j.path[j.path.length - 1] : origin();
+  }, [origin]);
+
   const walk = useCallback(
     (path: Tile[], onDone: () => void) => {
       if (path.length === 0) {
@@ -96,5 +102,5 @@ export function useWalker(start: Tile) {
     []
   );
 
-  return useMemo(() => ({ state, anim, walk, origin, face }), [anim, walk, origin, face]);
+  return useMemo(() => ({ state, anim, walk, origin, dest, face }), [anim, walk, origin, dest, face]);
 }

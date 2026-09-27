@@ -1,10 +1,24 @@
 import { useRef } from 'react';
+import { DoubleSide } from 'three';
 import type { Group } from 'three';
 import { useFrame } from '../../three/fiber';
 import type { Look } from './looks';
 
+/** Vật liệu mịn, hơi mờ như vải/da (đổ bóng mềm thay vì mặt phẳng). */
+function Mat({ color, rough = 0.78, opacity }: { color: string; rough?: number; opacity?: number }) {
+  return (
+    <meshStandardMaterial
+      color={color}
+      roughness={rough}
+      metalness={0}
+      transparent={opacity !== undefined}
+      opacity={opacity ?? 1}
+    />
+  );
+}
+
 /**
- * Nhân vật low-poly (cao ~1 ô). Gốc toạ độ ở giữa hai bàn chân, mặt hướng +z.
+ * Nhân vật bo tròn (cao ~1 ô). Gốc toạ độ ở giữa hai bàn chân, mặt hướng +z.
  * `isMoving` được đọc mỗi khung hình để vung tay chân khi đi.
  */
 export default function Character({
@@ -26,67 +40,85 @@ export default function Character({
   const legR = useRef<Group>(null);
   const armL = useRef<Group>(null);
   const armR = useRef<Group>(null);
+  const head = useRef<Group>(null);
   const phase = useRef(Math.random() * 10);
   const holding = carrying.length > 0;
 
   useFrame((_, dt) => {
     const moving = isMoving ? isMoving() : false;
     phase.current += dt * (moving ? 11 : 2);
-    const swing = moving ? Math.sin(phase.current) * 0.7 : 0;
-    const idle = Math.sin(phase.current) * 0.015;
-    if (body.current) body.current.position.y = (seated ? 0.1 : 0) + (moving ? Math.abs(Math.sin(phase.current)) * 0.04 : idle);
+    const swing = moving ? Math.sin(phase.current) * 0.65 : 0;
+    const breathe = Math.sin(phase.current) * 0.012;
+    if (body.current) {
+      body.current.position.y = (seated ? 0.1 : 0) + (moving ? Math.abs(Math.sin(phase.current)) * 0.035 : breathe);
+      body.current.rotation.z = moving ? Math.sin(phase.current) * 0.04 : 0;
+    }
+    if (head.current) head.current.rotation.y = moving ? 0 : Math.sin(phase.current * 0.35) * 0.18;
     if (!seated) {
       if (legL.current) legL.current.rotation.x = swing;
       if (legR.current) legR.current.rotation.x = -swing;
     }
     const armBase = holding ? -1.25 : seated ? -0.5 : 0;
-    if (armL.current) armL.current.rotation.x = armBase + (holding ? 0 : -swing * 0.8);
-    if (armR.current) armR.current.rotation.x = armBase + (holding ? 0 : swing * 0.8);
+    if (armL.current) {
+      armL.current.rotation.x = armBase + (holding ? 0 : -swing * 0.8);
+      armL.current.rotation.z = holding ? 0.15 : -0.08;
+    }
+    if (armR.current) {
+      armR.current.rotation.x = armBase + (holding ? 0 : swing * 0.8);
+      armR.current.rotation.z = holding ? -0.15 : 0.08;
+    }
   });
 
   const cast = shadows;
+  const f = look.female;
+  const shoulder = f ? 0.18 : 0.2;
   return (
     <group ref={body}>
-      {/* Chân */}
+      {/* Chân + giày */}
       {[
-        [legL, -0.085],
-        [legR, 0.085],
+        [legL, -0.075],
+        [legR, 0.075],
       ].map(([ref, x], i) => (
-        <group key={i} ref={ref as React.RefObject<Group>} position={[x as number, 0.34, 0]} rotation={[seated ? -1.45 : 0, 0, 0]}>
-          <mesh position={[0, -0.16, 0]} castShadow={cast}>
-            <boxGeometry args={[0.12, 0.34, 0.14]} />
-            <meshLambertMaterial color={look.pants} />
+        <group key={i} ref={ref as React.RefObject<Group>} position={[x as number, 0.36, 0]} rotation={[seated ? -1.45 : 0, 0, 0]}>
+          <mesh position={[0, -0.14, 0]} castShadow={cast}>
+            <capsuleGeometry args={[0.058, 0.2, 6, 12]} />
+            <Mat color={look.pants} />
           </mesh>
-          <mesh position={[0, -0.32, 0.03]} castShadow={cast}>
-            <boxGeometry args={[0.13, 0.06, 0.19]} />
-            <meshLambertMaterial color="#3E2723" />
+          <mesh position={[0, -0.31, 0.035]} rotation-x={Math.PI / 2} castShadow={cast}>
+            <capsuleGeometry args={[0.052, 0.07, 6, 12]} />
+            <Mat color="#3E2723" rough={0.5} />
           </mesh>
         </group>
       ))}
-      {/* Thân (nữ: vai hẹp, eo thon hơn) */}
-      <mesh position={[0, 0.52, 0]} castShadow={cast}>
-        <cylinderGeometry args={look.female ? [0.15, 0.19, 0.38, 10] : [0.17, 0.2, 0.38, 10]} />
-        <meshLambertMaterial color={look.shirt} />
+      {/* Hông */}
+      <mesh position={[0, 0.38, 0]} scale={[f ? 1.12 : 1, 0.62, 0.8]} castShadow={cast}>
+        <sphereGeometry args={[0.16, 20, 14]} />
+        <Mat color={look.pants} />
+      </mesh>
+      {/* Thân */}
+      <mesh position={[0, 0.55, 0]} scale={[f ? 0.95 : 1.05, 1, 0.8]} castShadow={cast}>
+        <capsuleGeometry args={[0.15, 0.17, 8, 18]} />
+        <Mat color={look.shirt} />
       </mesh>
       {look.apron && (
-        <mesh position={[0, 0.47, 0.17]} rotation={[-0.08, 0, 0]} castShadow={cast}>
-          <boxGeometry args={[0.28, 0.34, 0.03]} />
-          <meshLambertMaterial color={look.apron} />
+        <mesh position={[0, 0.49, 0]} scale={[f ? 0.98 : 1.08, 1, 0.84]}>
+          <cylinderGeometry args={[0.158, 0.172, 0.34, 20, 1, true, -0.95, 1.9]} />
+          <meshStandardMaterial color={look.apron} roughness={0.8} side={DoubleSide} />
         </mesh>
       )}
       {/* Tay */}
       {[
-        [armL, -0.24],
-        [armR, 0.24],
+        [armL, -shoulder],
+        [armR, shoulder],
       ].map(([ref, x], i) => (
-        <group key={i} ref={ref as React.RefObject<Group>} position={[x as number, 0.68, 0]}>
-          <mesh position={[0, -0.14, 0]} castShadow={cast}>
-            <boxGeometry args={[0.09, 0.3, 0.1]} />
-            <meshLambertMaterial color={look.shirt} />
+        <group key={i} ref={ref as React.RefObject<Group>} position={[x as number, 0.66, 0]}>
+          <mesh position={[0, -0.13, 0]} castShadow={cast}>
+            <capsuleGeometry args={[0.048, 0.2, 6, 12]} />
+            <Mat color={look.shirt} />
           </mesh>
-          <mesh position={[0, -0.31, 0]}>
-            <sphereGeometry args={[0.055, 8, 6]} />
-            <meshLambertMaterial color={look.skin} />
+          <mesh position={[0, -0.29, 0]}>
+            <sphereGeometry args={[0.05, 14, 10]} />
+            <Mat color={look.skin} rough={0.6} />
           </mesh>
         </group>
       ))}
@@ -94,105 +126,153 @@ export default function Character({
       {carrying.slice(0, 2).map((color, i) => (
         <group key={i} position={[carrying.length > 1 ? (i === 0 ? -0.16 : 0.16) : 0, 0.62, 0.36]}>
           <mesh castShadow={cast}>
-            <cylinderGeometry args={[0.15, 0.12, 0.03, 14]} />
-            <meshLambertMaterial color="#FFFFFF" />
+            <cylinderGeometry args={[0.15, 0.12, 0.03, 20]} />
+            <Mat color="#FFFFFF" rough={0.3} />
           </mesh>
-          <mesh position={[0, 0.05, 0]}>
-            <sphereGeometry args={[0.1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshLambertMaterial color={color} />
+          <mesh position={[0, 0.03, 0]}>
+            <sphereGeometry args={[0.1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+            <Mat color={color} rough={0.6} />
           </mesh>
         </group>
       ))}
-      {/* Đầu */}
-      <mesh position={[0, 0.88, 0]} castShadow={cast}>
-        <sphereGeometry args={[0.175, 14, 10]} />
-        <meshLambertMaterial color={look.skin} />
+      {/* Cổ + đầu */}
+      <mesh position={[0, 0.715, 0]}>
+        <cylinderGeometry args={[0.05, 0.055, 0.07, 12]} />
+        <Mat color={look.skin} rough={0.6} />
       </mesh>
-      <Hair style={look.hairStyle ?? 'short'} color={look.hair} cast={cast} />
-      {look.glasses && (
-        <group position={[0, 0.9, 0.17]}>
-          {[-0.065, 0.065].map((x) => (
-            <mesh key={x} position={[x, 0, 0]}>
-              <torusGeometry args={[0.045, 0.01, 6, 14]} />
-              <meshBasicMaterial color="#212121" />
+      <group ref={head}>
+        <mesh position={[0, 0.87, 0]} scale={[1, 1.02, 0.96]} castShadow={cast}>
+          <sphereGeometry args={[0.17, 28, 20]} />
+          <Mat color={look.skin} rough={0.6} />
+        </mesh>
+        {[-1, 1].map((sx) => (
+          <mesh key={`ear${sx}`} position={[sx * 0.168, 0.865, 0]} scale={[0.6, 1, 0.8]}>
+            <sphereGeometry args={[0.035, 12, 8]} />
+            <Mat color={look.skin} rough={0.6} />
+          </mesh>
+        ))}
+        {/* Mắt: lòng trắng + con ngươi + lông mày */}
+        {[-0.058, 0.058].map((x) => (
+          <group key={`eye${x}`} position={[x, 0.885, 0.148]}>
+            <mesh scale={[1, 1.15, 0.5]}>
+              <sphereGeometry args={[0.03, 14, 10]} />
+              <meshStandardMaterial color="#FFFFFF" roughness={0.3} />
             </mesh>
-          ))}
-          <mesh>
-            <boxGeometry args={[0.04, 0.01, 0.01]} />
-            <meshBasicMaterial color="#212121" />
+            <mesh position={[0, -0.002, 0.012]}>
+              <sphereGeometry args={[0.018, 12, 8]} />
+              <meshStandardMaterial color="#1B1B1B" roughness={0.2} />
+            </mesh>
+            <mesh position={[0, 0.042, 0.008]} rotation-z={Math.PI / 2 + (x > 0 ? -0.15 : 0.15)}>
+              <capsuleGeometry args={[0.008, 0.035, 4, 6]} />
+              <Mat color={look.hair} />
+            </mesh>
+          </group>
+        ))}
+        {[-0.098, 0.098].map((x) => (
+          <mesh key={`cheek${x}`} position={[x, 0.835, 0.13]} scale={[1, 0.7, 0.4]}>
+            <sphereGeometry args={[0.028, 10, 8]} />
+            <Mat color="#F48FB1" opacity={0.55} />
           </mesh>
-        </group>
-      )}
-      {[-0.065, 0.065].map((x) => (
-        <mesh key={x} position={[x, 0.9, 0.158]}>
-          <sphereGeometry args={[0.028, 6, 5]} />
-          <meshBasicMaterial color="#1B1B1B" />
+        ))}
+        <mesh position={[0, 0.815, 0.16]} rotation={[0.2, 0, Math.PI]}>
+          <torusGeometry args={[0.028, 0.006, 6, 14, Math.PI]} />
+          <meshStandardMaterial color="#8D4B3B" roughness={0.5} />
         </mesh>
-      ))}
-      <mesh position={[0, 0.83, 0.17]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.012, 0.012, 0.08, 5]} />
-        <meshBasicMaterial color="#8D4B3B" />
-      </mesh>
-      {/* Mũ */}
-      {look.hat === 'chef' && (
-        <group position={[0, 1.04, 0]}>
-          <mesh castShadow={cast}>
-            <cylinderGeometry args={[0.13, 0.13, 0.12, 12]} />
-            <meshLambertMaterial color={look.hatColor ?? '#FFFFFF'} />
-          </mesh>
-          <mesh position={[0, 0.1, 0]} castShadow={cast}>
-            <sphereGeometry args={[0.16, 12, 8]} />
-            <meshLambertMaterial color={look.hatColor ?? '#FFFFFF'} />
-          </mesh>
-        </group>
-      )}
-      {look.hat === 'helmet' && (
-        <mesh position={[0, 0.95, 0]} castShadow={cast}>
-          <sphereGeometry args={[0.2, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshLambertMaterial color={look.hatColor ?? '#2E7D32'} />
-        </mesh>
-      )}
-      {look.hat === 'conical' && (
-        <mesh position={[0, 1.1, 0]} castShadow={cast}>
-          <coneGeometry args={[0.36, 0.22, 18]} />
-          <meshLambertMaterial color={look.hatColor ?? '#E6C98A'} />
-        </mesh>
-      )}
-      {look.hat === 'bandana' && (
-        <group position={[0, 0.97, 0]}>
-          <mesh rotation={[-0.2, 0, 0]}>
-            <sphereGeometry args={[0.19, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2.3]} />
-            <meshLambertMaterial color={look.hatColor ?? '#C62828'} />
-          </mesh>
-          <mesh position={[0, -0.02, -0.19]} rotation={[0.6, 0, 0]}>
-            <coneGeometry args={[0.06, 0.14, 4]} />
-            <meshLambertMaterial color={look.hatColor ?? '#C62828'} />
-          </mesh>
-        </group>
-      )}
-      {look.hat === 'cap' && (
-        <group position={[0, 0.99, 0]}>
-          <mesh>
-            <sphereGeometry args={[0.18, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshLambertMaterial color={look.hatColor ?? '#FFB300'} />
-          </mesh>
-          <mesh position={[0, 0, 0.17]}>
-            <boxGeometry args={[0.22, 0.02, 0.14]} />
-            <meshLambertMaterial color={look.hatColor ?? '#FFB300'} />
-          </mesh>
-        </group>
-      )}
+        <Hair style={look.hairStyle ?? 'short'} color={look.hair} cast={cast} />
+        {look.glasses && (
+          <group position={[0, 0.885, 0.165]}>
+            {[-0.058, 0.058].map((x) => (
+              <mesh key={x} position={[x, 0, 0]}>
+                <torusGeometry args={[0.042, 0.008, 8, 20]} />
+                <meshStandardMaterial color="#212121" roughness={0.3} />
+              </mesh>
+            ))}
+            <mesh>
+              <capsuleGeometry args={[0.006, 0.03, 4, 6]} />
+              <meshStandardMaterial color="#212121" />
+            </mesh>
+          </group>
+        )}
+        <Hat look={look} cast={cast} />
+      </group>
     </group>
   );
 }
 
-/** Các kiểu tóc low-poly. */
+function Hat({ look, cast }: { look: Look; cast: boolean }) {
+  const color = look.hatColor;
+  switch (look.hat) {
+    case 'chef':
+      return (
+        <group position={[0, 1.03, 0]}>
+          <mesh castShadow={cast}>
+            <cylinderGeometry args={[0.135, 0.135, 0.11, 24]} />
+            <Mat color={color ?? '#FFFFFF'} />
+          </mesh>
+          {[
+            [0, 0.11, 0, 0.14],
+            [-0.08, 0.09, 0, 0.1],
+            [0.08, 0.09, 0, 0.1],
+          ].map(([x, y, z, r], i) => (
+            <mesh key={i} position={[x, y, z]} castShadow={cast}>
+              <sphereGeometry args={[r, 20, 14]} />
+              <Mat color={color ?? '#FFFFFF'} />
+            </mesh>
+          ))}
+        </group>
+      );
+    case 'helmet':
+      return (
+        <mesh position={[0, 0.93, 0]} castShadow={cast}>
+          <sphereGeometry args={[0.2, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <Mat color={color ?? '#2E7D32'} rough={0.35} />
+        </mesh>
+      );
+    case 'conical':
+      return (
+        <mesh position={[0, 1.08, 0]} castShadow={cast}>
+          <coneGeometry args={[0.36, 0.22, 32]} />
+          <Mat color={color ?? '#E6C98A'} />
+        </mesh>
+      );
+    case 'bandana':
+      return (
+        <group position={[0, 0.96, 0]}>
+          <mesh rotation={[-0.2, 0, 0]}>
+            <sphereGeometry args={[0.185, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2.3]} />
+            <Mat color={color ?? '#C62828'} />
+          </mesh>
+          <mesh position={[0, -0.02, -0.18]} rotation={[0.6, 0, 0]}>
+            <coneGeometry args={[0.055, 0.13, 10]} />
+            <Mat color={color ?? '#C62828'} />
+          </mesh>
+        </group>
+      );
+    case 'cap':
+      return (
+        <group position={[0, 0.98, 0]}>
+          <mesh>
+            <sphereGeometry args={[0.178, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
+            <Mat color={color ?? '#FFB300'} />
+          </mesh>
+          <mesh position={[0, 0, 0.16]} scale={[1, 0.15, 0.8]}>
+            <cylinderGeometry args={[0.12, 0.12, 0.1, 20, 1, false, -Math.PI / 2, Math.PI]} />
+            <Mat color={color ?? '#FFB300'} />
+          </mesh>
+        </group>
+      );
+    default:
+      return null;
+  }
+}
+
+/** Các kiểu tóc bo tròn. */
 function Hair({ style, color, cast }: { style: string; color: string; cast: boolean }) {
   if (style === 'bald') return null;
   const cap = (
-    <mesh position={[0, 0.94, -0.02]} rotation={[-0.25, 0, 0]} castShadow={cast}>
-      <sphereGeometry args={[0.185, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2.1]} />
-      <meshLambertMaterial color={color} />
+    <mesh position={[0, 0.9, -0.012]} rotation={[-0.3, 0, 0]} castShadow={cast}>
+      <sphereGeometry args={[0.18, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2.05]} />
+      <Mat color={color} rough={0.9} />
     </mesh>
   );
   if (style === 'spiky') {
@@ -200,15 +280,16 @@ function Hair({ style, color, cast }: { style: string; color: string; cast: bool
       <group>
         {cap}
         {[
-          [0, 0.1, 0],
-          [-0.09, 0.07, 0.02],
-          [0.09, 0.07, 0.02],
-          [0, 0.07, -0.1],
-          [0, 0.06, 0.1],
+          [0, 0.13, 0.02],
+          [-0.08, 0.1, 0.03],
+          [0.08, 0.1, 0.03],
+          [-0.05, 0.1, -0.08],
+          [0.05, 0.1, -0.08],
+          [0, 0.08, 0.1],
         ].map(([x, y, z], i) => (
-          <mesh key={i} position={[x, 0.98 + y, z - 0.02]} rotation={[z * 4, 0, -x * 5]}>
-            <coneGeometry args={[0.05, 0.12, 5]} />
-            <meshLambertMaterial color={color} />
+          <mesh key={i} position={[x, 0.92 + y, z - 0.02]} rotation={[z * 4, 0, -x * 5]}>
+            <coneGeometry args={[0.045, 0.12, 10]} />
+            <Mat color={color} rough={0.9} />
           </mesh>
         ))}
       </group>
@@ -218,9 +299,9 @@ function Hair({ style, color, cast }: { style: string; color: string; cast: bool
     return (
       <group>
         {cap}
-        <mesh position={[0, 0.76, -0.1]} castShadow={cast}>
-          <boxGeometry args={[0.34, 0.36, 0.12]} />
-          <meshLambertMaterial color={color} />
+        <mesh position={[0, 0.77, -0.1]} scale={[1.15, 1, 0.55]} castShadow={cast}>
+          <capsuleGeometry args={[0.14, 0.2, 8, 16]} />
+          <Mat color={color} rough={0.9} />
         </mesh>
       </group>
     );
@@ -229,9 +310,9 @@ function Hair({ style, color, cast }: { style: string; color: string; cast: bool
     return (
       <group>
         {cap}
-        <mesh position={[0, 1.02, -0.16]} castShadow={cast}>
-          <sphereGeometry args={[0.08, 10, 8]} />
-          <meshLambertMaterial color={color} />
+        <mesh position={[0, 1.0, -0.16]} castShadow={cast}>
+          <sphereGeometry args={[0.078, 18, 12]} />
+          <Mat color={color} rough={0.9} />
         </mesh>
       </group>
     );

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { Animated, Platform } from 'react-native';
 import type { DirectionalLight, Group } from 'three';
 import { Canvas, useFrame, useThree } from '../../three/fiber';
 import type { ThreeEvent } from '../../three/fiber';
@@ -8,7 +8,8 @@ import type { MapLayout, MapStation, Tile } from '../../game/layout';
 import { staffTarget } from '../../game/staffTarget';
 import type { Customer, GameState, Staff } from '../../game/types';
 import type { WalkerState } from '../../screens/views/useWalker';
-import type { CameraCam } from './camera';
+import { followCamera } from './camera';
+import type { CameraCam, CameraFrame } from './camera';
 import Character from './Character';
 import { FOOD_COLOR, customerLook, profileLook, staffLook } from './looks';
 import type { Look } from './looks';
@@ -51,6 +52,19 @@ function Sun() {
       shadow-bias={-0.0015}
     />
   );
+}
+
+/** Camera đi theo chủ quán (khi phóng to), đồng thời dời lớp chữ nổi theo cùng độ dời. */
+function FollowCam({ cam, frame, walker, overlayPan }: { cam: CameraCam; frame: CameraFrame; walker: React.MutableRefObject<WalkerState>; overlayPan: Animated.ValueXY }) {
+  const first = useRef(true);
+  useFrame((_, dt) => {
+    const w = walker.current;
+    const t = first.current ? 1 : Math.min(1, dt * 4);
+    first.current = false;
+    const off = followCamera(cam, frame, w.x + 0.5, w.y + 0.5, t);
+    overlayPan.setValue(off);
+  });
+  return null;
 }
 
 function lerpAngle(a: number, b: number, t: number) {
@@ -143,13 +157,15 @@ export interface SceneProps {
   layout: MapLayout;
   walker: React.MutableRefObject<WalkerState>;
   cam: CameraCam;
+  frame: CameraFrame;
+  overlayPan: Animated.ValueXY;
   hereId: string | null;
   walkingTo: string | null;
   wanted: Set<string>;
   onTapTile: (t: Tile) => void;
 }
 
-export default function ShopScene3D({ game, layout, walker, cam, hereId, walkingTo, wanted, onTapTile }: SceneProps) {
+export default function ShopScene3D({ game, layout, walker, cam, frame, overlayPan, hereId, walkingTo, wanted, onTapTile }: SceneProps) {
   const run = game.run!;
   const dishColor = (id: string) => {
     const d = run.pass.find((x) => x.id === id);
@@ -170,6 +186,7 @@ export default function ShopScene3D({ game, layout, walker, cam, hereId, walking
   return (
     <Canvas shadows={SHADOWS ? 'percentage' : false} dpr={[1, 2]} gl={{ antialias: true }} style={{ flex: 1 }}>
       <UseCamera cam={cam} />
+      <FollowCam cam={cam} frame={frame} walker={walker} overlayPan={overlayPan} />
       <color attach="background" args={['#FBE3C6']} />
       <hemisphereLight args={['#FFF6E5', '#8D6E63', 1.1]} />
       <Sun />

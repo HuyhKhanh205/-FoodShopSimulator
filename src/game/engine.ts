@@ -348,6 +348,23 @@ export function playerPrep(s: GameState, id: IngredientId): string | null {
   return null;
 }
 
+/** Góc nhìn thứ nhất: mỗi nhát dao rút ngắn thời gian sơ chế. */
+export const CHOP_MS = 350;
+/** Góc nhìn thứ nhất: mỗi lần khuấy đẩy nhanh tiến độ nấu (không vượt quá lúc chín). */
+export const STIR_MS = 250;
+
+export function playerChop(s: GameState) {
+  const run = s.run;
+  if (!run?.playerPrep) return;
+  run.playerPrep.endsAt = Math.max(run.elapsed, run.playerPrep.endsAt - CHOP_MS);
+}
+
+export function playerStir(s: GameState, slotId: string) {
+  const job = s.run?.slots.find((x) => x.id === slotId)?.job;
+  if (!job || job.by !== 'player' || job.progress >= job.cookTime) return;
+  job.progress = Math.min(job.cookTime, job.progress + STIR_MS);
+}
+
 export function playerServe(s: GameState, dishId: string, customerId: string, rng: Rng) {
   if (!s.run) return;
   serveDish(s, dishId, customerId, rng);
