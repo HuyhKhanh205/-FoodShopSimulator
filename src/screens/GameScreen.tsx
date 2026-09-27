@@ -25,8 +25,8 @@ export default function GameScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.body}>
-        {game.phase === 'market' && <MarketView />}
-        {game.phase === 'open' && (viewMode === 'map' ? <ShopMapView /> : <ShopView />)}
+        {(game.phase === 'market' || (game.phase === 'open' && game.run?.ownerAway)) && <MarketView />}
+        {game.phase === 'open' && !game.run?.ownerAway && (viewMode === 'map' ? <ShopMapView /> : <ShopView />)}
         {game.phase === 'summary' && <SummaryView />}
       </View>
       <EventModal />

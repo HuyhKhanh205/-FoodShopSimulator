@@ -3,6 +3,7 @@ import { CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
 import { isPeak, playerClean } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
 import { formatClock, formatMoney } from '../../game/helpers';
+import GoMarketButton from '../GoMarketButton';
 import { colors } from '../ui';
 
 function Pill({ children, tone = 'plain' }: { children: React.ReactNode; tone?: 'plain' | 'warn' | 'bad' }) {
@@ -58,6 +59,7 @@ export default function MapHud({ compact }: { compact: boolean }) {
           </Pill>
         </View>
         <View style={styles.buttons}>
+          <GoMarketButton render={(onPress) => <IconButton size={btn} label="🛒" onPress={onPress} />} />
           <IconButton size={btn} label="🧽" disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />
           <IconButton size={btn} label="📋" onPress={() => setViewMode('panel')} />
           <IconButton size={btn} label={paused ? '▶️' : '⏸️'} active={paused} onPress={() => setPaused(!paused)} />

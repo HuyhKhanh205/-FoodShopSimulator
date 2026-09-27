@@ -6,12 +6,14 @@ import type { ThreeEvent } from '../../three/fiber';
 import { MAP_COLS, MAP_ROWS } from '../../game/layout';
 import type { MapLayout, MapStation, Tile } from '../../game/layout';
 import { staffTarget } from '../../game/staffTarget';
-import type { Customer, GameState, Staff } from '../../game/types';
+import type { Customer, GameState, PlayerProfile, Staff } from '../../game/types';
 import type { WalkerState } from '../../screens/views/useWalker';
 import { followCamera } from './camera';
 import type { CameraCam, CameraFrame } from './camera';
 import Character from './Character';
-import { FOOD_COLOR, customerLook, profileLook, staffLook } from './looks';
+import ModelCharacter from './ModelCharacter';
+import { Decor, HangingLamp, ShopSign } from './KayProps';
+import { FOOD_COLOR, STAFF_MODEL, customerLook, customerModel, profileLook, staffLook } from './looks';
 import type { Look } from './looks';
 import { Floor, Highlight, SEATS, StationMesh, Walls } from './Stations3D';
 
@@ -41,8 +43,8 @@ function Sun() {
       position={[MAP_COLS / 2 + 4, 14, MAP_ROWS / 2 + 7]}
       intensity={1.6}
       castShadow={SHADOWS}
-      shadow-mapSize-width={1024}
-      shadow-mapSize-height={1024}
+      shadow-mapSize-width={2048}
+      shadow-mapSize-height={2048}
       shadow-camera-left={-9}
       shadow-camera-right={9}
       shadow-camera-top={9}
@@ -74,7 +76,8 @@ function lerpAngle(a: number, b: number, t: number) {
   return a + d * t;
 }
 
-function Player({ walker, carrying, look }: { walker: React.MutableRefObject<WalkerState>; carrying: string[]; look: Look }) {
+function Player({ walker, carrying, profile }: { walker: React.MutableRefObject<WalkerState>; carrying: string[]; profile: PlayerProfile }) {
+  const look: Look = profileLook(profile);
   const ref = useRef<Group>(null);
   const ring = useRef<Group>(null);
   useFrame(({ clock }, dt) => {
@@ -94,7 +97,18 @@ function Player({ walker, carrying, look }: { walker: React.MutableRefObject<Wal
           <meshBasicMaterial color="#FFB300" transparent opacity={0.9} />
         </mesh>
       </group>
-      <Character look={look} isMoving={() => walker.current.moving} carrying={carrying} shadows={SHADOWS} />
+      {profile.model === 'custom' ? (
+        <Character look={look} isMoving={() => walker.current.moving} carrying={carrying} shadows={SHADOWS} />
+      ) : (
+        <ModelCharacter
+          model={profile.model}
+          fallback={look}
+          hat={profile.hat !== 'none' ? look : undefined}
+          isMoving={() => walker.current.moving}
+          carrying={carrying}
+          shadows={SHADOWS}
+        />
+      )}
     </group>
   );
 }
@@ -125,7 +139,14 @@ function StaffPerson({ staff, to, carrying }: { staff: Staff; to: Tile; carrying
   });
   return (
     <group ref={ref} position={[to.x + 0.5, 0, to.y + 0.5]}>
-      <Character look={staffLook(staff.role, staff.id)} isMoving={() => moving.current} carrying={carrying} shadows={SHADOWS} />
+      <ModelCharacter
+        model={STAFF_MODEL[staff.role]}
+        fallback={staffLook(staff.role, staff.id)}
+        hat={staff.role === 'cook' ? staffLook('cook', staff.id) : undefined}
+        isMoving={() => moving.current}
+        carrying={carrying}
+        shadows={SHADOWS}
+      />
     </group>
   );
 }
@@ -137,7 +158,7 @@ function SeatedCustomers({ st, customer }: { st: MapStation; customer: Customer 
       {SEATS.slice(0, n).map(([sx, sz], i) => (
         <group key={i} position={[sx * 1.1, 0, sz * 1.1]} rotation-y={Math.atan2(-sx, -sz)}>
           <group position={[0, 0, -0.05]}>
-            <Character look={customerLook(customer, i)} seated shadows={SHADOWS} />
+            <ModelCharacter model={customerModel(customer, i)} fallback={customerLook(customer, i)} seated shadows={SHADOWS} />
           </group>
         </group>
       ))}
@@ -188,12 +209,22 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
       <UseCamera cam={cam} />
       <FollowCam cam={cam} frame={frame} walker={walker} overlayPan={overlayPan} />
       <color attach="background" args={['#FBE3C6']} />
-      <hemisphereLight args={['#FFF6E5', '#8D6E63', 1.1]} />
+      <fog attach="fog" args={['#FBE3C6', 45, 80]} />
+      <hemisphereLight args={['#FFF6E5', '#6D4C41', 0.9]} />
+      <ambientLight intensity={0.15} color="#FFE0B2" />
       <Sun />
+      {/* Đèn thả trần ấm trên bếp và phòng ăn */}
+      {[2.5, 6, 9.5].map((x) => (
+        <HangingLamp key={`k${x}`} position={[x, 2.1, 2.6]} light={SHADOWS} />
+      ))}
+      {[2, 6, 10].map((x) => (
+        <HangingLamp key={`d${x}`} position={[x, 2.0, 7]} light={SHADOWS} />
+      ))}
 
       <group onClick={onClick}>
         <Floor />
         <Walls />
+        <Decor />
         {layout.stations.map((st) => {
           const slot = st.slotId ? run.slots.find((s) => s.id === st.slotId) : undefined;
           const customer = st.kind === 'table' ? run.customers.find((c) => c.tableIndex === st.tableIndex) : undefined;
@@ -211,6 +242,7 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
         })}
       </group>
 
+      <ShopSign name={game.profile.shopName} position={[10.2, 1.75, 9.9]} rotation={0} />
       {layout.stations.map((st) => {
         if (st.id === hereId) return <Highlight key={st.id} st={st} color="#FFEB3B" />;
         if (st.id === walkingTo) return <Highlight key={st.id} st={st} color="#FFF59D" />;
@@ -227,7 +259,7 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
 
       {doorCustomers.slice(0, DOOR_QUEUE.length).map((c, i) => (
         <group key={c.id} position={[DOOR_QUEUE[i][0], 0, DOOR_QUEUE[i][1]]} rotation-y={Math.PI}>
-          <Character look={customerLook(c)} shadows={SHADOWS} />
+          <ModelCharacter model={customerModel(c)} fallback={customerLook(c)} shadows={SHADOWS} />
         </group>
       ))}
 
@@ -238,7 +270,7 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
         return <StaffPerson key={st.id} staff={st} to={to} carrying={holding} />;
       })}
 
-      <Player walker={walker} carrying={carried} look={profileLook(game.profile)} />
+      <Player walker={walker} carrying={carried} profile={game.profile} />
     </Canvas>
   );
 }

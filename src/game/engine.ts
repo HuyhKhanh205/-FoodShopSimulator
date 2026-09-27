@@ -143,8 +143,13 @@ function beginMarket(s: GameState, rng: Rng) {
 
 // ================= Chợ / quản lý (ngoài giờ mở cửa) =================
 
+/** Đang ở chợ: buổi sáng, hoặc chủ quán đi chợ giữa giờ bán. */
+export function atMarket(s: GameState): boolean {
+  return s.phase === 'market' || (s.phase === 'open' && Boolean(s.run?.ownerAway));
+}
+
 export function buy(s: GameState, id: IngredientId, qty: number): boolean {
-  if (s.phase !== 'market' || s.mods.unavailable.includes(id)) return false;
+  if (!atMarket(s) || s.mods.unavailable.includes(id)) return false;
   const cost = s.prices[id] * qty;
   if (qty <= 0 || s.money < cost) return false;
   const ing = INGREDIENTS[id];
@@ -245,6 +250,8 @@ export function openShop(s: GameState, rng: Rng) {
     slots,
     pass: [],
     carrying: [],
+    ownerAway: false,
+    closedNoticeShown: false,
     prepped: {},
     playerPrep: null,
     cleanReadyAt: 0,
@@ -591,9 +598,49 @@ export function isPeak(elapsed: number) {
   return trafficCurve(hourAt(elapsed)) >= 1.5;
 }
 
+/** Nhân viên đang có mặt ở quán (không nghỉ, không đi trễ). */
+export function staffOnDuty(s: GameState): Staff[] {
+  const t = s.run?.elapsed ?? 0;
+  return s.staff.filter((st) => !st.absent && t >= st.lateUntil);
+}
+
+/** Chủ đi chợ mà không có nhân viên nào trông: quán treo biển tạm đóng. */
+export function shopClosed(s: GameState): boolean {
+  return Boolean(s.run?.ownerAway) && staffOnDuty(s).length === 0;
+}
+
+/** Đi chợ giữa giờ bán: đặt hết món đang cầm xuống quầy. */
+export function leaveForMarket(s: GameState) {
+  const run = s.run;
+  if (s.phase !== 'open' || !run || run.ownerAway) return;
+  run.carrying = [];
+  run.ownerAway = true;
+  run.closedNoticeShown = false;
+  if (staffOnDuty(s).length === 0) {
+    run.closedNoticeShown = true;
+    log(s, '🚪 Chủ quán đi chợ — chưa có nhân viên nên quán treo biển tạm đóng', 'bad');
+  } else {
+    log(s, '🛒 Chủ quán đi chợ, nhân viên trông quán', 'info');
+  }
+}
+
+export function returnToShop(s: GameState) {
+  const run = s.run;
+  if (!run || !run.ownerAway) return;
+  run.ownerAway = false;
+  log(s, '🏃 Chủ quán đã về quán', 'info');
+}
+
 function spawnCustomers(s: GameState, dt: number, rng: Rng) {
   const run = s.run!;
   if (run.elapsed > DAY_MS - 8_000) return;
+  if (shopClosed(s)) {
+    if (!run.closedNoticeShown) {
+      run.closedNoticeShown = true;
+      log(s, '🚪 Nhân viên nghỉ hết — quán treo biển tạm đóng', 'bad');
+    }
+    return;
+  }
   run.sinceLastCustomer += dt;
   const rate =
     0.14 * trafficCurve(hourAt(run.elapsed)) * (0.4 + s.reputation * 0.25) * (1 + 0.15 * s.upgrades.sign) * s.mods.spawnMult * (s.day <= 2 ? 0.8 : 1);

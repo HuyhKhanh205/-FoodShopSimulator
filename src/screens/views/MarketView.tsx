@@ -3,10 +3,10 @@ import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-n
 import { useNavigation } from '@react-navigation/native';
 import Hud from '../../components/Hud';
 import { Button, Panel, colors } from '../../components/ui';
-import { INGREDIENTS, RECIPES } from '../../game/data';
-import { buy, discardExpired, openShop, payDebt } from '../../game/engine';
+import { INGREDIENTS, RECIPES, CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
+import { buy, discardExpired, openShop, payDebt, returnToShop, shopClosed } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
-import { expiredQty, formatMoney, usableQty } from '../../game/helpers';
+import { expiredQty, formatMoney, usableQty, formatClock } from '../../game/helpers';
 import type { GameState, IngredientId } from '../../game/types';
 
 /** Số phần tối đa nấu được từ kho hiện tại (chưa tính sơ chế). */
@@ -30,12 +30,31 @@ export default function MarketView() {
   const ingredientIds = (Object.keys(INGREDIENTS) as IngredientId[]).filter((id) => used.has(id));
 
   const expired = expiredQty(game);
+  // Đi chợ giữa giờ bán: đồng hồ vẫn chạy, quán có thể đang treo biển tạm đóng.
+  const midday = game.phase === 'open' && Boolean(game.run?.ownerAway);
+  const closed = midday && shopClosed(game);
+  const waiting = game.run?.customers.length ?? 0;
 
   return (
     <View style={styles.flex}>
       <Hud game={game} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>☀️ {game.profile.shopName} · sáng ngày {game.day}</Text>
+        {midday ? (
+          <View style={[styles.banner, closed ? styles.bannerClosed : styles.bannerOpen]}>
+            <Text style={styles.bannerTitle}>
+              🕐 {formatClock(game.run!.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)} ·{' '}
+              {closed ? '🚪 Quán đang treo biển tạm đóng' : '👥 Nhân viên đang trông quán'}
+            </Text>
+            <Text style={styles.bannerText}>
+              {closed
+                ? `Không có khách mới trong lúc bạn đi chợ.${waiting ? ` ${waiting} bàn đang chờ ở quán!` : ''}`
+                : `Quán vẫn bán bình thường${waiting ? ` · ${waiting} bàn đang có khách` : ''}.`}
+            </Text>
+            <Button label="🏃 Về quán" onPress={() => act((s) => returnToShop(s))} />
+          </View>
+        ) : (
+          <Text style={styles.heading}>☀️ {game.profile.shopName} · sáng ngày {game.day}</Text>
+        )}
         {game.mods.labels.length > 0 && (
           <View style={styles.tags}>
             {game.mods.labels.map((l) => (
@@ -106,13 +125,14 @@ export default function MarketView() {
               <Text style={[styles.muted, { marginTop: 6 }]}>Mẹo: giờ trưa và tối rất đông. Mua dư một chút nhưng đồ tươi sẽ hỏng nhanh!</Text>
             </Panel>
 
-            {expired > 0 && (
+            {!midday && expired > 0 && (
               <Panel title="🦠 Đồ hết hạn" style={{ backgroundColor: colors.badBg }}>
                 <Text style={styles.p}>Có {expired} phần nguyên liệu đã hỏng. Thanh tra thấy là phạt nặng!</Text>
                 <Button label="🗑️ Vứt đồ hỏng" variant="danger" onPress={() => act((s) => discardExpired(s))} />
               </Panel>
             )}
 
+            {!midday && (
             <Panel title="💳 Khoản vay">
               <Text style={styles.p}>
                 Còn nợ {formatMoney(game.debt)} — hạn chót cuối ngày {game.debtDueDay}.
@@ -122,7 +142,9 @@ export default function MarketView() {
                 <Button small variant="secondary" label="Trả tối đa" disabled={game.debt <= 0 || game.money <= 0} onPress={() => act((s) => payDebt(s, s.money))} />
               </View>
             </Panel>
+            )}
 
+            {!midday && (
             <View style={styles.navBtns}>
               <Button variant="secondary" label={`👥 Nhân viên (${game.staff.length})`} onPress={() => navigation.navigate('Staff')} />
               <Button variant="secondary" label="🔧 Nâng cấp & công thức" onPress={() => navigation.navigate('Upgrades')} />
@@ -130,6 +152,7 @@ export default function MarketView() {
               <Button label="🏮 Mở cửa bán hàng" onPress={() => act((s, rng) => openShop(s, rng))} disabled={Boolean(game.activeEvent)} />
               <Button variant="ghost" label="🏠 Về menu (đã tự lưu)" onPress={() => navigation.navigate('Home')} />
             </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -159,4 +182,9 @@ const styles = StyleSheet.create({
   p: { color: colors.text, marginBottom: 8 },
   inline: { flexDirection: 'row', gap: 8 },
   navBtns: { gap: 8 },
+  banner: { borderRadius: 16, padding: 14, gap: 8, marginBottom: 12, borderWidth: 2 },
+  bannerClosed: { backgroundColor: colors.badBg, borderColor: colors.bad },
+  bannerOpen: { backgroundColor: colors.goodBg, borderColor: colors.good },
+  bannerTitle: { fontSize: 17, fontWeight: '900', color: colors.text },
+  bannerText: { color: colors.text },
 });

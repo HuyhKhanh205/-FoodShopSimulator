@@ -199,7 +199,7 @@ export default function Character({
   );
 }
 
-function Hat({ look, cast }: { look: Look; cast: boolean }) {
+export function Hat({ look, cast }: { look: Look; cast: boolean }) {
   const color = look.hatColor;
   switch (look.hat) {
     case 'chef':

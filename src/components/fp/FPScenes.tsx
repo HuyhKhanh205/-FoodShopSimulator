@@ -4,6 +4,8 @@ import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three
 import { useFrame, useThree } from '../../three/fiber';
 import type { IngredientId, RecipeId } from '../../game/types';
 import { FOOD_COLOR } from '../scene/looks';
+import { wallTileTexture } from '../scene/textures';
+import { Prop } from '../scene/KayProps';
 
 /** Thời điểm (ms, performance.now) của lần chạm gần nhất — cảnh đọc để chạy hoạt ảnh thái/khuấy. */
 export type PulseRef = React.MutableRefObject<number>;
@@ -38,10 +40,11 @@ export function EyeCamera() {
 
 /** Mặt bếp, tường ốp gạch và ánh sáng chung cho mọi cảnh góc nhìn thứ nhất. */
 export function Kitchen({ top = '#ECEFF1', body = '#8D6E63' }: { top?: string; body?: string }) {
-  const tiles = useMemo(() => {
-    const out: [number, number][] = [];
-    for (let x = -4; x <= 4; x += 1) for (let y = 0; y < 5; y += 1) out.push([x * 0.32, 1.0 + y * 0.32]);
-    return out;
+  const wallTex = useMemo(() => {
+    const t = wallTileTexture('#E0F2F1', '#B0BEC5').clone();
+    t.repeat.set(5, 3);
+    t.needsUpdate = true;
+    return t;
   }, []);
   return (
     <group>
@@ -60,55 +63,74 @@ export function Kitchen({ top = '#ECEFF1', body = '#8D6E63' }: { top?: string; b
         <planeGeometry args={[3.2, 1.6]} />
         <Std color="#FFF8E1" />
       </mesh>
-      {tiles.map(([x, y]) => (
-        <mesh key={`${x},${y}`} position={[x, y, -1.05]}>
-          <planeGeometry args={[0.3, 0.3]} />
-          <Std color="#E0F2F1" rough={0.25} />
+      <mesh position={[0, 1.8, -1.04]}>
+        <planeGeometry args={[3.2, 1.8]} />
+        <meshStandardMaterial map={wallTex} roughness={0.25} />
+      </mesh>
+    </group>
+  );
+}
+
+// ---------------- Hạt bắn ----------------
+
+/** Vụn thức ăn văng ra mỗi nhát dao. */
+function Crumbs({ pulse, color, origin, active }: { pulse: PulseRef; color: string; origin: [number, number, number]; active: boolean }) {
+  const ref = useRef<Group>(null);
+  const seen = useRef(0);
+  const vel = useRef<number[][]>([]);
+  useFrame((_, dt) => {
+    const g = ref.current;
+    if (!g) return;
+    if (active && pulse.current !== seen.current) {
+      seen.current = pulse.current;
+      vel.current = g.children.map((_, i) => [Math.cos(i * 1.7) * 0.6, 0.9 + (i % 3) * 0.3, Math.sin(i * 2.3) * 0.4]);
+      g.children.forEach((c) => c.position.set(0, 0, 0));
+    }
+    g.children.forEach((c, i) => {
+      const v = vel.current[i];
+      if (!v) {
+        c.visible = false;
+        return;
+      }
+      c.visible = c.position.y > -0.05;
+      v[1] -= 4 * dt;
+      c.position.x += v[0] * dt;
+      c.position.y += v[1] * dt;
+      c.position.z += v[2] * dt;
+      c.rotation.x += dt * 8;
+    });
+  });
+  return (
+    <group ref={ref} position={origin}>
+      {Array.from({ length: 8 }, (_, i) => (
+        <mesh key={i} visible={false}>
+          <boxGeometry args={[0.02, 0.02, 0.02]} />
+          <Std color={color} />
         </mesh>
       ))}
     </group>
   );
 }
 
-/** Cẳng tay + bàn tay ló từ dưới màn hình (góc nhìn của chủ quán). */
-export function Hand({
-  skin,
-  sleeve,
-  position,
-  rotation = [0, 0, 0],
-  children,
-  handRef,
-}: {
-  skin: string;
-  sleeve: string;
-  position: [number, number, number];
-  rotation?: [number, number, number];
-  children?: React.ReactNode;
-  handRef?: React.Ref<Group>;
-}) {
+/** Giọt dầu / nước dùng bắn lên từ nồi đang sôi. */
+function OilSplash() {
+  const ref = useRef<Group>(null);
+  useFrame(({ clock }) => {
+    ref.current?.children.forEach((c, i) => {
+      const t = (clock.elapsedTime * 1.6 + i * 0.29) % 1;
+      const a = i * 2.1;
+      c.position.set(Math.cos(a) * (0.08 + t * 0.2), 1.12 + Math.sin(t * Math.PI) * 0.22, -0.3 + Math.sin(a) * (0.06 + t * 0.15));
+      c.scale.setScalar(t < 0.95 ? 1 : 0.001);
+    });
+  });
   return (
-    <group ref={handRef} position={position} rotation={rotation}>
-      {/* Cẳng tay kéo dài về phía người nhìn */}
-      <mesh position={[0, 0.03, 0.2]} rotation-x={Math.PI / 2 - 0.3} castShadow>
-        <capsuleGeometry args={[0.045, 0.28, 8, 16]} />
-        <Std color={skin} rough={0.6} />
-      </mesh>
-      <mesh position={[0, 0.1, 0.42]} rotation-x={Math.PI / 2 - 0.3} castShadow>
-        <cylinderGeometry args={[0.065, 0.07, 0.2, 20]} />
-        <Std color={sleeve} />
-      </mesh>
-      {/* Bàn tay */}
-      <mesh scale={[1.05, 0.62, 1.2]} castShadow>
-        <sphereGeometry args={[0.07, 20, 14]} />
-        <Std color={skin} rough={0.6} />
-      </mesh>
-      {[-0.04, -0.013, 0.013, 0.04].map((x) => (
-        <mesh key={x} position={[x, -0.012, -0.075]} rotation-x={Math.PI / 2 + 0.5}>
-          <capsuleGeometry args={[0.014, 0.045, 4, 8]} />
-          <Std color={skin} rough={0.6} />
+    <group ref={ref}>
+      {Array.from({ length: 6 }, (_, i) => (
+        <mesh key={i}>
+          <sphereGeometry args={[0.012, 6, 5]} />
+          <meshBasicMaterial color="#FFE082" />
         </mesh>
       ))}
-      {children}
     </group>
   );
 }
@@ -159,7 +181,7 @@ function Piece({ id, length }: { id: IngredientId; length: number }) {
       );
     default:
       return (
-        <mesh position={[length / 2, 0.035, 0]} scale={[1, 0.55, 1]} castShadow>
+        <mesh position={[length / 2, 0.035, 0]} rotation-z={Math.PI / 2} scale={[0.55, 1, 1]} castShadow>
           <capsuleGeometry args={[0.065, Math.max(0.01, length - 0.13), 8, 16]} />
           <Std color={look.color} rough={0.55} />
         </mesh>
@@ -176,8 +198,6 @@ export function BoardScene({
   progress,
   bowl,
   pulse,
-  skin,
-  sleeve,
 }: {
   ingredient: IngredientId | null;
   /** 0..1 khi đang sơ chế, null khi rảnh. */
@@ -185,8 +205,6 @@ export function BoardScene({
   /** Số phần đã sơ chế của nguyên liệu vừa thái (hiện trong bát). */
   bowl: { id: IngredientId; count: number } | null;
   pulse: PulseRef;
-  skin: string;
-  sleeve: string;
 }) {
   const knife = useRef<Group>(null);
   const FULL = 0.5;
@@ -253,20 +271,29 @@ export function BoardScene({
             </mesh>
           ))}
       </group>
-      {/* Tay trái giữ nguyên liệu */}
-      <Hand skin={skin} sleeve={sleeve} position={[progress === null ? -0.45 : START + 0.04, 1.0, -0.22]} rotation={[0, 0.5, 0]} />
-      {/* Tay phải cầm dao */}
+      {/* Chỉ có con dao (không vẽ tay) */}
       <group ref={knife}>
-        <Hand skin={skin} sleeve={sleeve} position={[0.02, 0, 0.05]} rotation={[0, -0.4, 0]} />
-        <mesh position={[-0.02, -0.03, -0.16]} castShadow>
-          <boxGeometry args={[0.012, 0.09, 0.26]} />
-          <Std color="#CFD8DC" rough={0.15} metal={0.85} />
-        </mesh>
-        <mesh position={[-0.02, 0.0, 0.0]} rotation-x={Math.PI / 2}>
-          <capsuleGeometry args={[0.02, 0.1, 4, 10]} />
-          <Std color="#3E2723" />
-        </mesh>
+        <group position={[0, 0.02, -0.2]} rotation={[0, Math.PI / 2, Math.PI]}>
+          <Prop
+            name="knife"
+            scale={0.3}
+            position={[0, 0.06, 0]}
+            fallback={
+              <group>
+                <mesh position={[0, -0.03, 0]} castShadow>
+                  <boxGeometry args={[0.26, 0.09, 0.012]} />
+                  <Std color="#CFD8DC" rough={0.15} metal={0.85} />
+                </mesh>
+                <mesh position={[0.18, 0.0, 0]} rotation-z={Math.PI / 2}>
+                  <capsuleGeometry args={[0.02, 0.1, 4, 10]} />
+                  <Std color="#3E2723" />
+                </mesh>
+              </group>
+            }
+          />
+        </group>
       </group>
+      <Crumbs pulse={pulse} color={look?.color ?? '#BCAAA4'} origin={[cutX + 0.05, 0.99, -0.22]} active={progress !== null} />
     </group>
   );
 }
@@ -352,8 +379,6 @@ export function StoveScene({
   burnRatio,
   blocked,
   pulse,
-  skin,
-  sleeve,
 }: {
   recipeId: RecipeId | null;
   cooking: boolean;
@@ -361,8 +386,6 @@ export function StoveScene({
   burnRatio: number;
   blocked: boolean;
   pulse: PulseRef;
-  skin: string;
-  sleeve: string;
 }) {
   const ladle = useRef<Group>(null);
   const angle = useRef(0);
@@ -392,10 +415,17 @@ export function StoveScene({
       <Flames on={Boolean(recipeId) && !blocked} />
       {/* Nồi */}
       <group position={[0, 0.98, -0.3]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.3, 0.27, 0.24, 36, 1, true]} />
-          <meshStandardMaterial color="#90A4AE" roughness={0.3} metalness={0.7} side={DoubleSide} />
-        </mesh>
+        <Prop
+          name="pot_A"
+          scale={0.42}
+          position={[0, -0.12, 0]}
+          fallback={
+            <mesh castShadow>
+              <cylinderGeometry args={[0.3, 0.27, 0.24, 36, 1, true]} />
+              <meshStandardMaterial color="#90A4AE" roughness={0.3} metalness={0.7} side={DoubleSide} />
+            </mesh>
+          }
+        />
         <mesh position={[0, -0.115, 0]}>
           <cylinderGeometry args={[0.27, 0.27, 0.01, 36]} />
           <Std color="#78909C" rough={0.3} metal={0.7} />
@@ -416,9 +446,8 @@ export function StoveScene({
       <Bubbles color={recipeId ? '#' + food.getHexString() : '#FFFFFF'} active={cooking && !blocked} />
       <Puffs color="#FFFFFF" active={Boolean(recipeId) && !burning && !blocked} />
       <Puffs color="#212121" active={burning} count={7} />
-      {/* Tay trái giữ quai nồi */}
-      <Hand skin={skin} sleeve={sleeve} position={[-0.42, 1.03, -0.28]} rotation={[0, 0.9, 0]} />
-      {/* Tay phải cầm muôi */}
+      {recipeId && !blocked && cooking && <OilSplash />}
+      {/* Chỉ có cái muôi tự khuấy (không vẽ tay) */}
       <group ref={ladle}>
         <mesh position={[0, -0.08, 0]}>
           <sphereGeometry args={[0.05, 16, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2]} />
@@ -428,7 +457,6 @@ export function StoveScene({
           <cylinderGeometry args={[0.01, 0.01, 0.4, 8]} />
           <Std color="#CFD8DC" rough={0.2} metal={0.8} />
         </mesh>
-        <Hand skin={skin} sleeve={sleeve} position={[0.16, 0.14, 0.3]} rotation={[0.3, -0.5, 0]} />
       </group>
     </group>
   );
@@ -442,15 +470,11 @@ export function CounterScene({
   drink,
   progress,
   pulse,
-  skin,
-  sleeve,
 }: {
   recipeId: RecipeId | null;
   drink: boolean;
   progress: number;
   pulse: PulseRef;
-  skin: string;
-  sleeve: string;
 }) {
   const jug = useRef<Group>(null);
   useFrame(() => {
@@ -512,9 +536,7 @@ export function CounterScene({
           <cylinderGeometry args={[0.07, 0.08, 0.2, 24]} />
           <Std color="#B0BEC5" rough={0.25} metal={0.6} />
         </mesh>
-        <Hand skin={skin} sleeve={sleeve} position={[0.1, -0.02, 0.15]} rotation={[0.2, -0.6, 0]} />
       </group>
-      <Hand skin={skin} sleeve={sleeve} position={[-0.3, 1.0, -0.2]} rotation={[0, 0.6, 0]} />
     </group>
   );
 }

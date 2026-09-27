@@ -62,8 +62,14 @@ Giờ mở cửa hiển thị quán dạng **3D nhìn chéo từ trên** (three.
 - Nhân viên cũng hiện trên bản đồ: đầu bếp đứng bếp, phụ bếp ở thớt, phục vụ chạy tới bàn.
 - Nút **📋 Bảng / 🗺️ Bản đồ** trên thanh đồng hồ để chuyển qua lại với bảng điều khiển bấm nút (lựa chọn được ghi nhớ).
 
+### 🛒 Đi chợ giữa giờ bán
+Hết nguyên liệu giữa ngày? Bấm **🛒** trên màn chơi để chạy ra chợ (thời gian vẫn trôi).
+- **Chưa có nhân viên nào đang làm** → quán **treo biển tạm đóng**: không đón khách mới; khách đang ngồi vẫn chờ và có thể bỏ về, món trên bếp vẫn có thể cháy.
+- **Có nhân viên** → quán vẫn bán bình thường trong lúc bạn đi chợ.
+- Bấm **🏃 Về quán** để quay lại.
+
 ### 👀 Góc nhìn thứ nhất khi sơ chế / nấu
-Tới **thớt**, **bếp** hoặc **quầy pha chế** là chuyển sang góc nhìn qua mắt chủ quán: thấy hai tay, dao và thớt / nồi trên lửa / ly nước.
+Tới **thớt**, **bếp** hoặc **quầy pha chế** là chuyển sang góc nhìn qua mắt chủ quán (kiểu Kebab Chefs, không vẽ tay): chỉ thấy con dao và thớt, cái muôi trong nồi trên lửa, bình rót và ly nước; vụn thức ăn văng khi thái, dầu bắn khi nấu.
 - Thớt: chọn nguyên liệu rồi **chạm liên tục** để thái nhanh hơn (mỗi nhát rút 0,35 giây), lát cắt rơi ra, xong thì vào bát.
 - Bếp: chọn món, **chạm để khuấy** (món chín nhanh hơn, khuấy không làm cháy), sắp cháy thì món sẫm lại và bốc khói đen — bấm **Nhấc ra** để cầm món trên tay.
 - Quầy pha chế: ly đầy dần, chạm để lắc bình. Nút **⬅ Về quán** (hoặc phím Esc) để quay lại; Space / E để thái – khuấy trên máy tính.
@@ -108,3 +114,6 @@ scripts/check-map.ts Kiểm tra bản đồ và việc cầm/đưa món
 ```
 
 Màn hình rộng (≥ 900px, máy tính) hiển thị 3 cột; màn hình hẹp (điện thoại) chia tab.
+
+## Ghi công mô hình 3D
+Nhân vật và đồ vật nhà hàng dùng mô hình **KayKit** của Kay Lousberg (Character Pack: Adventurers, Restaurant Bits, Furniture Bits) — giấy phép **CC0**. Xem `assets/models/LICENSE.md`; tạo lại bằng `scripts/build-models.mjs` và `scripts/embed-models.mjs`.

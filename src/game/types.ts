@@ -251,6 +251,10 @@ export interface DayRuntime {
   eventsFired: string[];
   nextEventCheck: number;
   log: LogEntry[];
+  /** Chủ quán đang đi chợ giữa giờ bán. */
+  ownerAway: boolean;
+  /** Đã báo "treo biển tạm đóng" trong lần đi chợ này. */
+  closedNoticeShown: boolean;
 }
 
 export type Phase = 'market' | 'open' | 'summary';
@@ -262,7 +266,11 @@ export type HairStyle = 'short' | 'spiky' | 'long' | 'bun' | 'bald';
 export type HatKind = 'none' | 'chef' | 'cap' | 'conical' | 'bandana';
 
 /** Nhân vật chủ quán do người chơi tự tạo. */
+/** Kiểu nhân vật: 4 mô hình KayKit có hoạt ảnh, hoặc nhân vật tự tạo (đổi màu tự do). */
+export type ProfileModel = 'custom' | 'rogue' | 'knight' | 'mage' | 'barbarian';
+
 export interface PlayerProfile {
+  model: ProfileModel;
   name: string;
   shopName: string;
   gender: Gender;

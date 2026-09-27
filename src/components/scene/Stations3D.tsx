@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import type { Group, Mesh } from 'three';
 import { useFrame } from '../../three/fiber';
 import { BURN_FACTOR } from '../../game/data';
@@ -6,52 +6,57 @@ import { MAP_COLS, MAP_ROWS, PASS_ROW } from '../../game/layout';
 import type { MapStation } from '../../game/layout';
 import type { CookJob, Dish } from '../../game/types';
 import { FOOD_COLOR } from './looks';
+import { KayBoard, KayCounter, KayDoor, KayFridge, KayPass, KaySink, KayStove, KayTable } from './KayProps';
+import { checkerTileTexture, wallTileTexture, woodTexture } from './textures';
 
 const center = (st: MapStation): [number, number] => [st.x + st.w / 2, st.y + st.h / 2];
 
 // ---------- Sàn và tường ----------
 
 export function Floor() {
-  const kitchenTiles: [number, number][] = [];
-  for (let x = 0; x < MAP_COLS; x += 1) for (let y = 1; y <= PASS_ROW; y += 1) if ((x + y) % 2 === 0) kitchenTiles.push([x, y]);
-  const planks: number[] = [];
-  for (let x = 0.5; x < MAP_COLS; x += 0.5) planks.push(x);
   const diningDepth = MAP_ROWS - PASS_ROW - 0.5;
+  const kitchenDepth = PASS_ROW + 0.5;
+  const tiles = useMemo(() => {
+    const t = checkerTileTexture('#F5F5F5', '#37474F').clone();
+    t.repeat.set(MAP_COLS / 2, kitchenDepth / 2);
+    t.needsUpdate = true;
+    return t;
+  }, [kitchenDepth]);
+  const wood = useMemo(() => {
+    const t = woodTexture('#C8914F').clone();
+    t.repeat.set(MAP_COLS / 3, diningDepth / 1.5);
+    t.needsUpdate = true;
+    return t;
+  }, [diningDepth]);
   return (
     <group>
-      {/* Bếp: gạch men caro */}
-      <mesh rotation-x={-Math.PI / 2} position={[MAP_COLS / 2, 0, (PASS_ROW + 1.5) / 2]} receiveShadow>
-        <planeGeometry args={[MAP_COLS, PASS_ROW + 0.5]} />
-        <meshLambertMaterial color="#DCE3E6" />
+      {/* Bếp: gạch men caro đen trắng */}
+      <mesh rotation-x={-Math.PI / 2} position={[MAP_COLS / 2, 0, kitchenDepth / 2]} receiveShadow>
+        <planeGeometry args={[MAP_COLS, kitchenDepth]} />
+        <meshStandardMaterial map={tiles} roughness={0.35} metalness={0.05} />
       </mesh>
-      {kitchenTiles.map(([x, y]) => (
-        <mesh key={`${x},${y}`} rotation-x={-Math.PI / 2} position={[x + 0.5, 0.002, y + 0.5]} receiveShadow>
-          <planeGeometry args={[0.98, 0.98]} />
-          <meshLambertMaterial color="#C5D0D5" />
-        </mesh>
-      ))}
-      {/* Phòng ăn: sàn gỗ */}
-      <mesh rotation-x={-Math.PI / 2} position={[MAP_COLS / 2, 0, PASS_ROW + 0.5 + diningDepth / 2]} receiveShadow>
+      {/* Phòng ăn: sàn gỗ ván */}
+      <mesh rotation-x={-Math.PI / 2} position={[MAP_COLS / 2, 0, kitchenDepth + diningDepth / 2]} receiveShadow>
         <planeGeometry args={[MAP_COLS, diningDepth]} />
-        <meshLambertMaterial color="#D9A86C" />
+        <meshStandardMaterial map={wood} roughness={0.7} />
       </mesh>
-      {planks.map((x) => (
-        <mesh key={x} rotation-x={-Math.PI / 2} position={[x, 0.002, PASS_ROW + 0.5 + diningDepth / 2]}>
-          <planeGeometry args={[0.02, diningDepth]} />
-          <meshBasicMaterial color="#B98652" />
-        </mesh>
-      ))}
     </group>
   );
 }
 
 export function Walls() {
+  const wallTiles = useMemo(() => {
+    const t = wallTileTexture('#26A69A', '#1B7F74').clone();
+    t.repeat.set(MAP_COLS * 2, 2);
+    t.needsUpdate = true;
+    return t;
+  }, []);
   return (
     <group>
       {/* Tường sau: ốp gạch phía dưới, sơn kem phía trên */}
       <mesh position={[MAP_COLS / 2, 0.4, 0.25]} castShadow receiveShadow>
         <boxGeometry args={[MAP_COLS, 0.8, 0.5]} />
-        <meshLambertMaterial color="#90A4AE" />
+        <meshStandardMaterial map={wallTiles} roughness={0.3} />
       </mesh>
       <mesh position={[MAP_COLS / 2, 1.3, 0.2]} receiveShadow>
         <boxGeometry args={[MAP_COLS, 1.0, 0.4]} />
@@ -459,31 +464,38 @@ export function StationMesh({
   let body: React.ReactNode = null;
   switch (st.kind) {
     case 'stove':
-      body = <Stove job={job ?? null} blocked={Boolean(blocked)} />;
+      body = <KayStove job={job ?? null} blocked={Boolean(blocked)} fallback={<Stove job={job ?? null} blocked={Boolean(blocked)} />} />;
       break;
     case 'counter':
-      body = <Counter job={job ?? null} />;
+      body = <KayCounter job={job ?? null} fallback={<Counter job={job ?? null} />} />;
       break;
     case 'fridge':
-      body = <Fridge />;
+      body = <KayFridge fallback={<Fridge />} />;
       break;
     case 'board':
-      body = <Board prepping={Boolean(prepping)} />;
+      body = <KayBoard prepping={Boolean(prepping)} fallback={<Board prepping={Boolean(prepping)} />} />;
       break;
     case 'trash':
       body = <Trash />;
       break;
     case 'mop':
-      body = <Mop />;
+      body = (
+        <group>
+          <KaySink fallback={<Mop />} />
+          <group position={[-0.3, 0, 0.3]} scale={0.7}>
+            <Mop />
+          </group>
+        </group>
+      );
       break;
     case 'pass':
-      body = <Pass st={st} dishes={dishes ?? []} />;
+      body = <KayPass width={st.w} dishes={dishes ?? []} fallback={<Pass st={st} dishes={dishes ?? []} />} />;
       break;
     case 'table':
-      body = <Table served={served ?? []} />;
+      body = <KayTable seats={SEATS} served={served ?? []} fallback={<Table served={served ?? []} />} />;
       break;
     case 'door':
-      body = <Door />;
+      body = <KayDoor fallback={<Door />} />;
       break;
   }
   return <group position={[cx, 0, cz]}>{body}</group>;

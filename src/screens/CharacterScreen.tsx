@@ -9,7 +9,7 @@ import { Button, Panel, colors } from '../components/ui';
 import { setProfile } from '../game/engine';
 import { useGame } from '../game/GameContext';
 import { defaultRng } from '../game/helpers';
-import { CLOTH_COLORS, GENDERS, HAIR_COLORS, HAIR_STYLES, HATS, SKIN_TONES, randomProfile } from '../game/profile';
+import { CLOTH_COLORS, GENDERS, HAIR_COLORS, HAIR_STYLES, HATS, PROFILE_MODELS, SKIN_TONES, randomProfile } from '../game/profile';
 import type { PlayerProfile } from '../game/types';
 import type { RootStackParamList } from '../navigation/types';
 import { hasWebGL } from '../three/webgl';
@@ -79,7 +79,7 @@ export default function CharacterScreen() {
 
   const preview = (
     <View style={{ gap: 10 }}>
-      <CharacterPreview look={profileLook(draft)} enabled={gl} />
+      <CharacterPreview look={profileLook(draft)} model={draft.model === 'custom' ? undefined : draft.model} enabled={gl} />
       <Text style={styles.nameBig}>{draft.name.trim() || 'Chủ quán'}</Text>
       <Text style={styles.shopBig}>🏮 {draft.shopName.trim() || 'Quán Ăn Của Tôi'}</Text>
       <Button variant="secondary" label="🎲 Ngẫu nhiên" onPress={() => setDraft((d) => randomProfile(defaultRng, d))} />
@@ -111,6 +111,16 @@ export default function CharacterScreen() {
         </Field>
       </Panel>
 
+      <Panel title="🎭 Kiểu nhân vật">
+        <Chips items={PROFILE_MODELS} value={draft.model} onChange={(v) => set('model', v)} />
+        <Text style={[styles.label, { marginTop: 8 }]}>
+          {draft.model === 'custom'
+            ? 'Tự tạo: đổi được giới tính, kiểu tóc, màu da, màu quần áo và kính.'
+            : 'Nhân vật 3D có hoạt ảnh (mô hình KayKit). Có thể đội thêm mũ ở phần bên dưới.'}
+        </Text>
+      </Panel>
+
+      {draft.model === 'custom' && (
       <Panel title="🧑 Ngoại hình">
         <Field label="Giới tính">
           <Chips items={GENDERS} value={draft.gender} onChange={(v) => set('gender', v)} />
@@ -126,6 +136,9 @@ export default function CharacterScreen() {
         </Field>
       </Panel>
 
+      )}
+
+      {draft.model === 'custom' && (
       <Panel title="👕 Trang phục">
         <Field label="Áo">
           <Swatches colors={CLOTH_COLORS} value={draft.shirt} onChange={(c) => set('shirt', c)} />
@@ -137,6 +150,8 @@ export default function CharacterScreen() {
           <Swatches colors={CLOTH_COLORS} value={draft.pants} onChange={(c) => set('pants', c)} />
         </Field>
       </Panel>
+
+      )}
 
       <Panel title="🎩 Mũ & phụ kiện">
         <Field label="Mũ">
@@ -154,6 +169,7 @@ export default function CharacterScreen() {
             <Swatches colors={CLOTH_COLORS} value={draft.hatColor} onChange={(c) => set('hatColor', c)} />
           </Field>
         )}
+        {draft.model === 'custom' && (
         <Field label="Kính">
           <Chips
             items={[
@@ -164,6 +180,7 @@ export default function CharacterScreen() {
             onChange={(v) => set('glasses', v === 'yes')}
           />
         </Field>
+        )}
       </Panel>
 
       <Button label={first ? '🏮 Vào quán' : '✅ Lưu nhân vật'} onPress={save} />

@@ -4,6 +4,7 @@ import { CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../game/data';
 import { isPeak, playerClean } from '../game/engine';
 import { useGame, useGameState } from '../game/GameContext';
 import { formatClock } from '../game/helpers';
+import GoMarketButton from './GoMarketButton';
 import { Button, ProgressBar, colors } from './ui';
 
 /** Thanh dưới Hud khi mở cửa: đồng hồ, cảnh báo, lau dọn, tạm dừng, đổi chế độ xem. */
@@ -34,6 +35,7 @@ export default function ShopTopBar({ showClean = true }: { showClean?: boolean }
         label={viewMode === 'map' ? '📋 Bảng' : '🗺️ Bản đồ'}
         onPress={() => setViewMode(viewMode === 'map' ? 'panel' : 'map')}
       />
+      <GoMarketButton render={(onPress) => <Button small variant="secondary" label="🛒 Chợ" onPress={onPress} />} />
       <Button small variant={paused ? 'primary' : 'secondary'} label={paused ? '▶️' : '⏸️'} onPress={() => setPaused(!paused)} />
     </View>
   );

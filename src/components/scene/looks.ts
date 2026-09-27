@@ -1,4 +1,5 @@
 import type { Customer, HairStyle, PlayerProfile, RecipeId, StaffRole } from '../../game/types';
+import type { CharacterModel } from '../../three/models';
 
 /** Ngoại hình nhân vật low-poly. */
 export interface Look {
@@ -42,6 +43,16 @@ export function customerLook(c: Customer, seat = 0): Look {
   if (c.kind === 'regular') return { ...base, hat: 'cap', hatColor: '#FFB300' };
   return base;
 }
+
+const MODELS: CharacterModel[] = ['rogue', 'knight', 'mage', 'barbarian'];
+
+/** Mô hình KayKit cho khách (cố định theo khách + ghế). */
+export function customerModel(c: Customer, seat = 0): CharacterModel {
+  return MODELS[hash(c.id + '#' + seat) % MODELS.length];
+}
+
+/** Mô hình KayKit cho nhân viên theo vị trí. */
+export const STAFF_MODEL: Record<StaffRole, CharacterModel> = { cook: 'barbarian', prep: 'rogue', waiter: 'mage' };
 
 /** Ngoại hình chủ quán theo nhân vật người chơi tự tạo. */
 export function profileLook(p: PlayerProfile): Look {

@@ -26,6 +26,17 @@ export interface MapStation {
   tableIndex?: number;
 }
 
+/** Ô đặt đồ trang trí (xem `Decor` trong KayProps.tsx). */
+export const DECOR_TILES: [number, number][] = [
+  [0, 1],
+  [5, 1],
+  [8, 1],
+  [11, 1],
+  [0, 9],
+  [11, 5],
+  [11, 6],
+];
+
 export interface MapLayout {
   stations: MapStation[];
   blocked: Set<string>;
@@ -81,6 +92,8 @@ export function buildLayout(upgrades: Upgrades): MapLayout {
 
   const blocked = new Set<string>();
   for (let x = 0; x < MAP_COLS; x += 1) blocked.add(key(x, 0));
+  // Ô có đồ trang trí (thùng rau thịt, quầy gia vị, cây cảnh, đèn cây) — không đi qua được.
+  for (const [x, y] of DECOR_TILES) blocked.add(key(x, y));
   for (const st of stations) {
     for (let dx = 0; dx < st.w; dx += 1) for (let dy = 0; dy < st.h; dy += 1) blocked.add(key(st.x + dx, st.y + dy));
   }

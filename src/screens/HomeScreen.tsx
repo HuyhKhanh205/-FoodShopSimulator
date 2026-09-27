@@ -5,6 +5,10 @@ import { useNavigation } from '@react-navigation/native';
 import { Button, Panel, colors } from '../components/ui';
 import { DEBT_DUE_DAY, START_DEBT } from '../game/data';
 import { useGame } from '../game/GameContext';
+import { preloadModels } from '../three/models';
+
+// Nạp sẵn mô hình 3D ngay khi mở game.
+preloadModels();
 import { formatMoney } from '../game/helpers';
 
 export default function HomeScreen() {

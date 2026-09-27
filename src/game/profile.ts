@@ -1,4 +1,4 @@
-import type { Gender, HairStyle, HatKind, PlayerProfile, Rng } from './types';
+import type { Gender, HairStyle, HatKind, PlayerProfile, ProfileModel, Rng } from './types';
 
 export const SKIN_TONES = ['#F6D5B5', '#F2C9A0', '#E0AC7E', '#C68A5E', '#A86E47', '#7A4B2E'];
 export const HAIR_COLORS = ['#1B1B1B', '#2B1B12', '#5D4037', '#8D6E63', '#C49A6C', '#B0BEC5', '#C62828', '#6A1B9A'];
@@ -28,7 +28,16 @@ export const GENDERS: { key: Gender; label: string }[] = [
   { key: 'female', label: '👩 Nữ' },
 ];
 
+export const PROFILE_MODELS: { key: ProfileModel; label: string }[] = [
+  { key: 'rogue', label: '🧑 Lanh lợi' },
+  { key: 'knight', label: '🧔 Vạm vỡ' },
+  { key: 'mage', label: '🧓 Hiền lành' },
+  { key: 'barbarian', label: '👨‍🦰 Râu rậm' },
+  { key: 'custom', label: '🎨 Tự tạo' },
+];
+
 export const DEFAULT_PROFILE: PlayerProfile = {
+  model: 'rogue',
   name: 'Chủ quán',
   shopName: 'Quán Ăn Của Tôi',
   gender: 'male',
@@ -50,6 +59,7 @@ export function randomProfile(rng: Rng, keep: PlayerProfile): PlayerProfile {
   const gender = pick(rng, GENDERS).key;
   return {
     ...keep,
+    model: pick(rng, PROFILE_MODELS).key,
     gender,
     hairStyle: pick(rng, gender === 'female' ? (['long', 'bun', 'short'] as HairStyle[]) : (['short', 'spiky', 'bald', 'long'] as HairStyle[])),
     hairColor: pick(rng, HAIR_COLORS),

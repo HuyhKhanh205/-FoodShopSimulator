@@ -34,8 +34,6 @@ export default function FirstPersonView({
   const run = game.run!;
   const pulse = useRef(0);
   const [lastPrep, setLastPrep] = useState<IngredientId | null>(null);
-  const skin = game.profile.skin;
-  const sleeve = game.profile.shirt;
   const isBoard = station.kind === 'board';
   const slot = station.slotId ? run.slots.find((s) => s.id === station.slotId) : undefined;
   const job = slot?.job ?? null;
@@ -131,8 +129,6 @@ export default function FirstPersonView({
         progress={prepProgress}
         bowl={!prep && bowlId ? { id: bowlId, count: run.prepped[bowlId] ?? 0 } : null}
         pulse={pulse}
-        skin={skin}
-        sleeve={sleeve}
       />
     );
   } else if (slot?.station === 'stove') {
@@ -143,8 +139,6 @@ export default function FirstPersonView({
         burnRatio={job ? burnRatio : -1}
         blocked={Boolean(blocked)}
         pulse={pulse}
-        skin={skin}
-        sleeve={sleeve}
       />
     );
   } else {
@@ -154,8 +148,6 @@ export default function FirstPersonView({
         drink={recipe?.drink ?? true}
         progress={Math.min(1, cookRatio)}
         pulse={pulse}
-        skin={skin}
-        sleeve={sleeve}
       />
     );
   }

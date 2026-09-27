@@ -75,4 +75,39 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check(run2.slots[1].job!.progress === 0, 'không khuấy được món nhân viên đang nấu');
 }
 
+// 5. Đi chợ giữa giờ bán.
+{
+  const run5 = (g: ReturnType<typeof E.newGame>, r: () => number) => {
+    let spawned = 0;
+    for (let i = 0; i < 1600; i += 1) {
+      const before = g.run!.customers.length;
+      E.tick(g, 100, r);
+      if (g.activeEvent) g.activeEvent = null;
+      if (!g.run) break;
+      if (g.run.customers.length > before) spawned += 1;
+    }
+    return spawned;
+  };
+  const r5 = seededRng(11);
+  const alone = E.newGame(r5);
+  alone.activeEvent = null;
+  E.openShop(alone, r5);
+  check(!E.buy(alone, 'trung', 1), 'đang bán ở quán thì không mua được');
+  E.leaveForMarket(alone);
+  check(E.buy(alone, 'trung', 1), 'đi chợ giữa giờ thì mua được');
+  check(E.shopClosed(alone), 'chưa có nhân viên: quán tạm đóng');
+  check(run5(alone, r5) === 0, 'quán tạm đóng: không có khách mới');
+  E.returnToShop(alone);
+  check(!alone.run!.ownerAway && !E.shopClosed(alone), 'về quán thì mở lại');
+
+  const r6 = seededRng(11);
+  const withStaff = E.newGame(r6);
+  withStaff.activeEvent = null;
+  withStaff.staff.push({ ...withStaff.candidates[0], trait: 'steady' });
+  E.openShop(withStaff, r6);
+  E.leaveForMarket(withStaff);
+  check(!E.shopClosed(withStaff), 'có nhân viên: quán vẫn mở khi chủ đi chợ');
+  check(run5(withStaff, r6) > 0, 'có nhân viên: vẫn có khách mới');
+}
+
 process.exit(failed ? 1 : 0);
