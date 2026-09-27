@@ -5,7 +5,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { MODEL_DATA, PROP_BOUNDS } from '../assets/models.generated';
-import { CHAR_PALETTES, PALETTE_COLS, PALETTE_ROWS, PALETTE_SAMPLES } from '../assets/charPalettes.generated';
+import { CHAR_PALETTES, PALETTE_COLS, PALETTE_ROWS, PALETTE_SAMPLES, PROP_PALETTES, PROP_PALETTE_H, PROP_PALETTE_W } from '../assets/palettes.generated';
 
 export type CharacterModel = 'rogue' | 'knight' | 'mage' | 'barbarian';
 export const CHARACTER_MODELS: CharacterModel[] = ['rogue', 'knight', 'mage', 'barbarian'];
@@ -32,6 +32,35 @@ function decodeBase64(b64: string): ArrayBuffer {
   return out.buffer;
 }
 
+/** RGB → DataTexture sRGB (lọc điểm gần nhất để không lem giữa các ô màu). */
+function rgbTexture(rgb: Uint8Array, w: number, h: number): DataTexture {
+  const data = new Uint8Array(w * h * 4);
+  for (let i = 0, o = 0; i < rgb.length; i += 3, o += 4) {
+    data[o] = rgb[i];
+    data[o + 1] = rgb[i + 1];
+    data[o + 2] = rgb[i + 2];
+    data[o + 3] = 255;
+  }
+  const tex = new DataTexture(data, w, h, RGBAFormat);
+  tex.colorSpace = SRGBColorSpace;
+  tex.magFilter = NearestFilter;
+  tex.minFilter = NearestFilter;
+  tex.generateMipmaps = false;
+  tex.flipY = false;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+const propTextures = new Map<string, DataTexture | null>();
+/** Bảng màu đồ vật theo tên vật liệu (ảnh PNG trong GLB đã bị bỏ khi nhúng). */
+function propTexture(material: string): DataTexture | null {
+  if (!propTextures.has(material)) {
+    const b64 = PROP_PALETTES[material];
+    propTextures.set(material, b64 ? rgbTexture(new Uint8Array(decodeBase64(b64)), PROP_PALETTE_W, PROP_PALETTE_H) : null);
+  }
+  return propTextures.get(material)!;
+}
+
 const cache = new Map<string, Promise<GLTF>>();
 const done = new Map<string, GLTF | null>();
 
@@ -53,9 +82,16 @@ function load(name: string): Promise<GLTF> {
     p.then(
       (g) => {
         g.scene.traverse((o) => {
-          if ((o as Mesh).isMesh) {
-            o.castShadow = true;
-            o.receiveShadow = true;
+          const mesh = o as Mesh;
+          if (!mesh.isMesh) return;
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          // Gắn bảng màu cho vật liệu đồ vật (không cần nạp ảnh — chạy được trên Safari iPhone).
+          const mat = mesh.material as MeshStandardMaterial;
+          const tex = mat && !mat.map ? propTexture(mat.name) : null;
+          if (tex) {
+            mat.map = tex;
+            mat.needsUpdate = true;
           }
         });
         done.set(name, g);
@@ -157,14 +193,15 @@ const tintCache = new Map<string, DataTexture>();
  * (giữ độ sáng tối chuyển sắc của ô gốc), ô khác giữ nguyên. Không dùng shader tự viết
  * nên chạy được trên mọi máy (Safari iPhone, app).
  */
-function tintTexture(model: CharacterModel, part: Part, tint: CharacterTint): DataTexture | null {
-  const key = `${model}|${part}|${tint.shirt}|${tint.shirt2}|${tint.pants}|${tint.hair}|${tint.skin}`;
+function tintTexture(model: CharacterModel, part: Part, tint?: CharacterTint): DataTexture | null {
+  const key = tint ? `${model}|${part}|${tint.shirt}|${tint.shirt2}|${tint.pants}|${tint.hair}|${tint.skin}` : `${model}|orig`;
   const hit = tintCache.get(key);
   if (hit) return hit;
   const src = palette(model);
   if (!src) return null;
-  const roles = ROLE_MAP[model][part];
-  const cols = [null, tint.shirt, tint.shirt2 ?? tint.shirt, tint.pants, tint.hair, tint.skin].map((c) => (c ? hexRgb(c) : null));
+  // Không phối màu: giữ nguyên màu gốc (vẫn dùng bảng màu thay cho ảnh).
+  const roles: Record<string, number> = tint ? ROLE_MAP[model][part] : {};
+  const cols = !tint ? [] : [null, tint.shirt, tint.shirt2 ?? tint.shirt, tint.pants, tint.hair, tint.skin].map((c) => (c ? hexRgb(c) : null));
   const W = PALETTE_COLS;
   const H = PALETTE_ROWS * PALETTE_SAMPLES;
   const data = new Uint8Array(W * H * 4);
@@ -232,8 +269,7 @@ function makeTintable(scene: Object3D): TintSlot[] {
 
 function applyTint(model: CharacterModel, slots: TintSlot[], tint?: CharacterTint) {
   for (const sl of slots) {
-    const tex = tint ? tintTexture(model, sl.part, tint) : null;
-    const next = tex ?? sl.original;
+    const next = tintTexture(model, sl.part, tint) ?? sl.original;
     if (sl.mat.map !== next) {
       sl.mat.map = next;
       sl.mat.needsUpdate = true;

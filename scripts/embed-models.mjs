@@ -4,6 +4,12 @@
  */
 import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { NodeIO } from '@gltf-transform/core';
+
+// Bỏ ảnh texture khỏi GLB (giữ UV): game dùng bảng màu trong src/assets/palettes.generated.ts
+// (chạy `node scripts/build-palettes.mjs` trước). Ảnh trong GLB được nạp qua blob: URL — Safari iPhone
+// trong khung Artifact không nạp được nên đồ vật bị mất màu.
+const io = new NodeIO();
 
 const dir = join(process.cwd(), 'assets/models');
 const out = join(process.cwd(), 'src/assets/models.generated.ts');
@@ -14,7 +20,9 @@ src += `export const PROP_BOUNDS: Record<string, { min: number[]; max: number[] 
 src += 'export const MODEL_DATA: Record<string, string> = {\n';
 let total = 0;
 for (const f of files) {
-  const b64 = readFileSync(join(dir, f)).toString('base64');
+  const doc = await io.read(join(dir, f));
+  for (const t of doc.getRoot().listTextures()) t.dispose();
+  const b64 = Buffer.from(await io.writeBinary(doc)).toString('base64');
   total += b64.length;
   src += `  ${JSON.stringify(f.replace('.glb', ''))}: ${JSON.stringify(b64)},\n`;
 }
