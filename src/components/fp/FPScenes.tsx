@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { Color, DoubleSide, Vector3 } from 'three';
-import type { DirectionalLight, Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three';
+import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three';
 import { useFrame, useThree } from '../../three/fiber';
 import type { IngredientId, RecipeId } from '../../game/types';
 import { FOOD_COLOR } from '../scene/looks';
@@ -16,52 +16,94 @@ function Std({ color, rough = 0.7, metal = 0, opacity }: { color: string; rough?
   return <meshStandardMaterial color={color} roughness={rough} metalness={metal} transparent={opacity !== undefined} opacity={opacity ?? 1} />;
 }
 
-/** Khoảng cách giữa các trạm (thớt, bếp, quầy) trên dãy bếp chung. */
-export const STEP = 1.7;
+/** Khoảng cách giữa các bếp trên dãy bếp chung. */
+export const STOVE_GAP = 0.82;
+/** Bếp trong cảnh chung thu nhỏ lại để vừa nhiều bếp. */
+export const STOVE_SCALE = 0.62;
+/** Mặt bếp (y) và vị trí hàng bếp (z, phía xa) / thớt (z, phía gần). */
+export const TOP_Y = 0.93;
+export const STOVE_Z = -0.72;
+export const BOARD_Z = 0.36;
 
 /**
- * Camera ngang tầm mắt nhìn xuống mặt bếp, lướt mượt sang trạm đang chọn (x).
- * Lùi xa hơn khi màn hình hẹp (điện thoại dọc) để luôn thấy trọn thớt / nồi.
- * Đèn chính đi theo camera để bóng đổ luôn rõ.
+ * Camera ngang tầm mắt nhìn chếch xuống mặt bếp; tự lùi xa cho vừa bề rộng `width` và sâu `depth`
+ * (điện thoại dọc lùi xa hơn). Chỉ một đèn chính có bóng — nhẹ cho điện thoại.
  */
-export function KitchenRig({ x }: { x: number }) {
+export function EyeRig({
+  width,
+  depth = 1.2,
+  target = [0, 0.93, -0.28],
+  tilt = [0, 0.95, 0.75],
+  shadows = true,
+}: {
+  width: number;
+  depth?: number;
+  target?: [number, number, number];
+  tilt?: [number, number, number];
+  shadows?: boolean;
+}) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
   const size = useThree((s) => s.size);
-  const cur = useRef(x);
-  const dist = useRef(1.9);
-  const light = useRef<DirectionalLight>(null);
-  const target = useMemo(() => new Vector3(), []);
-  const dir = useMemo(() => new Vector3(0, 0.95, 0.75).normalize(), []);
   useLayoutEffect(() => {
     const aspect = size.width / Math.max(1, size.height);
     const vfov = 50;
     const hfov = 2 * Math.atan(Math.tan((vfov * Math.PI) / 360) * aspect);
-    dist.current = Math.max(1.9, 0.8 / Math.tan(hfov / 2));
+    const dist = Math.max(1.6, (width / 2) / Math.tan(hfov / 2), (depth / 2) / Math.tan((vfov * Math.PI) / 360));
+    const t = new Vector3(...target);
+    const dir = new Vector3(...tilt).normalize();
     camera.fov = vfov;
+    camera.position.copy(t).addScaledVector(dir, dist);
+    camera.lookAt(t);
     camera.updateProjectionMatrix();
-  }, [camera, size.width, size.height]);
-  useFrame((_, dt) => {
-    cur.current += (x - cur.current) * Math.min(1, dt * 7);
-    target.set(cur.current, 0.95, -0.28);
-    camera.position.copy(target).addScaledVector(dir, dist.current);
-    camera.lookAt(target);
-    const l = light.current;
-    if (l) {
-      l.position.set(cur.current + 1.5, 3, 2);
-      l.target.position.set(cur.current, 0.9, -0.3);
-      l.target.updateMatrixWorld();
-    }
-  });
+  }, [camera, size.width, size.height, width, depth, target[0], target[1], target[2], tilt[0], tilt[1], tilt[2]]);
   return (
     <group>
-      <hemisphereLight args={['#FFF6E5', '#6D4C41', 1.0]} />
-      <directionalLight ref={light} intensity={1.6} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <hemisphereLight args={['#FFF6E5', '#6D4C41', 1.1]} />
+      <directionalLight
+        position={[1.2, 3.2, 2]}
+        intensity={1.5}
+        castShadow={shadows}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-left={-3}
+        shadow-camera-right={3}
+        shadow-camera-top={3}
+        shadow-camera-bottom={-3}
+      />
+    </group>
+  );
+}
+
+/** Mặt bếp chung: phía xa là dải inox đặt bếp, phía gần là mặt gỗ đặt thớt. */
+export function KitchenCounter({ width }: { width: number }) {
+  const w = width + 0.6;
+  return (
+    <group>
+      <mesh position={[0, 0.45, -0.25]} receiveShadow>
+        <boxGeometry args={[w, 0.9, 1.9]} />
+        <Std color="#8D6E63" />
+      </mesh>
+      {/* Dải inox phía xa */}
+      <mesh position={[0, TOP_Y - 0.005, -0.72]} receiveShadow>
+        <boxGeometry args={[w + 0.02, 0.03, 0.9]} />
+        <Std color="#B0BEC5" rough={0.3} metal={0.6} />
+      </mesh>
+      {/* Mặt đá phía gần */}
+      <mesh position={[0, TOP_Y - 0.005, 0.2]} receiveShadow>
+        <boxGeometry args={[w + 0.02, 0.03, 0.96]} />
+        <Std color="#ECEFF1" rough={0.35} />
+      </mesh>
+      {/* Gờ ngăn hai phần */}
+      <mesh position={[0, TOP_Y + 0.012, -0.27]}>
+        <boxGeometry args={[w + 0.02, 0.02, 0.03]} />
+        <Std color="#78909C" rough={0.3} metal={0.6} />
+      </mesh>
     </group>
   );
 }
 
 /** Tường ốp gạch phía sau cả dãy bếp. */
-export function Backdrop({ from, to }: { from: number; to: number }) {
+export function Backdrop({ from, to, z = 0 }: { from: number; to: number; z?: number }) {
   const width = to - from;
   const wallTex = useMemo(() => {
     const t = wallTileTexture('#E0F2F1', '#B0BEC5').clone();
@@ -70,7 +112,7 @@ export function Backdrop({ from, to }: { from: number; to: number }) {
     return t;
   }, [width]);
   return (
-    <group position={[(from + to) / 2, 0, 0]}>
+    <group position={[(from + to) / 2, 0, z]}>
       <mesh position={[0, 1.8, -1.04]}>
         <planeGeometry args={[width, 1.8]} />
         <meshStandardMaterial map={wallTex} roughness={0.25} />
@@ -83,17 +125,16 @@ export function Backdrop({ from, to }: { from: number; to: number }) {
   );
 }
 
-/** Một đoạn mặt bếp (rộng bằng một trạm) với đèn ấm riêng. */
+/** Mặt bếp cho màn quầy pha chế. */
 export function Kitchen({ top = '#ECEFF1', body = '#8D6E63' }: { top?: string; body?: string }) {
   return (
     <group>
-      <pointLight position={[0, 1.8, -0.2]} intensity={0.5} distance={3} color="#FFE0B2" />
       <mesh position={[0, 0.45, -0.3]} receiveShadow>
-        <boxGeometry args={[STEP - 0.02, 0.9, 1.5]} />
+        <boxGeometry args={[3.2, 0.9, 1.5]} />
         <Std color={body} />
       </mesh>
       <mesh position={[0, 0.915, -0.3]} receiveShadow>
-        <boxGeometry args={[STEP, 0.03, 1.54]} />
+        <boxGeometry args={[3.24, 0.03, 1.54]} />
         <Std color={top} rough={0.35} />
       </mesh>
       {/* Tay nắm tủ dưới */}
@@ -467,7 +508,6 @@ export function BoardScene({
   const color = (ingredient && INGREDIENT_COLOR[ingredient]) ?? '#BCAAA4';
   return (
     <group>
-      <Kitchen />
       {/* Thớt gỗ có vân */}
       <mesh position={[0, 0.945, -0.25]} castShadow receiveShadow>
         <boxGeometry args={[1.0, 0.035, 0.6]} />
@@ -760,8 +800,11 @@ export function StoveScene({
 
   return (
     <group>
-      <Kitchen top="#37474F" body="#B0BEC5" />
-      {/* Mặt bếp + họng lửa + kiềng */}
+      {/* Mặt bếp inox tối + họng lửa + kiềng */}
+      <mesh position={[0, 0.932, -0.3]} receiveShadow>
+        <boxGeometry args={[0.72, 0.012, 0.72]} />
+        <Std color="#37474F" rough={0.35} metal={0.4} />
+      </mesh>
       <mesh position={[0, 0.94, -0.3]} rotation-x={-Math.PI / 2}>
         <torusGeometry args={[0.18, 0.02, 10, 32]} />
         <Std color="#212121" rough={0.4} metal={0.5} />
@@ -770,13 +813,6 @@ export function StoveScene({
         <mesh key={i} position={[Math.cos((i * Math.PI) / 2 + 0.78) * 0.22, 0.95, -0.3 + Math.sin((i * Math.PI) / 2 + 0.78) * 0.22]} rotation-y={-(i * Math.PI) / 2 - 0.78}>
           <boxGeometry args={[0.12, 0.02, 0.02]} />
           <Std color="#263238" rough={0.4} metal={0.6} />
-        </mesh>
-      ))}
-      {/* Núm vặn */}
-      {[-0.5, 0.5].map((x) => (
-        <mesh key={x} position={[x, 0.86, 0.47]} rotation-x={Math.PI / 2}>
-          <cylinderGeometry args={[0.04, 0.04, 0.03, 16]} />
-          <Std color={recipeId && !blocked && x < 0 ? '#E53935' : '#212121'} rough={0.3} />
         </mesh>
       ))}
       <Flames on={Boolean(recipeId) && !blocked} />

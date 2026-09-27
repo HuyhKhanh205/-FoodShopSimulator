@@ -19,6 +19,8 @@ import type { Look } from './looks';
 import { Floor, Highlight, SEATS, StationMesh, Walls } from './Stations3D';
 
 const SHADOWS = Platform.OS === 'web';
+/** Màn nhỏ (điện thoại): bớt đèn treo và giảm độ phân giải bóng / điểm ảnh cho nhẹ (Safari iPhone dễ đơ). */
+const LITE = Platform.OS !== 'web' || (typeof window !== 'undefined' && Math.min(window.innerWidth, window.innerHeight) < 700);
 
 /** Dùng camera tự quản lý (đã căn khung sẵn) làm camera mặc định của cảnh. */
 function UseCamera({ cam }: { cam: CameraCam }) {
@@ -44,8 +46,8 @@ function Sun() {
       position={[MAP_COLS / 2 + 4, 14, MAP_ROWS / 2 + 7]}
       intensity={1.6}
       castShadow={SHADOWS}
-      shadow-mapSize-width={2048}
-      shadow-mapSize-height={2048}
+      shadow-mapSize-width={LITE ? 1024 : 2048}
+      shadow-mapSize-height={LITE ? 1024 : 2048}
       shadow-camera-left={-9}
       shadow-camera-right={9}
       shadow-camera-top={9}
@@ -206,20 +208,20 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
   };
 
   return (
-    <Canvas shadows={SHADOWS ? 'percentage' : false} dpr={[1, 2]} gl={{ antialias: true }} style={{ flex: 1 }}>
+    <Canvas shadows={SHADOWS ? 'percentage' : false} dpr={LITE ? [1, 1.5] : [1, 2]} gl={{ antialias: true }} style={{ flex: 1 }}>
       <UseCamera cam={cam} />
       <FollowCam cam={cam} frame={frame} walker={walker} overlayPan={overlayPan} />
       <color attach="background" args={['#FBE3C6']} />
       <fog attach="fog" args={['#FBE3C6', 45, 80]} />
       <hemisphereLight args={['#FFF6E5', '#6D4C41', 0.9]} />
-      <ambientLight intensity={0.15} color="#FFE0B2" />
+      <ambientLight intensity={LITE ? 0.45 : 0.15} color="#FFE0B2" />
       <Sun />
       {/* Đèn thả trần ấm trên bếp và phòng ăn */}
       {[2.5, 6, 9.5].map((x) => (
-        <HangingLamp key={`k${x}`} position={[x, 2.1, 2.6]} light={SHADOWS} />
+        <HangingLamp key={`k${x}`} position={[x, 2.1, 2.6]} light={SHADOWS && !LITE} />
       ))}
       {[2, 6, 10].map((x) => (
-        <HangingLamp key={`d${x}`} position={[x, 2.0, 7]} light={SHADOWS} />
+        <HangingLamp key={`d${x}`} position={[x, 2.0, 7]} light={SHADOWS && !LITE} />
       ))}
 
       <group onClick={onClick}>

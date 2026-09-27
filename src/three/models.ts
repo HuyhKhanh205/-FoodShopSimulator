@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Box3, Color, Mesh, Vector3 } from 'three';
-import type { AnimationClip, Material, MeshStandardMaterial, Object3D } from 'three';
+import { Box3, DataTexture, NearestFilter, RGBAFormat, SRGBColorSpace, Vector3 } from 'three';
+import type { AnimationClip, Material, Mesh, MeshStandardMaterial, Object3D, Texture } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { MODEL_DATA, PROP_BOUNDS } from '../assets/models.generated';
+import { CHAR_PALETTES, PALETTE_COLS, PALETTE_ROWS, PALETTE_SAMPLES } from '../assets/charPalettes.generated';
 
 export type CharacterModel = 'rogue' | 'knight' | 'mage' | 'barbarian';
 export const CHARACTER_MODELS: CharacterModel[] = ['rogue', 'knight', 'mage', 'barbarian'];
@@ -131,30 +132,80 @@ const ROLE_MAP: Record<CharacterModel, Record<Part, Record<string, number>>> = {
   },
 };
 
-interface TintUniforms {
-  uRole: { value: Float32Array };
-  uCols: { value: Color[] };
+const paletteBytes = new Map<CharacterModel, Uint8Array>();
+function palette(model: CharacterModel): Uint8Array | null {
+  let p = paletteBytes.get(model);
+  if (!p) {
+    const b64 = CHAR_PALETTES[model];
+    if (!b64) return null;
+    p = new Uint8Array(decodeBase64(b64));
+    paletteBytes.set(model, p);
+  }
+  return p;
 }
 
-const TINT_HEAD = /* glsl */ `
-uniform float uRole[32];
-uniform vec3 uCols[6];
-`;
-const TINT_BODY = /* glsl */ `
-#include <map_fragment>
-{
-  vec2 cuv = clamp(vMapUv, 0.0, 0.9999);
-  vec2 cell = floor(cuv * vec2(8.0, 4.0));
-  float role = uRole[int(cell.x + cell.y * 8.0)];
-  if (role > 0.5) {
-    // Giữ độ sáng/tối (chuyển sắc) của ô gốc, chỉ đổi màu.
-    vec3 W = vec3(0.2126, 0.7152, 0.0722);
-    vec3 ref = texture2D(map, (cell + 0.5) / vec2(8.0, 4.0)).rgb;
-    float r = dot(diffuseColor.rgb, W) / max(dot(ref, W), 0.02);
-    diffuseColor.rgb = uCols[int(role + 0.5)] * clamp(r, 0.3, 1.6);
+const hexRgb = (hex: string) => {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const lum = (r: number, g: number, b: number) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+const tintCache = new Map<string, DataTexture>();
+
+/**
+ * Texture nhỏ (8 × 128) thay cho texture gốc: ô nào là áo / quần / tóc / da thì tô màu mới
+ * (giữ độ sáng tối chuyển sắc của ô gốc), ô khác giữ nguyên. Không dùng shader tự viết
+ * nên chạy được trên mọi máy (Safari iPhone, app).
+ */
+function tintTexture(model: CharacterModel, part: Part, tint: CharacterTint): DataTexture | null {
+  const key = `${model}|${part}|${tint.shirt}|${tint.shirt2}|${tint.pants}|${tint.hair}|${tint.skin}`;
+  const hit = tintCache.get(key);
+  if (hit) return hit;
+  const src = palette(model);
+  if (!src) return null;
+  const roles = ROLE_MAP[model][part];
+  const cols = [null, tint.shirt, tint.shirt2 ?? tint.shirt, tint.pants, tint.hair, tint.skin].map((c) => (c ? hexRgb(c) : null));
+  const W = PALETTE_COLS;
+  const H = PALETTE_ROWS * PALETTE_SAMPLES;
+  const data = new Uint8Array(W * H * 4);
+  for (let y = 0; y < H; y += 1) {
+    const cy = Math.floor(y / PALETTE_SAMPLES);
+    const mid = cy * PALETTE_SAMPLES + (PALETTE_SAMPLES >> 1);
+    for (let x = 0; x < W; x += 1) {
+      const i = (y * W + x) * 3;
+      const o = (y * W + x) * 4;
+      const role = roles[`${x},${cy}`] ?? 0;
+      const target = cols[role];
+      if (target) {
+        const m = (mid * W + x) * 3;
+        const ratio = Math.min(1.5, Math.max(0.35, lum(src[i], src[i + 1], src[i + 2]) / Math.max(8, lum(src[m], src[m + 1], src[m + 2]))));
+        data[o] = Math.min(255, target[0] * ratio);
+        data[o + 1] = Math.min(255, target[1] * ratio);
+        data[o + 2] = Math.min(255, target[2] * ratio);
+      } else {
+        data[o] = src[i];
+        data[o + 1] = src[i + 1];
+        data[o + 2] = src[i + 2];
+      }
+      data[o + 3] = 255;
+    }
   }
+  const tex = new DataTexture(data, W, H, RGBAFormat);
+  tex.colorSpace = SRGBColorSpace;
+  tex.magFilter = NearestFilter;
+  tex.minFilter = NearestFilter;
+  tex.generateMipmaps = false;
+  tex.flipY = false;
+  tex.needsUpdate = true;
+  tintCache.set(key, tex);
+  return tex;
 }
-`;
+
+interface TintSlot {
+  part: Part;
+  mat: MeshStandardMaterial;
+  original: Texture | null;
+}
 
 function partOf(o: Object3D): Part | null {
   for (let x: Object3D | null = o; x; x = x.parent) {
@@ -164,58 +215,30 @@ function partOf(o: Object3D): Part | null {
   return null;
 }
 
-/** Nhân bản vật liệu từng bộ phận và gắn shader đổi màu theo bảng ô màu. */
-function makeTintable(model: CharacterModel, scene: Object3D): TintUniforms[] {
-  const list: TintUniforms[] = [];
+/** Nhân bản vật liệu từng bộ phận để mỗi nhân vật đổi texture riêng. */
+function makeTintable(scene: Object3D): TintSlot[] {
+  const list: TintSlot[] = [];
   scene.traverse((o) => {
     const mesh = o as Mesh;
     if (!mesh.isMesh) return;
     const part = partOf(mesh);
     if (!part) return;
-    const roles = new Float32Array(32);
-    for (const [k, v] of Object.entries(ROLE_MAP[model][part])) {
-      const [cx, cy] = k.split(',').map(Number);
-      roles[cx + cy * 8] = v;
-    }
-    const uniforms: TintUniforms = {
-      uRole: { value: roles },
-      uCols: { value: [0, 1, 2, 3, 4, 5].map(() => new Color(1, 1, 1)) },
-    };
     const mat = (mesh.material as Material).clone() as MeshStandardMaterial;
-    mat.onBeforeCompile = (shader) => {
-      shader.uniforms.uRole = uniforms.uRole;
-      shader.uniforms.uCols = uniforms.uCols;
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\n' + TINT_HEAD)
-        .replace('#include <map_fragment>', TINT_BODY);
-    };
-    mat.customProgramCacheKey = () => 'kaykit-tint';
-    // Chưa phối màu thì tắt mọi ô (giữ màu gốc).
-    mat.userData.tintRoles = roles.slice();
-    roles.fill(0);
     mesh.material = mat;
-    list.push(uniforms);
-    (mesh.userData as { tintRoles?: Float32Array }).tintRoles = mat.userData.tintRoles;
+    list.push({ part, mat, original: mat.map });
   });
   return list;
 }
 
-function applyTint(scene: Object3D, uniforms: TintUniforms[], tint?: CharacterTint) {
-  let i = 0;
-  scene.traverse((o) => {
-    const mesh = o as Mesh;
-    const base = (mesh.userData as { tintRoles?: Float32Array }).tintRoles;
-    if (!mesh.isMesh || !base) return;
-    const u = uniforms[i++];
-    if (!u) return;
-    if (!tint) {
-      u.uRole.value.fill(0);
-      return;
+function applyTint(model: CharacterModel, slots: TintSlot[], tint?: CharacterTint) {
+  for (const sl of slots) {
+    const tex = tint ? tintTexture(model, sl.part, tint) : null;
+    const next = tex ?? sl.original;
+    if (sl.mat.map !== next) {
+      sl.mat.map = next;
+      sl.mat.needsUpdate = true;
     }
-    u.uRole.value.set(base);
-    const cols = [tint.shirt, tint.shirt, tint.shirt2 ?? tint.shirt, tint.pants, tint.hair, tint.skin];
-    cols.forEach((c, k) => u.uCols.value[k].set(c));
-  });
+  }
 }
 
 export function useCharacter(
@@ -224,17 +247,17 @@ export function useCharacter(
 ): { scene: Object3D; clips: AnimationClip[]; height: number } | null {
   const g = useGLTFModel(`char_${model}`);
   const anims = useGLTFModel('char_rogue');
-  const [inst, setInst] = useState<{ scene: Object3D; clips: AnimationClip[]; height: number; uniforms: TintUniforms[] } | null>(null);
+  const [inst, setInst] = useState<{ scene: Object3D; clips: AnimationClip[]; height: number; slots: TintSlot[] } | null>(null);
   useEffect(() => {
     if (!g || !anims) return;
     const scene = cloneSkinned(g.scene);
-    const uniforms = makeTintable(model, scene);
+    const slots = makeTintable(scene);
     const size = new Box3().setFromObject(g.scene).getSize(new Vector3());
-    setInst({ scene, clips: anims.animations, height: size.y || 2.4, uniforms });
+    setInst({ scene, clips: anims.animations, height: size.y || 2.4, slots });
   }, [g, anims, model]);
   const key = tint ? `${tint.shirt}|${tint.shirt2}|${tint.pants}|${tint.hair}|${tint.skin}` : '';
   useEffect(() => {
-    if (inst) applyTint(inst.scene, inst.uniforms, tint);
+    if (inst) applyTint(model, inst.slots, tint);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inst, key]);
   return inst;

@@ -59,8 +59,8 @@ export default function HomeScreen() {
           </Text>
           <Text style={styles.h}>👀 Bếp của tôi</Text>
           <Text style={styles.p}>
-            Tới thớt, bếp hay quầy là vào màn bếp nhìn qua mắt chủ quán: thớt, các bếp và quầy nằm chung một dãy, chọn trạm ở thanh trên để
-            vừa thái vừa canh nồi. Chạm liên tục để thái / khuấy nhanh hơn. Nhấc món ra thì cầm trên tay, bấm "Ra phục vụ" để mang ra.
+            Tới thớt hay bếp là vào màn bếp nhìn qua mắt chủ quán: dãy bếp ở trên, thớt ở dưới trong cùng một cảnh. Chạm vào nồi để chọn
+            bếp và khuấy, chạm liên tục vào thớt để thái. Nhấc món ra thì cầm trên tay, bấm "Ra phục vụ" để mang ra.
           </Text>
           <Text style={styles.h}>🗺️ Góc nhìn nhân vật</Text>
           <Text style={styles.p}>
