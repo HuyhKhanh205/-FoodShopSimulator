@@ -9,6 +9,7 @@ import type { CookSlot, GameState, IngredientId } from '../../game/types';
 import { Canvas } from '../../three/fiber';
 import type { ThreeEvent } from '../../three/fiber';
 import HelpButton from '../kid/HelpButton';
+import OrderRail from './OrderRail';
 import IconTile from '../kid/IconTile';
 import { ProgressBar, colors } from '../ui';
 import { BOARD_Z, Backdrop, BoardScene, CounterScene, EyeRig, Kitchen, KitchenCounter, STOVE_GAP, STOVE_SCALE, STOVE_Z, StoveScene, TOP_Y } from './FPScenes';
@@ -109,6 +110,7 @@ function Header({
   onExit,
   carrying,
   asking = 0,
+  game,
   topic,
   lines,
 }: {
@@ -116,6 +118,8 @@ function Header({
   carrying: number;
   /** Số khách đang chờ chủ quán trả lời câu hỏi. */
   asking?: number;
+  /** Để hiện thanh phiếu order. */
+  game: GameState;
   topic: 'kitchen' | 'counter';
   lines: { text: string; bar: { value: number; color: string } | null }[];
 }) {
@@ -147,6 +151,7 @@ function Header({
         </View>
         <HelpButton topic={topic} />
       </View>
+      <OrderRail game={game} />
     </View>
   );
 }
@@ -383,7 +388,7 @@ function KitchenView({ station: initial, stations, game, act, onExit, noGarnish,
             </mesh>
           </group>
         </Canvas>
-        <Header onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="kitchen" lines={[stoveLine, prepLine]} />
+        <Header game={game} onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="kitchen" lines={[stoveLine, prepLine]} />
         {hint && <Pointer icon={hint} />}
       </View>
       <ScrollView style={styles.controls} contentContainerStyle={styles.controlsContent}>
@@ -459,7 +464,7 @@ function CounterView({ station, game, act, onExit, noGarnish }: Props) {
           <CounterScene recipeId={info.job?.recipeId ?? null} drink={info.recipe?.drink ?? true} progress={Math.min(1, info.cookRatio)} pulse={pulse} />
         </Canvas>
         <Pressable accessibilityLabel="Lắc" onPress={tap} style={StyleSheet.absoluteFill} />
-        <Header onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="counter" lines={[{ text: `🧋  ${slotStatus(game, info)}`, bar: slotBar(info) }]} />
+        <Header game={game} onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="counter" lines={[{ text: `🧋  ${slotStatus(game, info)}`, bar: slotBar(info) }]} />
         {info.mine && !info.done && <Pointer icon="👆🧋" />}
       </View>
       {controls && (
