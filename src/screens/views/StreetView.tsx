@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import DebtPanel from '../../components/DebtPanel';
 import Hud from '../../components/Hud';
 import IconTile from '../../components/kid/IconTile';
+import NextButton from '../../components/kid/NextButton';
 import StreetScene3D from '../../components/street/StreetScene3D';
 import { Button, colors } from '../../components/ui';
 import { CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
@@ -50,7 +51,10 @@ export default function StreetView() {
     else setBank(true);
   };
 
-  const sceneH = Math.max(260, height - 250);
+  // 👉 Làm tiếp: giờ bán thì về quán, chưa mở cửa thì ra chợ mua đồ.
+  const goal: StreetPlaceId = open ? 'shop' : 'market';
+  const goalPlace = STREET_PLACES.find((p) => p.id === goal)!;
+  const sceneH = Math.max(260, height - 310);
   return (
     <View style={styles.flex}>
       <Hud game={game} />
@@ -64,6 +68,11 @@ export default function StreetView() {
           </Text>
         )}
       </View>
+      <NextButton
+        label={`${goalPlace.emoji} ${goalPlace.verb}`}
+        style={{ marginHorizontal: 10, marginBottom: 6 }}
+        onPress={() => (simple ? enter(goal) : setWalkTo({ id: goal, seq: Date.now() }))}
+      />
       {!simple && (
         <View style={styles.places}>
           {STREET_PLACES.map((p) => (
@@ -83,7 +92,7 @@ export default function StreetView() {
           ))}
         </View>
       ) : (
-        <StreetScene3D game={game} from={from} width={width} height={sceneH} onEnter={enter} walkTo={walkTo} />
+        <StreetScene3D game={game} from={from} width={width} height={sceneH} onEnter={enter} walkTo={walkTo} guide={goal} />
       )}
       {/* Đi tắt: về quán / vào chợ */}
       <View style={styles.bar}>

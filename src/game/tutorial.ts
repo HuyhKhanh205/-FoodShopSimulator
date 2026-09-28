@@ -148,6 +148,12 @@ export function skipTutorial(s: GameState) {
   s.tutorial.done = true;
 }
 
+/** Câu Chú Tư giới thiệu nút mới sáng ngày 2 / 3 (có giọng đọc). */
+export const UNLOCK_SAY = {
+  day2: '🔓 Quen chợ rồi! Từ nay bấm 🧾 Mua theo menu là giỏ tự đủ đồ. Mở thêm 📒 Sổ tay, 📦 Kho, 🧽 Lau và 📖 Sổ món nha con!',
+  day3: '🔓 Mở thêm 🚶 Ra phố, 🔧 Nâng cấp (mua thêm bàn, bếp), 🧱 Bố trí, 📋 Bảng và 👥 Người giúp. Từ từ khám phá nha!',
+};
+
 /** Câu đầu bếp nói cho một ghi chú (lên cấp, món mới...). */
 export function noteText(n: ChefNote): string {
   if (n.kind === 'levelUp') {
@@ -169,9 +175,7 @@ export function noteText(n: ChefNote): string {
   }
   if (n.kind === 'news') return n.text;
   if (n.kind === 'unlock')
-    return n.key === 'day2'
-      ? '🔓 Hôm nay mở thêm 📦 Kho, 🧽 Lau, 🔧 Nâng cấp và 📖 Sổ món. Cứ từ từ khám phá nha con!'
-      : '🔓 Mở thêm 📋 Bảng và 🧱 Bố trí quán rồi đó. Muốn thêm bàn, thêm bếp thì vô Bố trí nha!';
+    return n.key === 'day2' ? UNLOCK_SAY.day2 : UNLOCK_SAY.day3;
   if (n.kind === 'notebook') return '📒 Mở Sổ tay coi việc hôm nay nè! Xong việc có tiền, 🎟️ vé thưởng, việc khó còn có ⭐ sao hy vọng. Tối về nhớ viết nhật ký nha!';
   if (n.kind === 'autoClaim') return '🎁 Hôm qua con quên nhận thưởng nhiệm vụ, chú bỏ vô túi cho con rồi đó!';
   return 'Chọn 2–4 nguyên liệu bỏ vào nồi rồi bấm 🧪 Nấu thử!';

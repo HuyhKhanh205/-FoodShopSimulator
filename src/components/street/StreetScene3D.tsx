@@ -10,6 +10,7 @@ import type { StreetPlace, StreetPlaceId } from '../../game/street';
 import type { GameState } from '../../game/types';
 import { useWalker } from '../../screens/views/useWalker';
 import { fitCamera, followCamera, makeCamera, project } from '../scene/camera';
+import GuideArrow from '../scene/GuideArrow';
 import { ShopSign } from '../scene/KayProps';
 import { Player, Sun, UseCamera } from '../scene/ShopScene3D';
 import { Car, Flat, Pet, River, Road, SKY, Sidewalk, Signs, Walker, house, useViewFocus, GRASS_Y } from '../scene/SceneryKit';
@@ -89,6 +90,7 @@ export default function StreetScene3D({
   height,
   onEnter,
   walkTo,
+  guide = null,
 }: {
   game: GameState;
   from: StreetPlaceId;
@@ -97,6 +99,8 @@ export default function StreetScene3D({
   onEnter: (id: StreetPlaceId) => void;
   /** Yêu cầu đi bộ tới một nơi (từ hàng nút phía trên); `seq` đổi thì đi. */
   walkTo?: { id: StreetPlaceId; seq: number } | null;
+  /** Nơi cần tới tiếp theo (nút 👉 Làm tiếp): mũi tên vàng trước cửa. */
+  guide?: StreetPlaceId | null;
 }) {
   const { quality } = useSettings();
   const saver = quality === 'saver';
@@ -205,6 +209,10 @@ export default function StreetScene3D({
             <meshBasicMaterial color={near === p.id ? '#FFD54F' : '#FFE0B2'} transparent opacity={0.85} />
           </mesh>
         ))}
+        {(() => {
+          const g = guide && guide !== near ? STREET_PLACES.find((p) => p.id === guide) : null;
+          return g ? <GuideArrow x={g.door + 0.5} z={DOOR_ROW + 0.5} r={0.6} h={2.4} /> : null;
+        })()}
         <Player walker={walker.state} carrying={[]} profile={game.profile} />
       </Canvas>
       {/* Chip tên các nơi (chạm để đi tới) */}

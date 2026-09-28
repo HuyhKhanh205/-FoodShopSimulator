@@ -20,7 +20,8 @@ export function BasketBar({
 }: {
   game: GameState;
   basket: Basket;
-  onMenu: () => void;
+  /** Không truyền = ẩn nút 🧾 Theo menu (ngày đầu mua tay). */
+  onMenu?: () => void;
   onPay: () => void;
   onClear: () => void;
   error: string | null;
@@ -54,11 +55,13 @@ export function BasketBar({
             <Text style={styles.clearText}>✕</Text>
           </Pressable>
         )}
-        <TutorialGlow on={targets.includes('market.menu') && units === 0} radius={14}>
-          <Pressable onPress={onMenu} style={styles.menu} accessibilityRole="button" accessibilityLabel="Mua theo menu">
-            <Text style={styles.menuText}>🧾 Theo menu</Text>
-          </Pressable>
-        </TutorialGlow>
+        {onMenu && (
+          <TutorialGlow on={targets.includes('market.menu') && units === 0} radius={14}>
+            <Pressable onPress={onMenu} style={styles.menu} accessibilityRole="button" accessibilityLabel="Mua theo menu">
+              <Text style={styles.menuText}>🧾 Theo menu</Text>
+            </Pressable>
+          </TutorialGlow>
+        )}
         <TutorialGlow on={targets.includes('market.pay') && units > 0} radius={14}>
           <Pressable
             onPress={onPay}

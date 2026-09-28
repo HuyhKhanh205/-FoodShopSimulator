@@ -666,23 +666,23 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
 // ================= Giao diện gọn cho người mới: lịch mở tính năng =================
 {
   const g = E.newGame(seededRng(31));
-  const all: UF[] = ['notebook', 'lab', 'staff', 'manage', 'debt', 'stock', 'clean', 'panel', 'arrange', 'modeToggle', 'perfHint'];
+  const all: UF[] = ['notebook', 'lab', 'staff', 'manage', 'debt', 'stock', 'clean', 'panel', 'arrange', 'modeToggle', 'perfHint', 'quickBuy', 'more', 'street'];
   check(all.every((f) => !U.shows(g, f)), 'ngày 1 đang hướng dẫn: ẩn hết nút phụ');
   g.tutorial.done = true;
-  check(U.shows(g, 'modeToggle') && U.shows(g, 'perfHint') && !U.shows(g, 'notebook') && !U.shows(g, 'stock'), 'xong hướng dẫn ngày 1: chỉ thêm nút 3D / Đơn giản');
+  check(!U.shows(g, 'modeToggle') && !U.shows(g, 'street') && !U.shows(g, 'more') && !U.shows(g, 'notebook') && !U.shows(g, 'stock'), 'xong hướng dẫn ngày 1: vẫn gọn (chỉ Chợ + Làm tiếp)');
   g.cleanliness = 50;
   check(U.shows(g, 'clean'), 'quán bẩn thì hiện nút Lau ngay ngày 1');
   g.cleanliness = 100;
   g.activeEvent = null;
   g.phase = 'summary';
   E.nextDay(g, seededRng(1));
-  check(U.shows(g, 'notebook') && U.shows(g, 'stock') && U.shows(g, 'manage') && U.shows(g, 'lab') && !U.shows(g, 'panel'), 'ngày 2: mở sổ tay, kho, nâng cấp, sổ món');
+  check(U.shows(g, 'notebook') && U.shows(g, 'stock') && U.shows(g, 'quickBuy') && U.shows(g, 'more') && U.shows(g, 'lab') && !U.shows(g, 'manage') && !U.shows(g, 'panel') && !U.shows(g, 'street'), 'ngày 2: mở sổ tay, kho, mua theo menu, sổ món (chưa Nâng cấp / Ra phố)');
   check(g.chefQueue.filter((n) => n.kind === 'unlock').length === 1 && g.chefQueue.some((n) => n.kind === 'notebook') && !g.chefQueue.some((n) => n.kind === 'autoClaim'), 'sáng ngày 2 Chú Tư báo mở tính năng + sổ tay (không báo tự nhận)');
   g.chefQueue = [];
   g.activeEvent = null;
   g.phase = 'summary';
   E.nextDay(g, seededRng(2));
-  check(U.shows(g, 'panel') && U.shows(g, 'arrange') && g.chefQueue.filter((n) => n.kind === 'unlock').length === 1, 'ngày 3: mở Bảng + Bố trí, báo 1 lần');
+  check(U.shows(g, 'panel') && U.shows(g, 'arrange') && U.shows(g, 'manage') && U.shows(g, 'street') && U.shows(g, 'modeToggle') && g.chefQueue.filter((n) => n.kind === 'unlock').length === 1, 'ngày 3: mở Bảng, Bố trí, Nâng cấp, Ra phố, Đổi chế độ; báo 1 lần');
   check(!U.shows(g, 'staff'), 'chưa tới cấp 3 thì chưa hiện Người giúp');
   addXp(g, 400);
   check(U.shows(g, 'staff'), 'cấp 3 hiện Người giúp');

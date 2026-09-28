@@ -77,7 +77,11 @@ function currentStage(s: GameState): { current: StageId; next: FlowNext } {
 
   // Có món chín (trên tay / ở quầy ra món) → mang cho khách.
   const ready = run.pass.some((d) => d.quality !== 'burnt' && !run.carrying.includes(d.id));
-  if (run.carrying.length > 0) return { current: 'serve', next: { label: '🍽️ Mang món ra bàn', target: 'shop.table', station: 'table' } };
+  if (run.carrying.length > 0) {
+    const held = new Set(run.pass.filter((d) => run.carrying.includes(d.id)).map((d) => d.recipeId));
+    const c = run.customers.find((x) => x.tableIndex !== undefined && x.items.some((i) => !i.served && held.has(i.recipeId)));
+    return { current: 'serve', next: { label: c ? `🍽️ Mang cho bàn ${c.tableIndex! + 1}` : '🍽️ Mang món ra bàn', target: 'shop.table', station: 'table' } };
+  }
   // Món mình nấu đã chín trên bếp → lấy ra.
   const mine = run.slots.find((sl) => sl.job?.by === 'player');
   if (mine?.job && mine.job.progress >= mine.job.cookTime) return { current: 'serve', next: { label: '🍽️ Lấy món ra', target: 'shop.board', station: mine.id } };
@@ -88,8 +92,14 @@ function currentStage(s: GameState): { current: StageId; next: FlowNext } {
   const waiting = run.customers.some((c) => c.items.some((i) => !i.served));
   const needs = prepNeeded(s);
   const noPrepped = needs.length > 0 && needs.every((i) => (run.prepped[i] ?? 0) <= 0);
-  if (noPrepped) return { current: 'prep', next: { label: '🔪 Tiếp tục sơ chế', target: 'shop.board', station: 'board' } };
-  if (waiting) return { current: 'cook', next: { label: '🍳 Nấu cho khách', target: 'shop.board', station: 'stove0' } };
+  if (noPrepped) {
+    const i = needs.find((x) => (run.prepped[x] ?? 0) <= 0)!;
+    return { current: 'prep', next: { label: `🔪 Thái ${INGREDIENTS[i].emoji} ${INGREDIENTS[i].name.toLowerCase()}`, target: 'shop.board', station: 'board' } };
+  }
+  if (waiting) {
+    const item = run.customers.flatMap((c) => c.items).find((i) => !i.served && RECIPES[i.recipeId]);
+    return { current: 'cook', next: { label: item ? `🍳 Nấu ${RECIPES[item.recipeId].emoji} ${RECIPES[item.recipeId].name}` : '🍳 Nấu cho khách', target: 'shop.board', station: 'stove0' } };
+  }
   return { current: 'serve', next: { label: '👀 Chờ khách tới', target: null } };
 }
 

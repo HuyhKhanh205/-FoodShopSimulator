@@ -9,6 +9,7 @@ import { formatClock, formatMoney } from '../../game/helpers';
 import { settingsStore, useSettings } from '../../game/settings';
 import { shows } from '../../game/unlocks';
 import { tutorialUi } from '../kid/tutorialUi';
+import RiverPath from '../kid/RiverPath';
 import { colors } from '../ui';
 import { HudChip, RoundButton } from '../HudBits';
 
@@ -102,6 +103,7 @@ function PauseMenu({ canToggle, onResume }: { canToggle: boolean; onResume: () =
     <View style={styles.backdrop}>
       <View style={styles.menu} accessibilityLabel="Tạm dừng">
         <Text style={styles.menuTitle}>⏸️ Tạm dừng</Text>
+        {game && <RiverPath game={game} compact />}
         <Pressable onPress={onResume} style={({ pressed }) => [styles.resume, pressed && { transform: [{ translateY: 3 }] }]} accessibilityRole="button" accessibilityLabel="Chơi tiếp">
           <Text style={styles.resumeText}>▶ Chơi tiếp</Text>
         </Pressable>

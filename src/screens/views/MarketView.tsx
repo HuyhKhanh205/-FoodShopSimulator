@@ -6,8 +6,10 @@ import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
 import { tutorialUi } from '../../components/kid/tutorialUi';
-import RiverPath from '../../components/kid/RiverPath';
+import NextButton from '../../components/kid/NextButton';
 import { dayFlow } from '../../game/dayflow';
+import { currentStep } from '../../game/tutorial';
+import { basketTotal } from '../../game/market';
 import { shows } from '../../game/unlocks';
 import { NotebookButton } from '../../components/notebook/NotebookSheet';
 import { HudChip, RoundButton, hud } from '../../components/HudBits';
@@ -78,6 +80,36 @@ export default function MarketView() {
   const targets = useTutorialTargets();
   /** Đã đủ đồ để mở cửa (đường sông gợi ý 🏮) — nút Mở cửa to lên. */
   const ready = !midday && (dayFlow(game).next.target === 'market.open' || targets.includes('market.open'));
+  const quick = shows(game, 'quickBuy');
+  // Nút 👉 Làm tiếp: mua theo menu → 💳 trả tiền → 🏮 mở cửa (giữa giờ bán: 🏃 về quán).
+  // Lúc Chú Tư dẫn đi chào các sạp / mua tay ngày đầu thì ẩn, kẻo lẫn.
+  const step = currentStep(game);
+  const tutMarket = Boolean(step && (step.id === 'hello' || step.id === 'buy' || step.id === 'buy-hand' || step.id.startsWith('meet-')));
+  const units = basketTotal(game, basket).units;
+  const nextBtn = (() => {
+    if (tutMarket) return null;
+    if (midday && units === 0) return { label: '🏃 Về quán', go: () => act((s) => returnToShop(s)) };
+    if (units > 0) return { label: `💳 Trả tiền ${formatMoney(basketTotal(game, basket).cost)}`, go: pay };
+    if (dayFlow(game).next.target === 'market.open') return { label: '🏮 Mở cửa', go: () => act((s, rng) => openShop(s, rng)) };
+    if (quick)
+      return {
+        label: '🧾 Mua theo menu',
+        go: () => {
+          setPayError(null);
+          setBasket(suggestBasket(game));
+        },
+      };
+    return { label: '🛒 Chạm sạp để mua đồ', go: () => tutorialUi.glow('market.stalls'), off: true };
+  })();
+  useEffect(() => {
+    tutorialUi.setTopInset(nextBtn ? 62 : 0);
+    return () => tutorialUi.setTopInset(0);
+  }, [Boolean(nextBtn)]);
+  // Hướng dẫn mua tay cần biết giỏ + sạp đang mở.
+  useEffect(() => {
+    tutorialUi.setMarket(basket, stall);
+  }, [basket, stall]);
+  useEffect(() => () => tutorialUi.setMarket({}, null), []);
 
   const menuTiles = (
     <View style={styles.tiles}>
@@ -109,7 +141,7 @@ export default function MarketView() {
             <StallGrid game={game} onStall={setStall} deals={deals} />
           </ScrollView>
         ) : (
-          area.w > 0 && <MarketScene3D game={game} onStall={setStall} width={area.w} height={area.h} insets={{ top: game.tutorial.done ? (midday ? 118 : 104) : 52, bottom: 70 }} />
+          area.w > 0 && <MarketScene3D game={game} onStall={setStall} width={area.w} height={area.h} insets={{ top: nextBtn ? (midday ? 128 : 114) : 52, bottom: 70 }} />
         )}
 
         {/* Góc trên: 1 hàng chip nhỏ + nút tròn; đường sông gợi ý việc tiếp theo ngay dưới */}
@@ -141,28 +173,17 @@ export default function MarketView() {
                 <RoundButton label={simple ? '🌴' : '🔲'} name={simple ? 'Chợ 3D' : 'Chợ đơn giản'} onPress={() => setSceneMode(simple ? '3d' : 'simple')} />
               )}
               {shows(game, 'notebook') && <NotebookButton game={game} style={[hud.round, styles.nb]} label="" />}
+              {!shows(game, 'more') && <RoundButton label="🏠" name="Về menu" onPress={() => navigation.navigate('Home')} />}
               <HelpButton topic="market" />
             </View>
           </View>
-          {game.tutorial.done && (
-            <RiverPath
-              game={game}
-              compact
-              onGo={(next) => {
-                // "Mua theo menu" trên đường sông: điền sẵn giỏ luôn (rồi chỉ vào 💳 Trả tiền).
-                if (next.target === 'market.pay') {
-                  setPayError(null);
-                  setBasket(suggestBasket(game));
-                }
-              }}
-            />
-          )}
+          {nextBtn && <NextButton label={nextBtn.label} onPress={nextBtn.go} disabled={Boolean(nextBtn.off)} />}
         </View>
 
         {/* Góc phải dưới: 🏮 Mở cửa (to khi đã đủ đồ) / 🏃 Về quán, 🚶 Ra phố, 📋 Thêm */}
         <View pointerEvents="box-none" style={styles.cluster}>
-          <RoundButton label="📋" name="Thêm: cấp, món, nhân viên, nâng cấp, nợ" onPress={() => setMore(!more)} active={more} dot={moreDot} />
-          {game.tutorial.done && <RoundButton label="🚶" name="Ra khu phố" onPress={() => act((s) => goStreet(s, 'market'))} />}
+          {(shows(game, 'more') || midday) && <RoundButton label="📋" name="Thêm: cấp, món, nhân viên, nâng cấp, nợ" onPress={() => setMore(!more)} active={more} dot={moreDot} />}
+          {shows(game, 'street') && <RoundButton label="🚶" name="Ra khu phố" onPress={() => act((s) => goStreet(s, 'market'))} />}
           {midday ? (
             <TutorialGlow on={targets.includes('market.back')} radius={24}>
               <Pressable onPress={() => act((s) => returnToShop(s))} style={[styles.big, styles.bigOn]} accessibilityRole="button" accessibilityLabel="Về quán">
@@ -266,10 +287,14 @@ export default function MarketView() {
         basket={basket}
         targets={targets}
         error={payError}
-        onMenu={() => {
-          setPayError(null);
-          setBasket(suggestBasket(game));
-        }}
+        onMenu={
+          quick
+            ? () => {
+                setPayError(null);
+                setBasket(suggestBasket(game));
+              }
+            : undefined
+        }
         onPay={pay}
         onClear={() => setBasket({})}
       />

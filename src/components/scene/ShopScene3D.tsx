@@ -19,6 +19,7 @@ import { Decor, HangingLamp, ShopSign } from './KayProps';
 import { STAFF_MODEL, customerLook, customerModel, profileLook, staffLook } from './looks';
 import type { Look } from './looks';
 import { Floor, Highlight, SEATS, StationMesh, Walls } from './Stations3D';
+import GuideArrow from './GuideArrow';
 import Surroundings, { SKY } from './Surroundings';
 
 const SHADOWS = Platform.OS === 'web';
@@ -220,9 +221,11 @@ export interface SceneProps {
   arrange?: boolean;
   /** Nhân viên đang chọn trong bảng 👥 (vòng vàng dưới chân). */
   selectedStaff?: string | null;
+  /** Trạm cần tới tiếp theo (nút 👉 Làm tiếp): mũi tên vàng nảy trên đầu. */
+  guide?: string | null;
 }
 
-export default function ShopScene3D({ game, layout, walker, cam, frame, overlayPan, hereId, walkingTo, wanted, onTapTile, cutaway = false, arrange = false, selectedStaff = null }: SceneProps) {
+export default function ShopScene3D({ game, layout, walker, cam, frame, overlayPan, hereId, walkingTo, wanted, onTapTile, cutaway = false, arrange = false, selectedStaff = null, guide = null }: SceneProps) {
   const run = game.run!;
   const dishColor = (id: string) => {
     const d = run.pass.find((x) => x.id === id);
@@ -289,6 +292,10 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
         if (wanted.has(st.id)) return <Highlight key={st.id} st={st} color="#66BB6A" />;
         return null;
       })}
+      {(() => {
+        const g = guide && guide !== hereId ? layout.stations.find((x) => x.id === guide) : null;
+        return g ? <GuideArrow x={g.x + g.w / 2} z={g.y + g.h / 2} r={Math.max(g.w, g.h) * 0.55 + 0.2} /> : null;
+      })()}
 
       {layout.stations
         .filter((st) => st.kind === 'table')

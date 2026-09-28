@@ -4,7 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import Hud from '../../components/Hud';
 import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
-import RiverPath from '../../components/kid/RiverPath';
+import NextButton from '../../components/kid/NextButton';
+import { dayFlow } from '../../game/dayflow';
 import ReviewReplies from '../../components/ReviewReplies';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
 import { tutorialUi } from '../../components/kid/tutorialUi';
@@ -38,6 +39,7 @@ export default function SummaryView() {
   const notebook = shows(game, 'notebook');
   const wroteDiary = game.diary.some((d) => d.day === game.day);
   const r = game.history[game.history.length - 1];
+  const next = dayFlow(game).next;
   if (!r) return null;
 
   const income = r.revenue + r.tips;
@@ -54,7 +56,17 @@ export default function SummaryView() {
           <Text style={styles.heading}>🌙 Ngày {r.day}</Text>
           <HelpButton topic="summary" />
         </View>
-        <RiverPath game={game} style={{ marginBottom: 12 }} />
+        {!game.gameOver && (
+          <NextButton
+            label={next.label}
+            style={{ marginBottom: 12 }}
+            onPress={() => {
+              if (next.target === 'summary.missions') act((s) => missions.forEach((m) => void claimMission(s, m.id)));
+              else if (next.target === 'summary.diary') tutorialUi.openNotebook('diary');
+              else act((s, rng) => nextDay(s, rng));
+            }}
+          />
+        )}
 
         {game.gameOver === 'bankrupt' && (
           <Panel style={{ backgroundColor: colors.badBg }}>

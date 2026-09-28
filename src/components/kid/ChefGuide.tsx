@@ -162,7 +162,7 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
 
   if (mini) {
     return (
-      <Pressable style={[styles.mini, top ? { top: 92 } : { bottom: 16 + ui.bottomInset }]} onPress={() => setMini(false)} accessibilityRole="button" accessibilityLabel="Mở lại Chú Tư bếp trưởng">
+      <Pressable style={[styles.mini, top ? { top: 92 + ui.topInset } : { bottom: 16 + ui.bottomInset }]} onPress={() => setMini(false)} accessibilityRole="button" accessibilityLabel="Mở lại Chú Tư bếp trưởng">
         <Text style={{ fontSize: 30 }}>👨‍🍳</Text>
         <Text style={styles.miniDot}>💬</Text>
       </Pressable>
@@ -174,7 +174,7 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
       pointerEvents="box-none"
       style={[
         styles.wrap,
-        top ? { top: 86 } : { bottom: 10 + ui.bottomInset },
+        top ? { top: 86 + ui.topInset } : { bottom: 10 + ui.bottomInset },
         { transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [top ? -260 : 260, 0] }) }] },
       ]}
     >

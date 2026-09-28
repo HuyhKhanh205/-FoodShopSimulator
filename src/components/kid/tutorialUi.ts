@@ -16,9 +16,14 @@ interface UiState {
   flowGlow: { target: string; until: number } | null;
   /** Phần đáy màn hình đang có nút quan trọng (vd thanh giỏ + 🏮 Mở cửa ở chợ): bong bóng Chú Tư đứng trên phần này. */
   bottomInset: number;
+  /** Phần trên cùng đang có nút 👉 Làm tiếp: bong bóng Chú Tư (đứng trên) dời xuống dưới nút. */
+  topInset: number;
+  /** Chợ: giỏ đang có gì (chưa trả tiền) + sạp đang mở — để hướng dẫn mua tay chỉ đúng chỗ. */
+  basket: Record<string, number>;
+  stall: string | null;
 }
 
-let state: UiState = { fpOpen: false, help: null, notebook: null, flowGlow: null, bottomInset: 0 };
+let state: UiState = { fpOpen: false, help: null, notebook: null, flowGlow: null, bottomInset: 0, topInset: 0, basket: {}, stall: null };
 const listeners = new Set<() => void>();
 
 function set(patch: Partial<UiState>) {
@@ -39,6 +44,12 @@ export const tutorialUi = {
   clearHelp: () => set({ help: null }),
   setBottomInset: (v: number) => {
     if (state.bottomInset !== v) set({ bottomInset: v });
+  },
+  setTopInset: (v: number) => {
+    if (state.topInset !== v) set({ topInset: v });
+  },
+  setMarket: (basket: Record<string, number>, stall: string | null) => {
+    if (state.stall !== stall || JSON.stringify(state.basket) !== JSON.stringify(basket)) set({ basket, stall });
   },
   openNotebook: (tab: NotebookTab = 'tasks') => set({ notebook: tab }),
   closeNotebook: () => set({ notebook: null }),

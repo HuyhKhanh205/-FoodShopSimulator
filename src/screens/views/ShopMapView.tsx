@@ -10,8 +10,9 @@ import MapHud from '../../components/scene/MapHud';
 import SceneOverlay from '../../components/scene/SceneOverlay';
 import ChatPrompt from '../../components/kid/ChatPrompt';
 import { tutorialUi } from '../../components/kid/tutorialUi';
-import RiverPath from '../../components/kid/RiverPath';
+import NextButton from '../../components/kid/NextButton';
 import { NotebookButton } from '../../components/notebook/NotebookSheet';
+import { dayFlow } from '../../game/dayflow';
 import type { FlowNext } from '../../game/dayflow';
 import { shows } from '../../game/unlocks';
 import ShopScene3D from '../../components/scene/ShopScene3D';
@@ -150,7 +151,7 @@ export default function ShopMapView() {
         }
       } else if (station.kind === 'board' && has3D) {
         setFp(station);
-      } else if (station.kind === 'door' && !r.carrying.length && gameRef.current.tutorial.done) {
+      } else if (station.kind === 'door' && !r.carrying.length && gameRef.current.tutorial.done && shows(gameRef.current, 'street')) {
         // Cửa quán tay không: ra khu phố (không có ai trông quán thì hỏi lại trước).
         streetGo.current?.();
       } else if ((station.kind === 'table' || station.kind === 'door') && r.carrying.length) {
@@ -326,23 +327,36 @@ export default function ShopMapView() {
   );
   const openUpgrades = () => navigation.navigate('Upgrades' as never);
   /** Đường sông "▶ Tiếp tục": đi tới trạm cần làm (bàn đang chờ món trên tay, thớt, bếp, quầy ra món). */
+  const stationOf = useCallback(
+    (next: FlowNext) =>
+      !next.station
+        ? undefined
+        : next.station === 'table'
+          ? layout.stations.find((x) => wanted.has(x.id))
+          : layout.stations.find((x) => x.id === next.station && x.active) ?? layout.stations.find((x) => x.kind === 'board'),
+    [layout, wanted]
+  );
   const flowGo = useCallback(
     (next: FlowNext) => {
-      if (!next.station) return;
-      const st =
-        next.station === 'table'
-          ? layout.stations.find((x) => wanted.has(x.id))
-          : layout.stations.find((x) => x.id === next.station && x.active) ?? layout.stations.find((x) => x.kind === 'board');
+      const st = stationOf(next);
       if (!st) return;
       if (simple) tapStation(st);
       else goToStation(st);
     },
-    [layout, wanted, simple, tapStation, goToStation]
+    [stationOf, simple, tapStation, goToStation]
   );
-  // Dải Đường sông thu gọn nằm ngay dưới HUD.
-  const river = game.tutorial.done;
+  const flow = dayFlow(game);
+  const guideId = stationOf(flow.next)?.id ?? null;
+  const nextAble = Boolean(flow.next.station || flow.next.target);
+  // Bong bóng Chú Tư đứng trên thì dời xuống dưới nút 👉 Làm tiếp.
+  useEffect(() => {
+    tutorialUi.setTopInset(fp ? 0 : 62);
+    return () => tutorialUi.setTopInset(0);
+  }, [fp]);
+  // Nút 👉 Làm tiếp to nằm ngay dưới HUD (có cả lúc Chú Tư đang dẫn ngày đầu).
+  const river = true;
   const toggle = has3D && shows(game, 'modeToggle');
-  const RIVER_H = river ? 50 : 0;
+  const RIVER_H = river ? 62 : 0;
   // HUD giờ chỉ là 1 hàng nhãn nhỏ.
   const HUD_H = 50 + RIVER_H;
   const cleanReady = run.elapsed >= run.cleanReadyAt;
@@ -406,6 +420,7 @@ export default function ShopMapView() {
               cutaway={cutaway}
               arrange={arrange}
               selectedStaff={staffOpen ? staffSel : null}
+              guide={guideId}
             />
             <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} onQuestion={setAskId} arrange={arrange} onPlus={openUpgrades} onStation={goToStation} nearId={walkingTo ?? hereId} />
             {/* Xoay theo nấc 90° và zoom 2 mức */}
@@ -423,7 +438,18 @@ export default function ShopMapView() {
         ) : (
           <SimpleView game={game} layout={layout} targets={targets} onStation={tapStation} topInset={HUD_H + 28} bottomInset={Math.max(BAR_H, 56) + 12} />
         ))}
-      {!fp && <MapHud canToggle={toggle} below={river ? <RiverPath game={game} compact onGo={flowGo} /> : null} />}
+      {!fp && <MapHud canToggle={toggle} below={
+            river ? (
+              <NextButton
+                label={flow.next.label}
+                disabled={!nextAble}
+                onPress={() => {
+                  if (flow.next.target) tutorialUi.glow(flow.next.target);
+                  flowGo(flow.next);
+                }}
+              />
+            ) : null
+          } />}
       {!fp && !paused && !staffOpen && actionBar}
       {!fp && !paused && staffOpen && (
         <StaffSheet
