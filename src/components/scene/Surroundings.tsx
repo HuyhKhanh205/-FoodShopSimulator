@@ -2,14 +2,14 @@ import { useMemo } from 'react';
 import { useSettings } from '../../game/settings';
 import { PropInstances } from './SceneryProps';
 import type { PropSpot } from './SceneryProps';
-import { Car, Flat, Pet, River, Road, SKY, Sidewalk, Signs, Walker, house, useViewFocus } from './SceneryKit';
+import { Car, Flat, Pet, River, Road, SKY, Sidewalk, Signs, Walker, house, useViewFocus, GRASS_Y, FishBridge } from './SceneryKit';
 
 export { SKY };
 
 /**
  * Phong cảnh phố bên sông quanh quán (quán ở x 0–12, z 0–10; cửa phía nam), mô hình Kenney CC0:
  * – nam: vỉa hè (ghế đẩu chỗ nhân viên nghỉ, đèn đường, cây) → đường có xe chạy → dãy nhà bên kia đường;
- * – bắc (sau bếp): bờ kè, sông có ghe; bờ bên kia trồng dừa;
+ * – bắc (sau bếp): bờ kè, sông có ghe, cầu cá tra; bờ bên kia trồng dừa;
  * – hai bên: nhà hàng xóm nhiều màu, cách quán một con hẻm có cây.
  */
 type Spot = PropSpot & { detail?: boolean };
@@ -43,12 +43,12 @@ function buildSpots(): Spot[] {
   for (const x of [1.5, 19.5]) s.push({ name: 'u_bench', x, z: 17.4, size: 1, detail: true });
   // Bờ sông sau quán: bụi cây, hoa; bờ bên kia trồng dừa, đá.
   for (let x = -18; x <= 30; x += 3) {
+    if (x === 6) continue; // chừa lối ra cầu cá tra (x ≈ 7)
     s.push({ name: x % 2 ? 'n_plant_bush' : 'n_plant_bushlarge', x, z: -0.9, size: 0.7, detail: x % 6 !== 0 });
     s.push({ name: ['n_flower_yellowa', 'n_flower_purplea', 'n_flower_reda'][Math.abs(x) % 3], x: x + 1.3, z: -0.8, size: 0.25, detail: true });
   }
   for (let x = -20; x <= 32; x += 4) s.push({ name: ['n_tree_palm', 'n_tree_palmshort', 'n_tree_palmbend'][Math.abs(x) % 3], x, z: -10.8, size: 1.4, rot: x });
   for (const x of [-14, 2, 20]) s.push({ name: 'n_rock_smalla', x, z: -11.6, size: 0.6, detail: true });
-  s.push({ name: 'p_structure_platform_dock_small', x: 6, z: -1.6, size: 1.6, y: -0.15 });
   // Hẻm hai bên quán: cây, bụi, thùng.
   for (const z of [2, 5.5, 8.5]) {
     s.push({ name: z === 5.5 ? 's_tree_small' : 'n_plant_bushlarge', x: -1.6, z, size: z === 5.5 ? 0.8 : 0.8 });
@@ -68,11 +68,12 @@ export default function Surroundings() {
   const focus = useViewFocus(saver);
   return (
     <group name="surroundings">
-      <Flat x={6} z={5} w={160} d={160} color="#9CCC65" y={-0.05} />
+      <Flat x={6} z={5} w={160} d={160} color="#9CCC65" y={GRASS_Y} />
       <Sidewalk x={6} z={11.2} w={80} d={2.4} />
       <Road x={6} z={14.4} w={80} />
       <Sidewalk x={6} z={17.2} w={80} d={1.6} />
       <River x={6} z={-5.6} w={80} d={9.6} bankZ={-0.55} lite={saver} />
+      <FishBridge x={7} zBank={-0.6} len={3.4} lite={saver} />
       <PropInstances spots={spots} focus={focus} />
       <Signs signs={SIGNS_NEAR} />
       {!saver && (

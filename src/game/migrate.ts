@@ -1,11 +1,23 @@
-import { RECIPES } from './data';
+import { RECIPES, START_UPGRADES, UPGRADES } from './data';
 import { DEFAULT_PROFILE } from './profile';
 import { syncDishes } from './dishes';
 import { xpForRecipes } from './progression';
 import { newVendors } from './market';
 import { emptyTally, pickSpecial, rollMissions } from './missions';
 import { defaultRng } from './helpers';
-import type { GameState } from './types';
+import type { GameState, Upgrades } from './types';
+
+/** Mỗi nâng cấp phải nằm đúng một mức có trong danh sách (bản lưu cũ có thể lệch, vd 4 bàn). */
+function fixUpgrades(u: Upgrades | undefined): Upgrades {
+  const out = { ...START_UPGRADES, ...(u ?? {}) };
+  for (const def of UPGRADES) {
+    const v = out[def.key];
+    if (def.levels.includes(v)) continue;
+    const lower = def.levels.filter((l) => l <= v);
+    out[def.key] = lower.length ? lower[lower.length - 1] : def.levels[0];
+  }
+  return out;
+}
 
 /** Nâng cấp bản lưu cũ: thêm các trường mới với giá trị mặc định. */
 export function migrateSave(data: GameState): GameState {
@@ -18,6 +30,7 @@ export function migrateSave(data: GameState): GameState {
   const state: GameState = {
     ...data,
     profile,
+    upgrades: fixUpgrades(data.upgrades),
     unlockedRecipes,
     xp: data.xp ?? xpForRecipes(unlockedRecipes),
     chefQueue: data.chefQueue ?? [],

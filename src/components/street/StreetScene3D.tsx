@@ -12,7 +12,7 @@ import { useWalker } from '../../screens/views/useWalker';
 import { fitCamera, followCamera, makeCamera, project } from '../scene/camera';
 import { ShopSign } from '../scene/KayProps';
 import { Player, Sun, UseCamera } from '../scene/ShopScene3D';
-import { Car, Flat, Pet, River, Road, SKY, Sidewalk, Signs, Walker, house, useViewFocus } from '../scene/SceneryKit';
+import { Car, Flat, Pet, River, Road, SKY, Sidewalk, Signs, Walker, house, useViewFocus, GRASS_Y } from '../scene/SceneryKit';
 import { PropInstances } from '../scene/SceneryProps';
 import type { PropSpot } from '../scene/SceneryProps';
 import { colors } from '../ui';
@@ -245,7 +245,7 @@ function StreetWorld({ spots, saver, shopName }: { spots: PropSpot[]; saver: boo
   const gate = STREET_PLACES.find((p) => p.id === 'market')!;
   return (
     <group>
-      <Flat x={STREET_COLS / 2} z={4} w={160} d={160} color="#9CCC65" y={-0.05} />
+      <Flat x={STREET_COLS / 2} z={4} w={160} d={160} color="#9CCC65" y={GRASS_Y} />
       <Sidewalk x={STREET_COLS / 2} z={5.5} w={90} d={3.2} />
       <Road x={STREET_COLS / 2} z={9} w={90} />
       <Sidewalk x={STREET_COLS / 2} z={11.6} w={90} d={1.2} />

@@ -16,6 +16,9 @@ import { checkerTileTexture } from './textures';
  */
 
 export const SKY = '#CFE8F0';
+/** Mặt cỏ lớn luôn thấp hơn mặt nước (trước đây cỏ nằm trên, che mất sông). */
+export const GRASS_Y = -0.2;
+export const WATER_Y = -0.03;
 
 /** Màu nhuộm nhà (nhà Kenney gốc trắng + mái xanh). */
 export const HOUSE_TINTS = ['#FFD9E3', '#FFF0B3', '#D6F0FF', '#E3F5CF', '#FFE0CC', '#E8DDF7', '#FFF7C2', '#D4F2EC'];
@@ -114,7 +117,7 @@ export function River({ x, z, w, d, bankZ, lite, boats = 3 }: { x: number; z: nu
   const x1 = x + w / 2 - 2;
   useFrame(({ clock }) => {
     g.current?.children.forEach((c, i) => {
-      c.position.y = Math.sin(clock.elapsedTime * 1.4 + i * 1.7) * 0.03 - 0.12;
+      c.position.y = Math.sin(clock.elapsedTime * 1.4 + i * 1.7) * 0.03 + WATER_Y - 0.06;
       c.position.x += (i % 2 ? -1 : 1) * 0.004;
       if (c.position.x > x1) c.position.x = x0;
       if (c.position.x < x0) c.position.x = x1;
@@ -124,7 +127,7 @@ export function River({ x, z, w, d, bankZ, lite, boats = 3 }: { x: number; z: nu
   const n = lite ? Math.min(2, boats) : boats;
   return (
     <group>
-      <Flat x={x} z={z} w={w} d={d} color="#4FB3D9" y={-0.1} />
+      <Flat x={x} z={z} w={w} d={d} color="#4FB3D9" y={WATER_Y} />
       {bankZ !== undefined && (
         <mesh position={[x, 0.1, bankZ]} receiveShadow>
           <boxGeometry args={[w, 0.3, 0.5]} />
@@ -213,6 +216,111 @@ export function Signs({ signs }: { signs: { x: number; z: number; y: number; fac
           <ShopSign name={sg.text} position={[0, sg.y / (sg.scale ?? 0.7), 0]} />
         </group>
       ))}
+    </group>
+  );
+}
+
+/**
+ * "Cầu cá tra" miền Tây: chòi vách tre mái lá trên 4 cọc giữa sông, cầu ván hẹp nối bờ;
+ * đàn cá tra xám bơi vòng dưới chòi, thỉnh thoảng một con quẫy lên. Chỉ dùng khối cơ bản.
+ * (x, zBank): chân cầu ở bờ; chòi nằm ở z = zBank − len.
+ */
+export function FishBridge({ x, zBank, len = 3.2, lite }: { x: number; zBank: number; len?: number; lite: boolean }) {
+  const fish = useRef<Group>(null);
+  const hutZ = zBank - len;
+  const deck = 0.35;
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    fish.current?.children.forEach((f, i) => {
+      const a = t * (0.5 + i * 0.07) + i * 2.1;
+      const r = 0.55 + (i % 3) * 0.25;
+      f.position.x = Math.cos(a) * r;
+      f.position.z = Math.sin(a) * r * 0.8;
+      f.rotation.y = -a;
+      // Mỗi con quẫy lên mặt nước khoảng 7 giây một lần.
+      const jump = ((t + i * 2.3) % 7) / 7;
+      f.position.y = WATER_Y - 0.08 + (jump < 0.06 ? Math.sin((jump / 0.06) * Math.PI) * 0.35 : 0);
+      f.rotation.z = jump < 0.06 ? Math.sin((jump / 0.06) * Math.PI * 2) * 0.6 : 0;
+    });
+  });
+  const posts: [number, number][] = [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]];
+  const planks = Math.max(2, Math.round(len / 0.5));
+  return (
+    <group name="fish-bridge" position={[x, 0, 0]}>
+      {/* Cầu ván hẹp + cọc hai bên */}
+      {Array.from({ length: planks }, (_, i) => {
+        const z = zBank - 0.25 - i * ((len - 0.9) / (planks - 1));
+        return (
+          <group key={i}>
+            <mesh position={[0, deck, z]} rotation-y={(i % 2 ? 1 : -1) * 0.03} castShadow>
+              <boxGeometry args={[0.42, 0.05, 0.4]} />
+              <meshLambertMaterial color={i % 2 ? '#A1887F' : '#8D6E63'} />
+            </mesh>
+            {i % 2 === 0 && (
+              <mesh position={[0.18, deck / 2 - 0.1, z]}>
+                <cylinderGeometry args={[0.035, 0.035, deck + 0.2, 5]} />
+                <meshLambertMaterial color="#6D4C41" />
+              </mesh>
+            )}
+          </group>
+        );
+      })}
+      {/* Tay vịn tre một bên */}
+      <mesh position={[-0.2, deck + 0.3, zBank - len / 2]} rotation-x={Math.PI / 2}>
+        <cylinderGeometry args={[0.025, 0.025, len - 0.6, 5]} />
+        <meshLambertMaterial color="#C0A15A" />
+      </mesh>
+      {/* Chòi */}
+      <group position={[0, 0, hutZ]}>
+        {posts.map(([px, pz], i) => (
+          <mesh key={i} position={[px * 0.9, 0.05, pz * 0.9]}>
+            <cylinderGeometry args={[0.05, 0.05, 0.9, 6]} />
+            <meshLambertMaterial color="#6D4C41" />
+          </mesh>
+        ))}
+        <mesh position={[0, deck, 0]} castShadow receiveShadow>
+          <boxGeometry args={[1.2, 0.06, 1.2]} />
+          <meshLambertMaterial color="#8D6E63" />
+        </mesh>
+        {/* Vách tre (3 mặt + nửa mặt trước chừa cửa) */}
+        <mesh position={[0, deck + 0.45, -0.55]} castShadow>
+          <boxGeometry args={[1.1, 0.85, 0.05]} />
+          <meshLambertMaterial color="#D8C07A" />
+        </mesh>
+        <mesh position={[-0.55, deck + 0.45, 0]} castShadow>
+          <boxGeometry args={[0.05, 0.85, 1.1]} />
+          <meshLambertMaterial color="#CDB46C" />
+        </mesh>
+        <mesh position={[0.55, deck + 0.45, 0]} castShadow>
+          <boxGeometry args={[0.05, 0.85, 1.1]} />
+          <meshLambertMaterial color="#CDB46C" />
+        </mesh>
+        <mesh position={[-0.33, deck + 0.45, 0.55]} castShadow>
+          <boxGeometry args={[0.45, 0.85, 0.05]} />
+          <meshLambertMaterial color="#D8C07A" />
+        </mesh>
+        {/* Tấm mành che cửa */}
+        <mesh position={[0.22, deck + 0.5, 0.57]}>
+          <boxGeometry args={[0.55, 0.7, 0.02]} />
+          <meshLambertMaterial color="#9C7B4B" />
+        </mesh>
+        {/* Mái lá dừa (chóp 4 mặt) */}
+        <mesh position={[0, deck + 1.1, 0]} rotation-y={Math.PI / 4} castShadow>
+          <coneGeometry args={[1.05, 0.55, 4]} />
+          <meshLambertMaterial color="#8A9A3B" />
+        </mesh>
+      </group>
+      {/* Đàn cá tra */}
+      {!lite && (
+        <group ref={fish} position={[0, 0, hutZ]}>
+          {Array.from({ length: 5 }, (_, i) => (
+            <mesh key={i} scale={[0.1, 0.07, 0.3]}>
+              <sphereGeometry args={[1, 8, 6]} />
+              <meshLambertMaterial color={i % 2 ? '#9EA7AD' : '#B8C0C6'} />
+            </mesh>
+          ))}
+        </group>
+      )}
     </group>
   );
 }

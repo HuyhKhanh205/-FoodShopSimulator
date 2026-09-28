@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useSettings } from '../../game/settings';
 import { PropInstances } from './SceneryProps';
 import type { PropSpot } from './SceneryProps';
-import { Car, Flat, Pet, River, Road, Sidewalk, Signs, Walker, house, useViewFocus } from './SceneryKit';
+import { Car, Flat, Pet, River, Road, Sidewalk, Signs, Walker, house, useViewFocus, GRASS_Y } from './SceneryKit';
 
 /**
  * Phong cảnh quanh chợ (chợ ở x 0–12, z 0–10; sông ở z 0–3 phía trên):
@@ -51,8 +51,8 @@ export default function MarketSurroundings({ demo = false }: { demo?: boolean })
   const focus = useViewFocus(saver);
   return (
     <group name="surroundings">
-      <Flat x={6} z={5} w={160} d={160} color="#9CCC65" y={-0.06} />
-      <River x={6} z={-1.5} w={90} d={7} lite={saver} boats={demo ? 2 : 3} />
+      <Flat x={6} z={5} w={160} d={160} color="#9CCC65" y={GRASS_Y} />
+      <River x={6} z={-4.6} w={90} d={5.2} lite={saver} boats={demo ? 2 : 3} />
       <Sidewalk x={6} z={11.3} w={90} d={2.4} />
       <Road x={6} z={14.5} w={90} />
       <Sidewalk x={6} z={17.2} w={90} d={1.4} />

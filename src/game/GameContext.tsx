@@ -187,7 +187,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setSaveInfo(saved ? infoOf(saved) : null);
   }, []);
 
+  // Game đang chơi dở trong bộ nhớ (vd về menu từ ⏸ giữa giờ bán): ▶ Chơi tiếp vào lại đúng chỗ đó.
+  const gameRef = useRef(game);
+  gameRef.current = game;
   const continueGame = useCallback(async () => {
+    if (gameRef.current) {
+      setPaused(false);
+      return true;
+    }
     const saved = await loadGame();
     if (!saved) return false;
     setPaused(false);
@@ -196,7 +203,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ game, toast: store.toast, hasSave, loading, paused, setPaused, viewMode, setViewMode, sceneMode, setSceneMode, act, startNewGame, continueGame, saveInfo, importGame, refreshSave }),
+    () => ({ game, toast: store.toast, hasSave: hasSave || Boolean(game), loading, paused, setPaused, viewMode, setViewMode, sceneMode, setSceneMode, act, startNewGame, continueGame, saveInfo: game ? infoOf(game) : saveInfo, importGame, refreshSave }),
     [game, store.toast, hasSave, loading, paused, viewMode, setViewMode, sceneMode, setSceneMode, act, startNewGame, continueGame, saveInfo, importGame, refreshSave]
   );
 

@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { CLOSE_HOUR, DAY_MS, OPEN_HOUR, RECIPES } from '../../game/data';
 import { trendHeat } from '../../game/trend';
 import { closeEarly, isPeak } from '../../game/engine';
@@ -93,7 +94,9 @@ export default function MapHud({ canToggle = true, below }: { compact?: boolean;
 function PauseMenu({ canToggle, onResume }: { canToggle: boolean; onResume: () => void }) {
   const { sceneMode, setSceneMode, act, game } = useGame();
   const settings = useSettings();
+  const navigation = useNavigation();
   const [askClose, setAskClose] = useState(false);
+  const [askHome, setAskHome] = useState(false);
   const seated = game?.run?.customers.length ?? 0;
   return (
     <View style={styles.backdrop}>
@@ -144,6 +147,26 @@ function PauseMenu({ canToggle, onResume }: { canToggle: boolean; onResume: () =
           </View>
         ) : (
           <MenuRow icon="🌙" label="Nghỉ sớm, qua ngày" action="Đóng cửa" onPress={() => setAskClose(true)} />
+        )}
+        {askHome ? (
+          <View style={styles.confirm}>
+            <Text style={styles.confirmText}>🏠 Về menu chính? Quán tạm dừng — bấm ▶ Chơi tiếp ở menu là quay lại đúng chỗ này.</Text>
+            <View style={styles.confirmRow}>
+              <Pressable
+                onPress={() => navigation.navigate('Home' as never)}
+                style={[styles.confirmBtn, { backgroundColor: colors.brown }]}
+                accessibilityRole="button"
+                accessibilityLabel="Về menu luôn"
+              >
+                <Text style={[styles.confirmBtnText, { color: colors.cream }]}>🏠 Về menu</Text>
+              </Pressable>
+              <Pressable onPress={() => setAskHome(false)} style={styles.confirmBtn} accessibilityRole="button" accessibilityLabel="Ở lại quán">
+                <Text style={styles.confirmBtnText}>Ở lại</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <MenuRow icon="🏠" label="Về menu chính" action="Về" onPress={() => setAskHome(true)} />
         )}
         <MenuRow
           icon="❗"

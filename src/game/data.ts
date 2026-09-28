@@ -180,7 +180,7 @@ export interface UpgradeDef {
 export const UPGRADES: UpgradeDef[] = [
   { key: 'stoves', name: 'Thêm bếp', emoji: '🔥', levels: [2, 3, 4], costs: [1_500_000, 3_000_000], describe: (l) => `${l} bếp nấu (mỗi bếp +${UTILITY_PER_STOVE / 1000}k tiền gas/ngày)` },
   { key: 'counters', name: 'Quầy pha chế', emoji: '🥤', levels: [1, 2], costs: [800_000], describe: (l) => `${l} chỗ pha nước / cuốn gỏi` },
-  { key: 'seats', name: 'Bàn ghế', emoji: '🪑', levels: [5, 6, 8, 10], costs: [800_000, 1_500_000, 3_000_000], describe: (l) => `${l} chỗ ngồi` },
+  { key: 'seats', name: 'Bàn ghế', emoji: '🪑', levels: [4, 5, 6, 8, 10], costs: [500_000, 800_000, 1_500_000, 3_000_000], describe: (l) => `${l} chỗ ngồi` },
   { key: 'fridge', name: 'Tủ lạnh', emoji: '🧊', levels: [0, 1, 2], costs: [1_200_000, 2_500_000], describe: (l) => (l ? `Đồ tươi để thêm ${l} ngày · kho +${l * 150} chỗ` : 'Chưa có tủ lạnh · kho 300 chỗ') },
   { key: 'aircon', name: 'Máy lạnh', emoji: '❄️', levels: [0, 1], costs: [2_500_000], describe: (l) => (l ? 'Khách kiên nhẫn hơn 20%' : 'Quán nóng nực') },
   { key: 'sign', name: 'Biển hiệu', emoji: '🪧', levels: [0, 1, 2], costs: [800_000, 2_000_000], describe: (l) => `Thêm ${l * 15}% khách` },
