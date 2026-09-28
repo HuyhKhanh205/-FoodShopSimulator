@@ -202,9 +202,13 @@ export interface SceneProps {
   walkingTo: string | null;
   wanted: Set<string>;
   onTapTile: (t: Tile) => void;
+  /** Camera nhìn từ phía tường sau: hạ tường sau. */
+  cutaway?: boolean;
+  /** Chế độ Bố trí: hiện chỗ chưa mua (hộp mờ "+"). */
+  arrange?: boolean;
 }
 
-export default function ShopScene3D({ game, layout, walker, cam, frame, overlayPan, hereId, walkingTo, wanted, onTapTile }: SceneProps) {
+export default function ShopScene3D({ game, layout, walker, cam, frame, overlayPan, hereId, walkingTo, wanted, onTapTile, cutaway = false, arrange = false }: SceneProps) {
   const run = game.run!;
   const dishColor = (id: string) => {
     const d = run.pass.find((x) => x.id === id);
@@ -233,16 +237,16 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
       <Sun />
       {/* Đèn thả trần ấm trên bếp và phòng ăn */}
       {[2.5, 6, 9.5].map((x) => (
-        <HangingLamp key={`k${x}`} position={[x, 2.1, 2.6]} light={SHADOWS && !LITE} />
+        <HangingLamp key={`k${x}`} position={[x, 2.6, 2.6]} light={SHADOWS && !LITE} />
       ))}
       {[2, 6, 10].map((x) => (
-        <HangingLamp key={`d${x}`} position={[x, 2.0, 7]} light={SHADOWS && !LITE} />
+        <HangingLamp key={`d${x}`} position={[x, 2.5, 7]} light={SHADOWS && !LITE} />
       ))}
 
       <group onClick={onClick}>
         <Floor />
-        <Walls />
-        <Decor />
+        <Walls cutaway={cutaway} />
+        <Decor cutaway={cutaway} />
         {layout.stations.map((st) => {
           const slot = st.slotId ? run.slots.find((s) => s.id === st.slotId) : undefined;
           const customer = st.kind === 'table' ? run.customers.find((c) => c.tableIndex === st.tableIndex) : undefined;
@@ -255,6 +259,7 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
               prepping={st.kind === 'board' && Boolean(run.playerPrep)}
               dishes={st.kind === 'pass' ? onPassDishes : undefined}
               served={customer?.items.filter((i) => i.served).map((i) => dishKey(i.recipeId))}
+              arrange={arrange}
             />
           );
         })}

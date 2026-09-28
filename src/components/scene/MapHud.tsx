@@ -1,10 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CLOSE_HOUR, DAY_MS, OPEN_HOUR, RECIPES } from '../../game/data';
 import { trendHeat } from '../../game/trend';
-import { isPeak, playerClean } from '../../game/engine';
+import { isPeak } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
 import { formatClock, formatMoney } from '../../game/helpers';
-import GoMarketButton from '../GoMarketButton';
 import HelpButton from '../kid/HelpButton';
 import { colors } from '../ui';
 
@@ -24,15 +23,18 @@ function IconButton({ label, onPress, active, disabled, size }: { label: string;
   );
 }
 
-/** Chỉ số nổi trên cảnh 3D: giờ, tiền, danh tiếng, vệ sinh, cảnh báo và nút điều khiển. */
-export default function MapHud({ compact }: { compact: boolean }) {
-  const btn = compact ? 36 : 40;
+/**
+ * HUD màn quán (dùng chung cho 3D và Đơn giản): một dải kem to ở trên cùng —
+ * giờ, tiền, ★ / độ sạch; nút chuyển Đơn giản / 3D ở giữa; chỉ giữ ⏸ và ❗.
+ * Các nút khác (Chợ, Lau, Kho, Bố trí...) nằm ở thanh hành động có nhãn phía dưới.
+ */
+export default function MapHud({ canToggle = true }: { compact?: boolean; canToggle?: boolean }) {
+  const btn = 42;
   const game = useGameState();
-  const { act, paused, setPaused, setViewMode } = useGame();
+  const { paused, setPaused, sceneMode, setSceneMode } = useGame();
   const run = game.run!;
   const dayRatio = Math.min(1, run.elapsed / DAY_MS);
   const clean = Math.round(game.cleanliness);
-  const cleanReady = run.elapsed >= run.cleanReadyAt;
   const warnings = [
     isPeak(run.elapsed) ? { text: '🔥 Đông khách', tone: 'warn' as const } : null,
     run.elapsed < run.powerOutUntil ? { text: '🔌 Cúp điện', tone: 'bad' as const } : null,
@@ -46,27 +48,40 @@ export default function MapHud({ compact }: { compact: boolean }) {
 
   return (
     <View pointerEvents="box-none" style={styles.wrap}>
-      <View pointerEvents="box-none" style={styles.row}>
-        <View style={styles.pills}>
-          <Pill>
-            <Text style={styles.pillText}>🕐 {formatClock(run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)}</Text>
+      <View style={styles.strip}>
+        <View style={styles.stats}>
+          <View style={styles.stat} accessibilityLabel={`Giờ ${formatClock(run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)}`}>
+            <Text style={styles.statText}>🕐 {formatClock(run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)}</Text>
             <View style={styles.dayTrack}>
               <View style={[styles.dayFill, { width: `${dayRatio * 100}%` }]} />
             </View>
-          </Pill>
-          <Pill>
-            <Text style={styles.pillText}>💰 {formatMoney(game.money)}</Text>
-          </Pill>
-          <Pill tone={clean < 40 ? 'bad' : 'plain'}>
-            <Text style={styles.pillText}>
-              <Text style={{ color: colors.accent }}>★</Text> {game.reputation.toFixed(1)} · 🧽 {clean}%
-            </Text>
-          </Pill>
+          </View>
+          <Text style={[styles.statText, styles.stat]} numberOfLines={1}>
+            💰 {formatMoney(game.money)}
+          </Text>
+          <Text style={[styles.statText, styles.stat, clean < 40 && { color: colors.bad }]} numberOfLines={1}>
+            <Text style={{ color: colors.accent }}>★</Text> {game.reputation.toFixed(1)} · 🧽 {clean}%
+          </Text>
         </View>
-        <View style={styles.buttons}>
-          <GoMarketButton render={(onPress) => <IconButton size={btn} label="🛒" onPress={onPress} />} />
-          <IconButton size={btn} label="🧽" disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />
-          <IconButton size={btn} label="📋" onPress={() => setViewMode('panel')} />
+        <View style={styles.controls}>
+          {canToggle ? (
+            <View style={styles.segment} accessibilityRole="radiogroup">
+              {(['simple', '3d'] as const).map((m) => (
+                <Pressable
+                  key={m}
+                  onPress={() => setSceneMode(m)}
+                  style={[styles.segBtn, sceneMode === m && styles.segOn]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: sceneMode === m }}
+                  accessibilityLabel={m === 'simple' ? 'Chế độ Đơn giản' : 'Chế độ 3D'}
+                >
+                  <Text style={[styles.segText, sceneMode === m && styles.segTextOn]}>{m === 'simple' ? 'Đơn giản' : '3D'}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
           <IconButton size={btn} label={paused ? '▶️' : '⏸️'} active={paused} onPress={() => setPaused(!paused)} />
           <HelpButton topic="shop" style={{ width: btn, height: btn, borderRadius: btn / 2 }} />
         </View>
@@ -100,6 +115,25 @@ export default function MapHud({ compact }: { compact: boolean }) {
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 0, right: 0, top: 0, padding: 8, gap: 6 },
+  strip: {
+    backgroundColor: colors.cream,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 6,
+    borderWidth: 2,
+    borderColor: colors.chunkyShadow,
+    borderBottomWidth: 5,
+  },
+  stats: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 6, minHeight: 36 },
+  stat: { flexShrink: 1 },
+  statText: { fontSize: 16, fontWeight: '900', color: colors.brown, fontVariant: ['tabular-nums'] },
+  controls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  segment: { flex: 1, flexDirection: 'row', backgroundColor: '#EFE2CF', borderRadius: 21, padding: 3, height: 42 },
+  segBtn: { flex: 1, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  segOn: { backgroundColor: colors.brown },
+  segText: { fontSize: 15, fontWeight: '900', color: colors.brown },
+  segTextOn: { color: colors.cream },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, flexShrink: 1 },
   pill: {
@@ -117,25 +151,26 @@ const styles = StyleSheet.create({
   pillWarn: { backgroundColor: '#FFF3E0', borderColor: colors.accent },
   pillBad: { backgroundColor: '#FFEBEE', borderColor: colors.bad },
   pillText: { fontSize: 12, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
-  dayTrack: { height: 3, borderRadius: 2, backgroundColor: '#EFEBE9', marginTop: 3, overflow: 'hidden' },
-  dayFill: { height: 3, backgroundColor: colors.primary },
+  dayTrack: { height: 4, borderRadius: 2, backgroundColor: '#EFE2CF', marginTop: 3, overflow: 'hidden' },
+  dayFill: { height: 4, backgroundColor: colors.primary },
   buttons: { flexDirection: 'row', gap: 6 },
   iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(62,39,35,0.12)',
+    borderWidth: 2,
+    borderColor: colors.chunkyShadow,
+    borderBottomWidth: 4,
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
   },
   iconBtnActive: { backgroundColor: colors.primary },
-  iconText: { fontSize: 18 },
+  iconText: { fontSize: 20 },
   toast: {
     alignSelf: 'flex-start',
     maxWidth: '92%',

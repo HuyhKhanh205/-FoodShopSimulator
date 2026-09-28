@@ -50,6 +50,9 @@ function reducer(store: Store, action: Action): Store {
 /** map: điều khiển nhân vật trên bản đồ; panel: bảng điều khiển bấm nút. */
 export type ViewMode = 'map' | 'panel';
 const VIEW_MODE_KEY = 'foodshop.viewMode';
+/** Cảnh quán: 3d = KayKit nhìn isometric; simple = mặt bằng 2D, chạm trạm là làm luôn. */
+export type SceneMode = '3d' | 'simple';
+const SCENE_MODE_KEY = 'foodshop.sceneMode';
 
 interface GameContextValue {
   game: GameState | null;
@@ -60,6 +63,8 @@ interface GameContextValue {
   setPaused: (p: boolean) => void;
   viewMode: ViewMode;
   setViewMode: (m: ViewMode) => void;
+  sceneMode: SceneMode;
+  setSceneMode: (m: SceneMode) => void;
   act: (fn: GameMutation) => void;
   startNewGame: () => void;
   continueGame: () => Promise<boolean>;
@@ -75,12 +80,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
   const [viewMode, setViewModeState] = useState<ViewMode>('map');
+  const [sceneMode, setSceneModeState] = useState<SceneMode>('3d');
   const game = store.game;
 
   useEffect(() => {
     AsyncStorage.getItem(VIEW_MODE_KEY)
       .then((v) => {
         if (v === 'map' || v === 'panel') setViewModeState(v);
+      })
+      .catch(() => {});
+    AsyncStorage.getItem(SCENE_MODE_KEY)
+      .then((v) => {
+        if (v === '3d' || v === 'simple') setSceneModeState(v);
       })
       .catch(() => {});
     loadGame().then((saved) => {
@@ -129,6 +140,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (m === 'panel') dispatch({ type: 'mutate', fn: (s) => putDownAll(s) });
   }, []);
 
+  const setSceneMode = useCallback((m: SceneMode) => {
+    setSceneModeState(m);
+    AsyncStorage.setItem(SCENE_MODE_KEY, m).catch(() => {});
+  }, []);
+
   const startNewGame = useCallback(() => {
     clearSave().catch(() => {});
     setPaused(false);
@@ -144,8 +160,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ game, toast: store.toast, hasSave, loading, paused, setPaused, viewMode, setViewMode, act, startNewGame, continueGame }),
-    [game, store.toast, hasSave, loading, paused, viewMode, setViewMode, act, startNewGame, continueGame]
+    () => ({ game, toast: store.toast, hasSave, loading, paused, setPaused, viewMode, setViewMode, sceneMode, setSceneMode, act, startNewGame, continueGame }),
+    [game, store.toast, hasSave, loading, paused, viewMode, setViewMode, sceneMode, setSceneMode, act, startNewGame, continueGame]
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

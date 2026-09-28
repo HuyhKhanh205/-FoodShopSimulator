@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, LayoutChangeEvent, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, LayoutChangeEvent, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import FirstPersonView from '../../components/fp/FirstPersonView';
 import ActionSheet from '../../components/map/ActionSheet';
-import Map2D from '../../components/map/Map2D';
+import SimpleView from '../../components/map/SimpleView';
+import GoMarketButton from '../../components/GoMarketButton';
+import { useTutorialTargets } from '../../components/kid/TutorialGlow';
 import MapHud from '../../components/scene/MapHud';
 import SceneOverlay from '../../components/scene/SceneOverlay';
 import ChatPrompt from '../../components/kid/ChatPrompt';
 import { tutorialUi } from '../../components/kid/tutorialUi';
 import ShopScene3D from '../../components/scene/ShopScene3D';
-import { LANDSCAPE_YAW, PORTRAIT_YAW, fitCamera, makeCamera, screenDirToTile } from '../../components/scene/camera';
+import { ISO_YAW, fitCamera, makeCamera, screenDirToTile } from '../../components/scene/camera';
 import { colors } from '../../components/ui';
 import { CLOSE_HOUR, DAY_MS, OPEN_HOUR, RECIPES, ROLE_EMOJI } from '../../game/data';
 import { MAX_CARRY, autoServeCarried, discardDish, pickUpDish, playerClean, playerTakeOut } from '../../game/engine';
@@ -31,12 +34,23 @@ const KEY_DIRS: Record<string, Tile> = {
 
 export default function ShopMapView() {
   const game = useGameState();
-  const { act } = useGame();
+  const { act, sceneMode, setSceneMode, setViewMode } = useGame();
+  const navigation = useNavigation();
   const { width } = useWindowDimensions();
   const wide = width >= 900;
   const run = game.run!;
   const layout = useMemo(() => buildLayout(game.upgrades), [game.upgrades]);
   const has3D = useMemo(hasWebGL, []);
+  /** Chế độ Đơn giản (mặt bằng 2D, chạm là làm) — máy không có WebGL thì luôn dùng. */
+  const simple = !has3D || sceneMode === 'simple';
+  /** Chế độ Bố trí: hiện chỗ chưa mua ("+"). */
+  const [arrange, setArrange] = useState(false);
+  /** Camera isometric khoá 45°, xoay theo nấc 90° và 2 mức zoom. */
+  const [rot, setRot] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState(0);
+  const [stockOpen, setStockOpen] = useState(false);
+  const [sheetStation, setSheetStation] = useState<MapStation | null>(null);
+  const targets = useTutorialTargets();
 
   // ---------- Khung cảnh & camera ----------
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -44,10 +58,11 @@ export default function ShopMapView() {
     const { width: w, height: h } = e.nativeEvent.layout;
     if (Math.abs(w - size.w) > 1 || Math.abs(h - size.h) > 1) setSize({ w, h });
   };
-  const portrait = size.h > size.w * 1.05;
-  const yaw = portrait ? PORTRAIT_YAW : LANDSCAPE_YAW;
-  // Điện thoại: phóng to cảnh 30% và camera đi theo nhân vật.
-  const zoom = width < 600 ? 1.3 : 1;
+  const yaw = ISO_YAW + rot * (Math.PI / 2);
+  // Camera nhìn từ phía tường sau: hạ tường sau cho khỏi che bếp.
+  const cutaway = Math.cos(yaw) < 0;
+  // Zoom 2 mức; điện thoại mặc định gần hơn và camera đi theo nhân vật.
+  const zoom = (width < 600 ? [1.2, 1.75] : [1, 1.5])[zoomLevel];
   const cam = useMemo(makeCamera, []);
   const baseCam = useMemo(makeCamera, []);
   const overlayPan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -226,6 +241,65 @@ export default function ShopMapView() {
   }, [layout]);
   const hereStation = here ? layout.stations.find((s) => s.id === here.id) ?? null : null;
 
+  // Gợi ý chuyển sang Đơn giản khi máy chậm (FPS < 30 kéo dài) hoặc pin yếu (< 20%) — hỏi một lần.
+  const [suggest, setSuggest] = useState(false);
+  useEffect(() => {
+    if (simple || suggestAsked || Platform.OS !== 'web' || typeof requestAnimationFrame === 'undefined') return;
+    let raf = 0;
+    let frames = 0;
+    let slow = 0;
+    let last = performance.now();
+    const loop = (now: number) => {
+      frames += 1;
+      if (now - last >= 1000) {
+        const fps = (frames * 1000) / (now - last);
+        slow = fps < 30 ? slow + 1 : 0;
+        frames = 0;
+        last = now;
+        if (slow >= 5 && !suggestAsked) {
+          suggestAsked = true;
+          setSuggest(true);
+          return;
+        }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    const nav = navigator as unknown as { getBattery?: () => Promise<{ level: number; charging: boolean }> };
+    nav.getBattery?.()
+      .then((b) => {
+        if (b.level < 0.2 && !b.charging && !suggestAsked) {
+          suggestAsked = true;
+          setSuggest(true);
+        }
+      })
+      .catch(() => {});
+    return () => cancelAnimationFrame(raf);
+  }, [simple]);
+
+  /** Chế độ Đơn giản: chạm trạm là làm luôn (không cần WebGL thì mở bảng thao tác). */
+  const tapStation = useCallback(
+    (st: MapStation) => {
+      if (has3D) arrive(st);
+      else setSheetStation(st);
+    },
+    [has3D, arrive]
+  );
+  const openUpgrades = () => navigation.navigate('Upgrades' as never);
+  const HUD_H = 124;
+  const BAR_H = 74;
+  const cleanReady = run.elapsed >= run.cleanReadyAt;
+
+  const actionBar = (
+    <View style={styles.bar}>
+      <GoMarketButton render={(onPress) => <BarButton icon="🛒" label="Chợ" onPress={onPress} />} />
+      <BarButton icon="🧽" label={cleanReady ? 'Lau' : 'Lau ⏳'} disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />
+      <BarButton icon="📦" label="Kho" onPress={() => setStockOpen(true)} />
+      <BarButton icon="📋" label="Bảng" onPress={() => setViewMode('panel')} />
+      {!simple && <BarButton icon="🧱" label="Bố trí" active={arrange} onPress={() => setArrange(!arrange)} />}
+    </View>
+  );
+
   const scene = (
     <View style={styles.scene} onLayout={onLayout}>
       {size.w > 0 && fp ? (
@@ -239,7 +313,7 @@ export default function ShopMapView() {
           setNoGarnish={setNoGarnish}
         />
       ) : size.w > 0 &&
-        (has3D ? (
+        (!simple ? (
           <>
             <ShopScene3D
               game={game}
@@ -251,54 +325,85 @@ export default function ShopMapView() {
               hereId={hereId}
               walkingTo={walkingTo}
               wanted={wanted}
-              onTapTile={goToTile}
+              onTapTile={arrange ? () => {} : goToTile}
+              cutaway={cutaway}
+              arrange={arrange}
             />
-            <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} onQuestion={setAskId} />
+            <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} onQuestion={setAskId} arrange={arrange} onPlus={openUpgrades} onStation={goToStation} />
+            {/* Xoay theo nấc 90° và zoom 2 mức */}
+            <View style={[styles.camCtl, { bottom: BAR_H + 56 }]}>
+              <CamButton label="⟲" name="Xoay góc nhìn" onPress={() => setRot((r) => (r + 1) % 4)} />
+              <CamButton label="+" name="Phóng to" disabled={zoomLevel === 1} onPress={() => setZoomLevel(1)} />
+              <CamButton label="−" name="Thu nhỏ" disabled={zoomLevel === 0} onPress={() => setZoomLevel(0)} />
+            </View>
+            {arrange && (
+              <View style={[styles.arrangeNote, { top: HUD_H + 6 }]} pointerEvents="none">
+                <Text style={styles.arrangeText}>🧱 Bố trí · chạm ＋ để mua thêm bếp, quầy, bàn</Text>
+              </View>
+            )}
           </>
         ) : (
-          <Map2D
-            game={game}
-            layout={layout}
-            width={size.w}
-            height={size.h - 90}
-            anim={walker.anim}
-            hereId={hereId}
-            walkingTo={walkingTo}
-            wanted={wanted}
-            onTapTile={goToTile}
-            onStation={goToStation}
-          />
+          <SimpleView game={game} layout={layout} targets={targets} onStation={tapStation} topInset={HUD_H + 28} bottomInset={BAR_H + 44} />
         ))}
-      {!fp && <MapHud compact={!wide} />}
+      {!fp && <MapHud canToggle={has3D} />}
+      {!fp && actionBar}
       {!fp && (
-        <View pointerEvents="none" style={[styles.hands, has3D && !wide && styles.handsLow]}>
+        <View pointerEvents="none" style={[styles.hands, { bottom: BAR_H + 10 }]}>
           <Text style={styles.handsText}>
             🤲 {carried.length ? carried.map((d) => RECIPES[d.recipeId].emoji + (d.noGarnish ? '🚫' : '')).join(' ') : 'Tay không'}
           </Text>
         </View>
       )}
       {!fp && toast && (
-        <View pointerEvents="none" style={[styles.toast, has3D && !wide && styles.toastLow]}>
+        <View pointerEvents="none" style={[styles.toast, { bottom: BAR_H + 60 }]}>
           <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      )}
+      {!fp && suggest && !simple && (
+        <View style={[styles.suggest, { top: HUD_H + 6 }]}>
+          <Text style={styles.suggestText}>🐢 Máy đang hơi chậm. Chuyển sang chế độ Đơn giản cho mượt?</Text>
+          <View style={styles.suggestRow}>
+            <Pressable style={[styles.suggestBtn, { backgroundColor: colors.brown }]} onPress={() => { setSuggest(false); setSceneMode('simple'); }} accessibilityRole="button">
+              <Text style={[styles.suggestBtnText, { color: colors.cream }]}>Đơn giản</Text>
+            </Pressable>
+            <Pressable style={styles.suggestBtn} onPress={() => setSuggest(false)} accessibilityRole="button">
+              <Text style={styles.suggestBtnText}>Giữ 3D</Text>
+            </Pressable>
+          </View>
         </View>
       )}
     </View>
   );
 
-  const sheet = <ActionSheet station={hereStation} game={game} act={act} noGarnish={noGarnish} setNoGarnish={setNoGarnish} />;
-  const hint =
-    Platform.OS === 'web' ? '👆 · ⌨️ WASD · E' : '👆';
-
   const asking = askId ? game.run?.customers.find((c) => c.id === askId) ?? null : null;
   const prompt = <ChatPrompt customer={asking} act={act} onClose={() => setAskId(null)} />;
+  const fridge = layout.stations.find((s) => s.kind === 'fridge') ?? null;
+  const modals = (
+    <>
+      {prompt}
+      {(stockOpen || sheetStation) && (
+        <Modal transparent animationType="none" visible onRequestClose={() => { setStockOpen(false); setSheetStation(null); }}>
+          <Pressable style={styles.backdrop} onPress={() => { setStockOpen(false); setSheetStation(null); }}>
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              <ScrollView contentContainerStyle={{ gap: 8 }}>
+                <ActionSheet station={stockOpen ? fridge : sheetStation} game={game} act={act} noGarnish={noGarnish} setNoGarnish={setNoGarnish} />
+              </ScrollView>
+              <Pressable style={styles.closeBtn} onPress={() => { setStockOpen(false); setSheetStation(null); }} accessibilityRole="button">
+                <Text style={styles.closeText}>✓ Xong</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+    </>
+  );
   if (wide) {
     return (
       <View style={styles.row}>
         {scene}
-        {prompt}
+        {modals}
         <View style={styles.side}>
           <ScrollView style={styles.flex} contentContainerStyle={styles.sideContent}>
-            {!has3D && <View style={styles.card}>{sheet}</View>}
             {game.staff.length > 0 && (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>👥 Nhân viên</Text>
@@ -317,7 +422,7 @@ export default function ShopMapView() {
                 </Text>
               ))}
             </View>
-            <Text style={styles.hint}>{hint}</Text>
+            {Platform.OS === 'web' && <Text style={styles.hint}>👆 · ⌨️ WASD · E</Text>}
           </ScrollView>
         </View>
       </View>
@@ -327,22 +432,74 @@ export default function ShopMapView() {
   return (
     <View style={styles.flex}>
       {scene}
-      {prompt}
-      {!fp && !has3D && (
-        <View style={styles.sheet}>
-          <View style={styles.grabber} />
-          <ScrollView contentContainerStyle={styles.sheetContent}>
-            {sheet}
-            <Text style={styles.hint}>{hint}</Text>
-          </ScrollView>
-        </View>
-      )}
+      {modals}
     </View>
+  );
+}
+
+/** Đã hỏi chuyển sang Đơn giản trong lần chơi này chưa. */
+let suggestAsked = false;
+
+/** Nút có nhãn trên thanh hành động (chunky, bo tròn). */
+function BarButton({ icon, label, onPress, disabled, active }: { icon: string; label: string; onPress: () => void; disabled?: boolean; active?: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.barBtn, active && styles.barBtnOn, disabled && { opacity: 0.45 }, pressed && { transform: [{ translateY: 2 }] }]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Text style={styles.barIcon}>{icon}</Text>
+      <Text style={[styles.barLabel, active && { color: colors.cream }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function CamButton({ label, name, onPress, disabled }: { label: string; name: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <Pressable onPress={onPress} disabled={disabled} style={[styles.camBtn, disabled && { opacity: 0.4 }]} accessibilityRole="button" accessibilityLabel={name}>
+      <Text style={styles.camText}>{label}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  bar: {
+    position: 'absolute',
+    left: 8,
+    right: 8,
+    bottom: 8,
+    flexDirection: 'row',
+    gap: 6,
+    backgroundColor: colors.cream,
+    borderRadius: 22,
+    padding: 5,
+    borderWidth: 2,
+    borderColor: colors.chunkyShadow,
+    borderBottomWidth: 5,
+  },
+  barBtn: { flex: 1, minHeight: 50, borderRadius: 18, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
+  barBtnOn: { backgroundColor: colors.brown, borderColor: colors.brown },
+  barIcon: { fontSize: 20 },
+  barLabel: { fontSize: 12, fontWeight: '900', color: colors.brown },
+  camCtl: { position: 'absolute', right: 10, gap: 6 },
+  camBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
+  camText: { fontSize: 20, fontWeight: '900', color: colors.brown },
+  arrangeNote: { position: 'absolute', alignSelf: 'center', backgroundColor: colors.brown, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
+  arrangeText: { color: colors.cream, fontWeight: '900', fontSize: 13 },
+  suggest: { position: 'absolute', left: 16, right: 16, backgroundColor: colors.cream, borderRadius: 18, padding: 12, gap: 8, borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 5 },
+  suggestText: { fontSize: 15, fontWeight: '800', color: colors.brown },
+  suggestRow: { flexDirection: 'row', gap: 8 },
+  suggestBtn: { flex: 1, borderRadius: 16, paddingVertical: 10, alignItems: 'center', backgroundColor: '#fff', borderWidth: 2, borderColor: colors.chunkyShadow },
+  suggestBtnText: { fontWeight: '900', color: colors.brown, fontSize: 15 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: 16 },
+  modalCard: { backgroundColor: colors.cream, borderRadius: 20, padding: 14, maxHeight: '80%', gap: 10 },
+  closeBtn: { alignSelf: 'center', backgroundColor: colors.brown, borderRadius: 16, paddingHorizontal: 24, paddingVertical: 10 },
+  closeText: { color: colors.cream, fontWeight: '900', fontSize: 16 },
   row: { flex: 1, flexDirection: 'row', backgroundColor: '#FBE3C6' },
   scene: { flex: 1, backgroundColor: '#FBE3C6', overflow: 'hidden' },
   hands: {

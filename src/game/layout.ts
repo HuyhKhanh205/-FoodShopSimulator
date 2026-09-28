@@ -6,6 +6,13 @@ export const MAP_COLS = 12;
 export const MAP_ROWS = 10;
 /** Hàng ranh giới giữa bếp (phía trên) và phòng ăn (phía dưới). */
 export const PASS_ROW = 4;
+/** Quầy ra món: ô bắt đầu và độ dài. */
+export const PASS_X = 4;
+export const PASS_W = 3;
+/** Vị trí đĩa thứ i trên quầy ra món (so với tâm quầy): 2 hàng, mỗi hàng 5 đĩa. */
+export function passDishOffset(i: number, w: number): [number, number] {
+  return [-w / 2 + 0.3 + (i % 5) * 0.6, i < 5 ? -0.17 : 0.17];
+}
 
 export type StationKind = 'stove' | 'counter' | 'fridge' | 'board' | 'trash' | 'mop' | 'pass' | 'table' | 'door';
 
@@ -66,9 +73,10 @@ export function buildLayout(upgrades: Upgrades): MapLayout {
   add({ id: 'trash', kind: 'trash', x: 0, y: 3, access: [{ x: 1, y: 3 }, { x: 0, y: 2 }], active: true });
   add({ id: 'mop', kind: 'mop', x: 11, y: 3, access: [{ x: 10, y: 3 }, { x: 11, y: 2 }], active: true });
 
+  // Quầy ra món ngắn (3 ô, giữa quán) để bếp và phòng ăn thông thoáng, có lối đi hai bên.
   const passAccess: Tile[] = [];
-  for (let x = 3; x <= 8; x += 1) passAccess.push({ x, y: PASS_ROW - 1 }, { x, y: PASS_ROW + 1 });
-  add({ id: 'pass', kind: 'pass', x: 3, y: PASS_ROW, w: 6, access: passAccess, active: true });
+  for (let x = PASS_X; x < PASS_X + PASS_W; x += 1) passAccess.push({ x, y: PASS_ROW - 1 }, { x, y: PASS_ROW + 1 });
+  add({ id: 'pass', kind: 'pass', x: PASS_X, y: PASS_ROW, w: PASS_W, access: passAccess, active: true });
 
   for (let i = 0; i < maxLevel('seats'); i += 1) {
     const x = 1 + 2 * (i % 5);

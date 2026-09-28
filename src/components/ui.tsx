@@ -17,7 +17,21 @@ export const colors = {
   badBg: '#FFEBEE',
   warnBg: '#FFF3E0',
   selected: '#FFE0B2',
+  /** Lớp HUD theo thiết kế "Chợ Nổi Quán": nền kem, chữ nâu, nút chunky. */
+  cream: '#FFF6E9',
+  brown: '#3E2F2A',
+  chunkyShadow: '#D9C3A5',
 };
+
+/** 4 màu nhóm (nền nhạt + viền đậm): hồng = thịt, xanh trời = cá / tôm, vàng bơ = trứng / tinh bột, bạc hà = rau. */
+export const GROUP = {
+  meat: { bg: '#FFE1E6', fg: '#C2185B' },
+  fish: { bg: '#DDF0FF', fg: '#1565C0' },
+  egg: { bg: '#FFF2C7', fg: '#B8860B' },
+  veg: { bg: '#DDF5EA', fg: '#2E7D32' },
+  neutral: { bg: '#F3ECE3', fg: '#6D5A4F' },
+} as const;
+export type GroupKey = keyof typeof GROUP;
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 

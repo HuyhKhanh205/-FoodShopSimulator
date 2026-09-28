@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import type { Group, Mesh } from 'three';
 import { useFrame } from '../../three/fiber';
 import { burnGrace } from '../../game/data';
-import { MAP_COLS, MAP_ROWS, PASS_ROW } from '../../game/layout';
+import { MAP_COLS, MAP_ROWS, PASS_ROW, passDishOffset } from '../../game/layout';
 import type { MapStation } from '../../game/layout';
 import type { CookJob, Dish } from '../../game/types';
 import { foodColor } from './looks';
@@ -18,7 +18,8 @@ export function Floor() {
   const diningDepth = MAP_ROWS - PASS_ROW - 0.5;
   const kitchenDepth = PASS_ROW + 0.5;
   const tiles = useMemo(() => {
-    const t = checkerTileTexture('#F5F5F5', '#37474F').clone();
+    // Gạch bông pastel (kem + bạc hà nhạt), tương phản thấp để không lấn nhân vật.
+    const t = checkerTileTexture('#FBF1E1', '#D6ECE0').clone();
     t.repeat.set(MAP_COLS / 2, kitchenDepth / 2);
     t.needsUpdate = true;
     return t;
@@ -31,7 +32,7 @@ export function Floor() {
   }, [diningDepth]);
   return (
     <group>
-      {/* Bếp: gạch men caro đen trắng */}
+      {/* Bếp: gạch bông pastel */}
       <mesh rotation-x={-Math.PI / 2} position={[MAP_COLS / 2, 0, kitchenDepth / 2]} receiveShadow>
         <planeGeometry args={[MAP_COLS, kitchenDepth]} />
         <meshStandardMaterial map={tiles} roughness={0.35} metalness={0.05} />
@@ -45,7 +46,8 @@ export function Floor() {
   );
 }
 
-export function Walls() {
+/** `cutaway`: camera nhìn từ phía tường sau (khi xoay) — hạ thấp tường sau để không che bếp. */
+export function Walls({ cutaway = false }: { cutaway?: boolean }) {
   const wallTiles = useMemo(() => {
     const t = wallTileTexture('#26A69A', '#1B7F74').clone();
     t.repeat.set(MAP_COLS * 2, 2);
@@ -55,6 +57,7 @@ export function Walls() {
   return (
     <group>
       {/* Tường sau: ốp gạch phía dưới, sơn kem phía trên */}
+      <group scale={[1, cutaway ? 0.3 : 1, 1]}>
       <mesh position={[MAP_COLS / 2, 0.4, 0.25]} castShadow receiveShadow>
         <boxGeometry args={[MAP_COLS, 0.8, 0.5]} />
         <meshStandardMaterial map={wallTiles} roughness={0.3} />
@@ -63,6 +66,9 @@ export function Walls() {
         <boxGeometry args={[MAP_COLS, 1.0, 0.4]} />
         <meshLambertMaterial color="#FFE7C7" />
       </mesh>
+      </group>
+      {!cutaway && (
+      <group>
       {/* Kệ treo + nồi trang trí */}
       <mesh position={[3, 1.35, 0.45]} castShadow>
         <boxGeometry args={[3.5, 0.06, 0.25]} />
@@ -83,6 +89,8 @@ export function Walls() {
         <boxGeometry args={[0.05, 0.7, 0.02]} />
         <meshLambertMaterial color="#FFFFFF" />
       </mesh>
+      </group>
+      )}
       {/* Tường thấp hai bên */}
       {[0.05, MAP_COLS - 0.05].map((x) => (
         <mesh key={x} position={[x, 0.12, MAP_ROWS / 2]} receiveShadow>
@@ -332,7 +340,7 @@ function Pass({ st, dishes }: { st: MapStation; dishes: Dish[] }) {
         <meshLambertMaterial color="#ECEFF1" />
       </mesh>
       {/* Đèn giữ nóng */}
-      {[-2, 0, 2].map((x) => (
+      {[-1, 0, 1].map((x) => (
         <group key={x} position={[x, 0, 0]}>
           <mesh position={[0, 1.75, 0]}>
             <cylinderGeometry args={[0.01, 0.01, 0.5, 4]} />
@@ -349,7 +357,7 @@ function Pass({ st, dishes }: { st: MapStation; dishes: Dish[] }) {
         <meshLambertMaterial color="#FFD54F" />
       </mesh>
       {dishes.slice(0, 10).map((d, i) => (
-        <group key={d.id} position={[-st.w / 2 + 0.45 + i * 0.55, 0.96, 0]}>
+        <group key={d.id} position={[passDishOffset(i, st.w)[0], 0.96, passDishOffset(i, st.w)[1]]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.2, 0.16, 0.03, 14]} />
             <meshLambertMaterial color="#FFFFFF" />
@@ -445,7 +453,10 @@ export function StationMesh({
   prepping,
   dishes,
   served,
+  arrange = false,
 }: {
+  /** Chế độ Bố trí: mới hiện hộp mờ "+" của chỗ chưa mua. */
+  arrange?: boolean;
   st: MapStation;
   job?: CookJob | null;
   blocked?: boolean;
@@ -453,7 +464,7 @@ export function StationMesh({
   dishes?: Dish[];
   served?: string[];
 }) {
-  if (!st.active) return <Ghost st={st} />;
+  if (!st.active) return arrange ? <Ghost st={st} /> : null;
   const [cx, cz] = center(st);
   let body: React.ReactNode = null;
   switch (st.kind) {

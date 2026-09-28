@@ -63,6 +63,12 @@ Giờ mở cửa hiển thị quán dạng **3D nhìn chéo từ trên** (three.
 - Khách mỗi người một màu áo, quần, tóc, da khác nhau, nhiều người đội mũ lưỡi trai / nón lá / khăn — mô hình KayKit được tô lại màu theo từng vùng (áo, khăn, quần, tóc, da) bằng texture bảng màu sinh sẵn (`scripts/build-palettes.mjs`). Ảnh texture trong file GLB được bỏ khi nhúng (`scripts/embed-models.mjs`) và thay bằng bảng màu này — Safari iPhone trong khung Artifact không nạp được ảnh qua `blob:` nên trước đây nội thất bị mất màu.
 - Nút **📋 Bảng / 🗺️ Bản đồ** trên thanh đồng hồ để chuyển qua lại với bảng điều khiển bấm nút (lựa chọn được ghi nhớ).
 
+### 🎮 Hai chế độ: Đơn giản / 3D (theo góp ý thiết kế "Chợ Nổi Quán")
+Nút chuyển nằm giữa HUD, đổi ngay mà giữ nguyên đơn, khách và nồi đang nấu (nhớ lựa chọn cho lần sau).
+- **HUD mới**: một dải kem to ở trên (giờ, tiền, ★ / độ sạch, chữ ≥ 16px), chỉ còn ⏸ và ❗; các nút khác xuống **thanh hành động có nhãn** ở đáy: 🛒 Chợ · 🧽 Lau · 📦 Kho (xem tồn kho) · 📋 Bảng · 🧱 Bố trí.
+- **3D**: vẫn là cảnh KayKit, camera **isometric khoá 45°**, nút ⟲ xoay theo nấc 90° (xoay ra sau thì tường sau tự hạ thấp) và + / − zoom 2 mức; sàn bếp gạch bông pastel; đèn treo không dây, chóp trong mờ; quầy ra món rút còn 3 ô để có lối đi hai bên; **chip màu cố định** trên mỗi trạm (Bếp 1–2, Quầy pha, Thớt, Kho, Quầy ra món, Rửa · lau, Rác) kèm trạng thái — chạm chip là đi tới trạm; bong bóng gọi món to hơn với **vòng đếm giờ** (xanh dương = món đang nấu), chạm bong bóng là tới bàn đó. Ô "+" (chỗ chưa mua) chỉ hiện ở chế độ **Bố trí**, chạm để mở màn Nâng cấp.
+- **Đơn giản**: mặt bằng 2D cố định — khu BẾP và PHÒNG ĂN, mỗi trạm là ô màu nhóm (hồng thịt · xanh trời cá · vàng bơ trứng · bạc hà rau) kèm trạng thái; **chạm là làm luôn**, không cần dẫn nhân vật; phiếu đơn ở trên và nút lớn "🍽️ Ra món bàn N" khi đang cầm đúng món. Máy chậm (FPS < 30 vài giây) hoặc pin < 20% thì game gợi ý chuyển sang Đơn giản (hỏi một lần). Máy không có WebGL thì chỉ có chế độ Đơn giản.
+
 ### 🛒 Đi chợ giữa giờ bán
 Hết nguyên liệu giữa ngày? Bấm **🛒** trên màn chơi để chạy ra chợ (thời gian vẫn trôi).
 - **Chưa có nhân viên nào đang làm** → quán **treo biển tạm đóng**: không đón khách mới; khách đang ngồi vẫn chờ và có thể bỏ về, món trên bếp vẫn có thể cháy.

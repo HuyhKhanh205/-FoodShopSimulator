@@ -4,9 +4,8 @@ import type { Tile } from '../../game/layout';
 
 /** Góc nhìn xuống (radian) — khoảng 50°, kiểu game nấu ăn nhìn chéo từ trên. */
 const ELEVATION = 0.87;
-/** Góc xoay ngang của camera: màn ngang nhìn từ hướng nam lệch đông; màn dọc nhìn từ hướng đông lệch nam. */
-export const LANDSCAPE_YAW = 0.32;
-export const PORTRAIT_YAW = Math.PI / 2 - 0.32;
+/** Góc xoay ngang của camera: isometric khoá 45° (nhìn từ góc đông nam); người chơi xoay thêm theo nấc 90°. */
+export const ISO_YAW = Math.PI / 4;
 
 export type CameraCam = THREE.OrthographicCamera & { manual?: boolean };
 

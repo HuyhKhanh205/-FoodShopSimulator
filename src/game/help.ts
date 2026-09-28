@@ -53,15 +53,16 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
   shop: {
     title: 'Bán hàng',
     steps: [
-      { icon: '👆', text: 'Chạm vào chỗ muốn đi.' },
+      { icon: '👆', text: 'Chạm vào chỗ muốn đi, hoặc chạm nhãn màu của bếp, thớt, bàn.' },
       { icon: '🔪', text: 'Tới thớt hoặc 🔥 bếp để nấu.' },
-      { icon: '🍽️', text: 'Cầm món tới bàn khách.' },
-      { icon: '😊', text: 'Thanh xanh trên đầu khách ngắn dần — nhanh lên kẻo khách buồn!' },
+      { icon: '🍽️', text: 'Cầm món rồi chạm vào bàn khách đang chờ.' },
+      { icon: '😊', text: 'Vòng tròn quanh món ngắn dần — nhanh lên kẻo khách buồn!' },
       { icon: '❓', text: 'Khách hỏi thì chạm vào ❓ để trả lời — trả lời khéo được boa thêm!' },
-      { icon: '⏸️', text: 'Nút ⏸️ để nghỉ, 🧽 để lau quán, 🛒 để chạy ra chợ.' },
+      { icon: '🎮', text: 'Nút Đơn giản trên cùng: chạm ô là làm luôn, không cần đi. Nút 3D: xem quán 3D.' },
     ],
     more: [
-      { icon: '🚫', text: 'Khách dặn "không hành" thì bật nút 🚫 trước khi nấu.' },
+      { icon: '⟲', text: 'Nút ⟲ xoay quán, nút cộng trừ để phóng to thu nhỏ.' },
+      { icon: '🧱', text: 'Nút Bố trí hiện chỗ trống để mua thêm bếp, quầy, bàn.' },
       { icon: '⌨️', text: 'Máy tính: phím mũi tên / WASD để đi, E hoặc Space để làm.' },
     ],
   },

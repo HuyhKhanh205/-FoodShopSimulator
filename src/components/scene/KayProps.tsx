@@ -5,6 +5,7 @@ import { useFrame } from '../../three/fiber';
 import { useProp } from '../../three/models';
 import { burnGrace } from '../../game/data';
 import type { CookJob, Dish } from '../../game/types';
+import { passDishOffset } from '../../game/layout';
 import { foodColor } from './looks';
 import DishModel, { dishKey } from './Dish';
 
@@ -203,7 +204,7 @@ export function KayPass({ width, dishes, fallback }: { width: number; dishes: Di
         <Prop key={x} name={i % 2 ? 'kitchencounter_straight_B' : 'kitchencounter_straight_A'} position={[x, 0, 0]} rotation={Math.PI} />
       ))}
       {dishes.slice(0, 10).map((d, i) => (
-        <group key={d.id} position={[-width / 2 + 0.45 + i * 0.55, KAY, 0]}>
+        <group key={d.id} position={[passDishOffset(i, width)[0], KAY, passDishOffset(i, width)[1]]}>
           <DishModel dish={dishKey(d.recipeId, d.quality === 'burnt')} />
         </group>
       ))}
@@ -282,27 +283,24 @@ export function ShopSign({ name, position, rotation = 0 }: { name: string; posit
 
 /** Đèn thả trần: chao đèn + bóng phát sáng + ánh sáng ấm (tuỳ chọn). */
 export function HangingLamp({ position, light = true }: { position: Vec3; light?: boolean }) {
+  // Nhìn từ trên xuống, chóp đèn hay che bàn và nhân vật: không dây, treo cao, chóp trong mờ.
   return (
     <group position={position}>
-      <mesh position={[0, 0.5, 0]}>
-        <cylinderGeometry args={[0.008, 0.008, 1, 4]} />
-        <meshBasicMaterial color="#3E2723" />
-      </mesh>
       <mesh>
         <coneGeometry args={[0.2, 0.16, 20, 1, true]} />
-        <meshStandardMaterial color="#E65100" roughness={0.4} side={2} />
+        <meshStandardMaterial color="#E65100" roughness={0.4} side={2} transparent opacity={0.3} depthWrite={false} />
       </mesh>
       <mesh position={[0, -0.05, 0]}>
-        <sphereGeometry args={[0.06, 12, 8]} />
-        <meshBasicMaterial color="#FFF3C4" toneMapped={false} />
+        <sphereGeometry args={[0.05, 12, 8]} />
+        <meshBasicMaterial color="#FFF3C4" toneMapped={false} transparent opacity={0.6} depthWrite={false} />
       </mesh>
-      {light && <pointLight position={[0, -0.15, 0]} color="#FFD8A0" intensity={2.2} distance={3.2} decay={1.6} />}
+      {light && <pointLight position={[0, -0.15, 0]} color="#FFD8A0" intensity={2.2} distance={3.6} decay={1.6} />}
     </group>
   );
 }
 
 /** Đồ trang trí quanh quán (đặt trên các ô đã chặn trong bố cục). */
-export function Decor() {
+export function Decor({ cutaway = false }: { cutaway?: boolean }) {
   return (
     <group>
       {/* Bếp: thùng nguyên liệu, kệ, quầy gia vị */}
@@ -316,7 +314,7 @@ export function Decor() {
       <Prop name="ketchup" position={[5.55, KAY, 1.7]} scale={KAY * 0.9} />
       <Prop name="kitchencounter_straight_B" position={[8.5, 0, 1.5]} />
       <Prop name="crate_tomatoes" position={[8.5, KAY, 1.5]} scale={KAY * 0.55} />
-      <Prop name="shelf_papertowel_decorated" position={[5.5, 1.35, 0.5]} scale={KAY} />
+      {!cutaway && <Prop name="shelf_papertowel_decorated" position={[5.5, 1.35, 0.5]} scale={KAY} />}
       {/* Phòng ăn: cây cảnh, đèn cây, thảm */}
       <Prop name="cactus_medium_A" position={[0.5, 0, 9.5]} scale={KAY * 1.2} />
       <Prop name="lamp_standing" position={[11.5, 0, 5.5]} scale={KAY * 0.9} />

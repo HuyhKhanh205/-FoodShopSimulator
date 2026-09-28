@@ -4,9 +4,12 @@ import { handledCustomers } from '../../game/helpers';
 import { tutorialTargets } from '../../game/tutorial';
 import TutorialGlow from '../kid/TutorialGlow';
 import { burnGrace, PLAYER_PREP_MS, RECIPES } from '../../game/data';
+import { passDishOffset } from '../../game/layout';
 import type { MapLayout, MapStation } from '../../game/layout';
 import type { Customer, GameState } from '../../game/types';
-import { colors, patienceColor } from '../ui';
+import { GROUP, colors, patienceColor } from '../ui';
+import type { GroupKey } from '../ui';
+import TimerRing from '../kid/TimerRing';
 import { project } from './camera';
 import type { CameraCam } from './camera';
 
@@ -46,25 +49,54 @@ function ChatBubble({ c, font, onQuestion }: { c: Customer; font: number; onQues
 }
 
 /**
- * Món khách gọi + thanh kiên nhẫn. `handled`: món đang nấu / đã xong (thanh xanh dương, ⏳ — khách chờ thong thả);
- * `wanted`: chủ quán đang cầm đúng món bàn này chờ (bong bóng to, viền xanh lá, 👇).
+ * Món khách gọi: ô to có **vòng đếm giờ** (kiên nhẫn) quanh món đầu, các món còn lại xếp bên cạnh.
+ * `handled`: món đang nấu / đã xong (vòng xanh dương, ⏳ — khách chờ thong thả);
+ * `wanted`: chủ quán đang cầm đúng món bàn này chờ (viền xanh lá, to hơn, 👇).
  */
-function OrderBubble({ c, font, onQuestion, handled, wanted }: { c: Customer; font: number; onQuestion?: (id: string) => void; handled?: boolean; wanted?: boolean }) {
+function OrderBubble({ c, font, onQuestion, handled, wanted, onPress, label }: { c: Customer; font: number; onQuestion?: (id: string) => void; handled?: boolean; wanted?: boolean; onPress?: () => void; label?: string }) {
   const open = c.items.filter((i) => !i.served);
-  const ratio = c.patience / c.maxPatience;
-  const f = wanted ? font * 1.3 : font;
+  const ratio = Math.max(0, c.patience / c.maxPatience);
+  const f = Math.max(18, wanted ? font * 1.5 : font * 1.25);
+  const ring = f * 1.9;
+  const color = handled ? colors.info : patienceColor(ratio);
+  const [first, ...rest] = open;
   return (
     <View style={styles.stack} pointerEvents="box-none">
-    <ChatBubble c={c} font={font} onQuestion={onQuestion} />
-    <View pointerEvents="none" style={[styles.bubble, wanted && styles.bubbleWanted]}>
-      <Text style={{ fontSize: f }} numberOfLines={2}>
-        {open.map((i) => RECIPES[i.recipeId].emoji + (i.noGarnish ? '🚫' : '')).join('')}
-        {handled && !wanted ? <Text style={{ fontSize: font * 0.6 }}>⏳</Text> : null}
+      <ChatBubble c={c} font={font} onQuestion={onQuestion} />
+      {first && (
+        <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={label} style={[styles.bubble, wanted && styles.bubbleWanted]}>
+          <TimerRing value={ratio} size={ring} width={Math.max(3, f * 0.18)} color={color}>
+            <Text style={{ fontSize: f }}>{RECIPES[first.recipeId].emoji}</Text>
+          </TimerRing>
+          {(rest.length > 0 || first.noGarnish || handled) && (
+            <Text style={{ fontSize: f * 0.85 }} numberOfLines={2}>
+              {first.noGarnish ? '🚫' : ''}
+              {rest.map((i) => RECIPES[i.recipeId].emoji + (i.noGarnish ? '🚫' : '')).join('')}
+              {handled && !wanted ? <Text style={{ fontSize: f * 0.55 }}>⏳</Text> : null}
+            </Text>
+          )}
+        </Pressable>
+      )}
+      {wanted && <Text style={{ fontSize: font * 1.2 }}>👇</Text>}
+    </View>
+  );
+}
+
+/** Chip cố định trên mỗi trạm: tên + trạng thái ngắn, màu theo nhóm. */
+function Chip({ title, status, group, bar, glow, onPress }: { title: string; status?: string; group: GroupKey; bar?: { value: number; color: string } | null; glow?: boolean; onPress?: () => void }) {
+  const g = GROUP[group];
+  return (
+    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole="button" accessibilityLabel={`${title}${status ? ': ' + status : ''}`} style={[styles.chip, { backgroundColor: g.bg, borderColor: g.fg }, glow && styles.chipGlow]}>
+      <Text style={[styles.chipTitle, { color: colors.brown }]} numberOfLines={1}>
+        {title}
       </Text>
-      <Bar value={ratio} color={handled ? colors.info : patienceColor(ratio)} width={Math.max(30, f * 2.6)} />
-    </View>
-    {wanted && <Text style={{ fontSize: font }}>👇</Text>}
-    </View>
+      {status ? (
+        <Text style={[styles.chipStatus, { color: g.fg }]} numberOfLines={1}>
+          {status}
+        </Text>
+      ) : null}
+      {bar && <Bar value={bar.value} color={bar.color} width={54} />}
+    </Pressable>
   );
 }
 
@@ -80,7 +112,16 @@ export default function SceneOverlay({
   h,
   pan,
   onQuestion,
+  arrange = false,
+  onPlus,
+  onStation,
 }: {
+  /** Chạm chip trạm: đi tới trạm đó. */
+  onStation?: (st: MapStation) => void;
+  /** Chế độ Bố trí: hiện "+" ở chỗ chưa mua. */
+  arrange?: boolean;
+  /** Chạm "+" (mở màn Nâng cấp). */
+  onPlus?: () => void;
   game: GameState;
   layout: MapLayout;
   /** Camera gốc (không dời theo nhân vật). */
@@ -102,6 +143,7 @@ export default function SceneOverlay({
   const font = Math.max(11, Math.min(22, unit * 0.34));
   const center = (st: MapStation): [number, number] => [st.x + st.w / 2, st.y + st.h / 2];
   const targets = tutorialTargets(game);
+  const go = (st: MapStation) => (onStation && !arrange ? () => onStation(st) : undefined);
   const handled = handledCustomers(run);
   const carried = new Set(run.carrying.map((id) => run.pass.find((d) => d.id === id)?.recipeId).filter(Boolean));
 
@@ -116,7 +158,15 @@ export default function SceneOverlay({
   for (const st of layout.stations) {
     const [cx, cz] = center(st);
     if (!st.active) {
-      place(`plus-${st.id}`, p(cx, 0.95, cz), <Text style={[styles.plus, { fontSize: font }]}>＋</Text>, 40);
+      if (arrange)
+        place(
+          `plus-${st.id}`,
+          p(cx, 0.95, cz),
+          <Pressable onPress={onPlus} accessibilityRole="button" accessibilityLabel="Mua thêm chỗ này" style={styles.plusBtn}>
+            <Text style={[styles.plus, { fontSize: Math.max(18, font) }]}>＋</Text>
+          </Pressable>,
+          48
+        );
       continue;
     }
     if (st.kind === 'table') {
@@ -127,6 +177,8 @@ export default function SceneOverlay({
           p(cx, 1.8, cz),
           <TutorialGlow on={targets.includes('shop.table') && cust.items.some((i) => !i.served)} radius={12}>
             <OrderBubble
+              onPress={go(st)}
+              label={`Bàn ${st.tableIndex! + 1}: ${cust.name}`}
               c={cust}
               font={font}
               onQuestion={onQuestion}
@@ -140,47 +192,55 @@ export default function SceneOverlay({
     }
     if (st.slotId) {
       const job = run.slots.find((s) => s.id === st.slotId)?.job;
-      if (!job) continue;
-      const r = RECIPES[job.recipeId];
-      const done = job.progress >= job.cookTime;
-      const burnRatio = (job.progress - job.cookTime) / burnGrace(job.cookTime);
-      const color = !done ? colors.accent : r.burns && burnRatio > 0.5 ? colors.bad : colors.good;
-      const value = done && r.burns ? 1 - burnRatio : job.progress / job.cookTime;
-      place(
-        `job-${st.id}`,
-        p(cx, 1.7, cz),
-        <View style={[styles.tag, done && { borderColor: color }]}>
-          <Text style={{ fontSize: font * 0.9 }}>
-            {r.emoji}
-            {done && r.burns ? (burnRatio > 0.5 ? '⚠️' : '✅') : ''}
-          </Text>
-          <Bar value={value} color={color} width={Math.max(28, font * 2.2)} />
-        </View>
-      );
+      const idx = Number(st.slotId.replace(/\D/g, '')) + 1;
+      const title = st.kind === 'stove' ? `Bếp ${idx}` : `Quầy pha ${idx}`;
+      let status = 'trống';
+      let bar: { value: number; color: string } | null = null;
+      if (job) {
+        const r = RECIPES[job.recipeId];
+        const done = job.progress >= job.cookTime;
+        const burnRatio = (job.progress - job.cookTime) / burnGrace(job.cookTime);
+        const color = !done ? colors.accent : r.burns && burnRatio > 0.5 ? colors.bad : colors.good;
+        bar = { value: done && r.burns ? 1 - burnRatio : job.progress / job.cookTime, color };
+        const who = job.by !== 'player' ? '👤' : '';
+        status = `${r.emoji}${who} ${!done ? `${Math.round((job.progress / job.cookTime) * 100)}%` : r.burns && burnRatio > 0.5 ? '⚠️ cháy!' : '✅ chín'}`;
+      }
+      // Bếp / quầy liền nhau: chip so le trái – phải, cao – thấp cho khỏi chồng lên nhau.
+      const pair = layout.stations.filter((x) => x.kind === st.kind && x.active).length > 1;
+      const at = p(cx, pair && idx % 2 ? 1.6 : 2.4, cz);
+      place(`chip-${st.id}`, { x: at.x + (pair ? (idx % 2 ? -34 : 34) : 0), y: at.y }, <Chip title={title} status={status} group={st.kind === 'stove' ? 'meat' : 'egg'} bar={bar} onPress={go(st)} />, 96);
       continue;
     }
     if (st.kind === 'board') {
+      const prepped = Object.values(run.prepped).reduce((n, v) => n + (v ?? 0), 0);
       place(
         'board',
-        p(cx, 1.35, cz),
+        p(cx, 1.45, cz),
         <TutorialGlow on={targets.includes('shop.board')} radius={10}>
-        <View style={styles.tag}>
-          <Text style={[styles.label, targets.includes('shop.board') && { fontSize: 16 }]}>Thớt</Text>
-          {run.playerPrep && <Bar value={1 - (run.playerPrep.endsAt - run.elapsed) / PLAYER_PREP_MS} color={colors.info} width={Math.max(28, font * 2.2)} />}
-        </View>
-        </TutorialGlow>
+          <Chip
+            title="Thớt"
+            onPress={go(st)}
+            status={run.playerPrep ? '🔪 đang thái' : prepped ? `🔪 ${prepped} phần` : 'trống'}
+            group="veg"
+            glow={targets.includes('shop.board')}
+            bar={run.playerPrep ? { value: 1 - (run.playerPrep.endsAt - run.elapsed) / PLAYER_PREP_MS, color: colors.info } : null}
+          />
+        </TutorialGlow>,
+        96
       );
     }
-    if (st.kind === 'fridge') place('fridge', p(cx, 1.95, cz), <View style={styles.tag}><Text style={styles.label}>Kho</Text></View>);
+    if (st.kind === 'fridge') {
+      const total = game.stock.filter((b) => b.expiresOnDay >= game.day).reduce((n, b) => n + b.qty, 0);
+      place('fridge', p(cx, 2.45, cz), <Chip title="Kho" status={`📦 ${total}`} group="fish" onPress={go(st)} />, 80);
+    }
+    if (st.kind === 'trash') place('trash', p(cx, 1.3, cz), <Chip title="Rác" group="neutral" onPress={go(st)} />, 60);
+    if (st.kind === 'mop') place('mop', p(cx, 1.25, cz), <Chip title="Rửa · lau" status={`🧽 ${Math.round(game.cleanliness)}%`} group="fish" onPress={go(st)} />, 84);
     if (st.kind === 'pass') {
       const dishes = run.pass.filter((d) => !run.carrying.includes(d.id)).slice(0, 10);
+      place('pass', p(cx, 1.55, cz - 0.4), <Chip title="Quầy ra món" status={dishes.length ? `🍽️ ${dishes.length} dĩa` : 'trống'} group="egg" onPress={go(st)} />, 110);
       dishes.forEach((d, i) => {
-        place(
-          `dish-${d.id}`,
-          p(st.x + 0.45 + i * 0.55, 1.3, cz),
-          <Text style={{ fontSize: font * 0.85 }}>{d.quality === 'burnt' ? '🔥' : RECIPES[d.recipeId].emoji}</Text>,
-          40
-        );
+        const [ox, oz] = passDishOffset(i, st.w);
+        place(`dish-${d.id}`, p(cx + ox, 1.2, cz + oz), <Text style={{ fontSize: font * 0.85 }}>{d.quality === 'burnt' ? '🔥' : RECIPES[d.recipeId].emoji}</Text>, 40);
       });
     }
     if (st.kind === 'door') {
@@ -236,10 +296,11 @@ const styles = StyleSheet.create({
   },
   bubbleWanted: { borderWidth: 3, borderColor: colors.good, backgroundColor: '#F1F8E9' },
   bubble: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 10,
+    flexDirection: 'row',
+    backgroundColor: colors.cream,
+    borderRadius: 16,
     paddingHorizontal: 5,
-    paddingVertical: 3,
+    paddingVertical: 4,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
@@ -260,6 +321,22 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   label: { fontSize: 10, fontWeight: '800', color: colors.text },
-  plus: { color: 'rgba(255,255,255,0.9)', fontWeight: '900' },
+  plus: { color: '#fff', fontWeight: '900' },
+  plusBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(62,47,42,0.55)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', borderStyle: 'dashed' },
+  chip: {
+    borderRadius: 12,
+    borderWidth: 2,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    alignItems: 'center',
+    gap: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  chipGlow: { borderWidth: 3 },
+  chipTitle: { fontSize: 12, fontWeight: '900' },
+  chipStatus: { fontSize: 11, fontWeight: '800' },
   track: { height: 4, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.15)', overflow: 'hidden' },
 });
