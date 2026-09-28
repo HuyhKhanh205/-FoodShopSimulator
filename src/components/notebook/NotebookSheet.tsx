@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RECIPES } from '../../game/data';
 import { useGame } from '../../game/GameContext';
+import { MINI_INFO, MINI_TYPES } from '../../game/events/mini';
 import { formatMoney } from '../../game/helpers';
 import {
   DIARY_TEXT_MAX,
@@ -346,6 +347,21 @@ function BagPage({ game }: { game: GameState }) {
         <Coin icon="⭐" label="Sao hy vọng" value={String(game.hopeStars)} />
       </View>
       <Text style={styles.muted}>🎟️ Vé có khi làm xong việc hôm nay và khi viết nhật ký. ⭐ Sao chỉ có ở việc KHÓ.</Text>
+      <Text style={styles.section}>🏆 KỶ LỤC MINI GAME</Text>
+      <View style={styles.records}>
+        {MINI_TYPES.map((t) => {
+          const best = game.miniBest?.[t];
+          return (
+            <View key={t} style={styles.record} accessibilityLabel={`${MINI_INFO[t].name}: ${best === undefined ? 'chưa chơi' : `${Math.round(best * 100)} điểm`}`}>
+              <Text style={styles.recordIcon}>{best === undefined ? '🔒' : MINI_INFO[t].emoji}</Text>
+              <Text style={styles.recordName} numberOfLines={1}>
+                {MINI_INFO[t].name}
+              </Text>
+              <Text style={styles.recordScore}>{best === undefined ? '—' : `${Math.round(best * 100)}`}</Text>
+            </View>
+          );
+        })}
+      </View>
       <View style={styles.soon}>
         <Text style={styles.soonIcon}>🪑</Text>
         <View style={{ flex: 1 }}>
@@ -379,6 +395,11 @@ function Coin({ icon, label, value }: { icon: string; label: string; value: stri
 }
 
 const styles = StyleSheet.create({
+  records: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  record: { width: '31%', backgroundColor: '#FFFFFF', borderRadius: 10, borderWidth: 1, borderColor: LINE, alignItems: 'center', paddingVertical: 6, paddingHorizontal: 2 },
+  recordIcon: { fontSize: 22 },
+  recordName: { fontSize: 11, color: colors.muted, fontWeight: '700' },
+  recordScore: { fontSize: 15, fontWeight: '900', color: colors.text },
   backdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(40,25,15,0.45)', padding: 8, paddingTop: 10, justifyContent: 'center' },
   book: { flex: 1, maxHeight: 760, flexDirection: 'row', maxWidth: 640, width: '100%', alignSelf: 'center' },
   spine: { width: 16, paddingVertical: 18, justifyContent: 'space-between', alignItems: 'center', zIndex: 2, marginRight: -8 },

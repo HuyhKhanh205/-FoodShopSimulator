@@ -21,6 +21,10 @@ import { addXp, experiment, levelOf, unlockedIngredients } from '../src/game/pro
 const usableQty = uq;
 import { START_UPGRADES } from '../src/game/data';
 import * as E from '../src/game/engine';
+import * as EV from '../src/game/events';
+import * as KIT from '../src/game/events/kit';
+import { FUN_EVENTS } from '../src/game/events/fun';
+import { MINI_INFO, MINI_TYPES, QUIZ } from '../src/game/events/mini';
 import { seededRng } from '../src/game/helpers';
 import { buildLayout, findPath } from '../src/game/layout';
 
@@ -205,8 +209,9 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
 
 // Ngày làm quen: ít khách hơn
 {
-  const count = (day: number) => {
-    const r = seededRng(99);
+  const count = (day: number) => [99, 100, 101].reduce((sum, seed) => sum + countSeed(day, seed), 0);
+  const countSeed = (day: number, seed: number) => {
+    const r = seededRng(seed);
     const g = E.newGame(r);
     g.day = day;
     g.activeEvent = null;
@@ -763,6 +768,260 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check(E.closeEarly(g) && g.phase === 'summary' && g.run === null && g.history.at(-1)!.notes.some((n) => n.includes('Nghỉ sớm')), 'nghỉ sớm: sang tổng kết ngay, ghi vào sự việc trong ngày');
   check(g.money < money, 'nghỉ sớm vẫn trả tiền mặt bằng / điện gas');
   check(!E.closeEarly(g), 'đã tổng kết thì không nghỉ sớm lần nữa');
+}
+
+// ================= Tình huống: 124 mới + mini game + hậu quả =================
+{
+
+  check(FUN_EVENTS.length >= 124, `có ${FUN_EVENTS.length} tình huống mới (≥ 124)`);
+  check(EV.EVENTS.length >= 142, `tổng ${EV.EVENTS.length} tình huống trong một kho chung`);
+  const ids = EV.EVENTS.map((e) => e.id);
+  check(new Set(ids).size === ids.length, 'id tình huống không trùng');
+  const used = new Set(EV.EVENTS.flatMap((e) => e.choices.map((c) => c.mini?.type).filter(Boolean)));
+  check(MINI_TYPES.length === 13 && MINI_TYPES.every((t) => used.has(t)), `đủ 13 kiểu mini game được dùng (${[...used].length})`);
+  const miniEvents = EV.EVENTS.filter((e) => e.choices.some((c) => c.mini)).length;
+  check(miniEvents >= 38, `${miniEvents} tình huống có mini game (≈ 40)`);
+  check(MINI_TYPES.every((t) => MINI_INFO[t].name && MINI_INFO[t].hint) && QUIZ.length >= 10 && QUIZ.every((q) => q.a.length === 4), 'mini game có tên, cách chơi; đố vui đủ câu');
+  const badChoices = FUN_EVENTS.filter((e) => e.choices.length < 2 || e.choices.length > 3).map((e) => e.id);
+  check(badChoices.length === 0, `mỗi tình huống 2–3 lựa chọn ${badChoices.join(', ')}`);
+
+  // Game mẫu theo ngày / nhân viên / cờ.
+  const base = (day: number, staff: boolean, flags: boolean) => {
+    const r = seededRng(day * 7 + (staff ? 1 : 0) + (flags ? 2 : 0));
+    const g = E.newGame(r);
+    g.activeEvent = null;
+    g.day = day;
+    g.money = 3_000_000;
+    g.debt = Math.max(g.debt, 2_000_000);
+    if (staff) g.staff.push(makeStaff(g, r, 'cook'), makeStaff(g, r, 'waiter'));
+    if (flags) g.flags = { cat: 1, camera: 1, watchdog: 1, newLock: 1, hen: 1, parrot: 1, frog: 1, cart: 1, claw: 1 };
+    return g;
+  };
+  const errors: string[] = [];
+  const longBody: string[] = [];
+  let runs = 0;
+  for (const def of EV.EVENTS.filter((e) => e.phase !== 'trigger')) {
+    for (const day of [3, 8, 20]) {
+      for (const staff of [false, true]) {
+        for (const flags of [false, true]) {
+          def.choices.forEach((c, i) => {
+            for (const score of c.mini ? [0, 0.5, 1] : [undefined]) {
+              const g = base(day, staff, flags);
+              const r = seededRng(day + i * 13 + (score ?? 0.3) * 100);
+              try {
+                if (def.phase === 'day') E.openShop(g, r);
+                const ctx = def.setup ? def.setup(g, r) : {};
+                if (!ctx) continue;
+                const body = def.body(ctx, g);
+                if (body.length > 160 && !longBody.includes(def.id)) longBody.push(`${def.id}(${body.length})`);
+                g.activeEvent = { defId: def.id, ctx };
+                if (c.enabled && !c.enabled(g, ctx)) continue;
+                E.chooseEventOption(g, i, r, score);
+                runs += 1;
+                const res = g.eventResult;
+                const bad =
+                  !Number.isFinite(g.money) || !Number.isFinite(g.debt) || !Number.isFinite(g.reputation) || g.reputation < 0.5 || g.reputation > 5 || !res || !(res.say || res.lines.length) || g.activeEvent;
+                if (bad) errors.push(`${def.id}#${i} d${day}${staff ? 'S' : ''}${flags ? 'F' : ''} s=${score}`);
+                if (def.phase === 'day') for (let k = 0; k < 40; k += 1) E.tick(g, 250, r);
+              } catch (e) {
+                errors.push(`${def.id}#${i}: ${(e as Error).message}`);
+              }
+            }
+          });
+        }
+      }
+    }
+  }
+  check(errors.length === 0, `mọi tình huống × lựa chọn chạy được (${runs} lượt), không NaN, có thẻ kết quả ${errors.slice(0, 6).join(' | ')}`);
+  check(longBody.length === 0, `thân bài ≤ 160 ký tự ${longBody.join(', ')}`);
+
+  // Mini game: điểm cao tốt hơn điểm thấp (tiền + danh tiếng×1tr + kho).
+  const worth = (g: ReturnType<typeof E.newGame>) => g.money - g.debt + g.reputation * 1_000_000 + g.tickets * 20_000 + g.hopeStars * 100_000 + g.cleanliness * 2_000 + g.stock.reduce((n, b) => n + b.qty, 0) * 5_000 + g.xp * 1_000;
+  const worse: string[] = [];
+  for (const def of EV.EVENTS) {
+    def.choices.forEach((c, i) => {
+      if (!c.mini) return;
+      const val = (score: number) => {
+        const g = base(8, true, false);
+        const r = seededRng(3);
+        if (def.phase === 'day') E.openShop(g, r);
+        const ctx = def.setup ? def.setup(g, r) : {};
+        if (!ctx) return null;
+        g.activeEvent = { defId: def.id, ctx };
+        if (c.enabled && !c.enabled(g, ctx)) return null;
+        E.chooseEventOption(g, i, r, score);
+        const mods = g.mods.spawnMult + (g.mods.seatDelta ?? 0) * 0.1 + (g.buffs?.length ?? 0) * 0 + (g.pending?.length ?? 0) * 0.05;
+        return worth(g) + mods * 300_000 - (g.run ? g.run.powerOutUntil : 0) * 5;
+      };
+      const lo = val(0);
+      const hi = val(1);
+      if (lo !== null && hi !== null && hi < lo) worse.push(`${def.id}#${i}`);
+    });
+  }
+  check(worse.length === 0, `mini game: chơi giỏi (1) có lợi hơn chơi kém (0) ${worse.join(', ')}`);
+  {
+    const g = base(8, false, false);
+    const r = seededRng(1);
+    E.openShop(g, r);
+    g.activeEvent = { defId: 'g_eat_contest', ctx: {} };
+    E.chooseEventOption(g, 0, r, 0.9);
+    check(g.miniBest?.tap === 0.9, 'kỷ lục mini game được ghi (tap 0,9)');
+    E.dismissEventResult(g);
+    check(g.eventResult === null, 'bấm OK đóng thẻ kết quả');
+  }
+
+  // Thẻ kết quả dừng đồng hồ.
+  {
+    const g = base(8, false, false);
+    const r = seededRng(2);
+    E.openShop(g, r);
+    g.eventResult = { emoji: '🙂', title: 't', say: 's', lines: [] };
+    const t0 = g.run!.elapsed;
+    E.tick(g, 1000, r);
+    check(g.run!.elapsed === t0, 'thẻ kết quả đang mở thì đồng hồ dừng');
+  }
+
+  // Buff nhiều ngày hết hạn đúng ngày; hậu quả hẹn chạy đúng sáng.
+  {
+    const g = base(5, false, false);
+    const r = seededRng(4);
+    KIT.crowd(1.3, 2)(g, r);
+    KIT.later(1, 'g_celeb')(g, r);
+    E.openShop(g, r);
+    g.activeEvent = null;
+    E.closeEarly(g);
+    const rep0 = g.reputation;
+    g.eventSeen = Object.fromEntries(EV.EVENTS.map((e) => [e.id, g.day + 1]));
+    E.nextDay(g, r);
+    check(g.mods.labels.some((l) => l.includes('×1,3')), 'buff 👥 ×1,3 còn ở ngày thứ 2');
+    check(g.chefQueue.some((n) => n.kind === 'news' && n.text.includes('5★')) && g.reputation > rep0, 'hậu quả hẹn (review 5★) chạy sáng hôm sau, Chú Tư báo tin');
+    check((g.pending ?? []).length === 0, 'hậu quả đã chạy thì xoá khỏi danh sách hẹn');
+    g.activeEvent = null;
+    E.openShop(g, r);
+    g.activeEvent = null;
+    E.closeEarly(g);
+    E.nextDay(g, r);
+    check(!g.mods.labels.some((l) => l.includes('×1,3')) && !(g.buffs ?? []).some((b) => b.spawnMult === 1.3), 'buff hết hạn sau 2 ngày');
+  }
+
+  // Cờ: mèo, gà, camera, chó, khoá.
+  {
+    const g = base(10, false, false);
+    g.flags = { cat: 1 };
+    const r = seededRng(9);
+    let ratSeen = false;
+    for (let k = 0; k < 300; k += 1) {
+      g.eventSeen = {};
+      g.activeEvent = null;
+      const ev = EV.rollEvent(g, k % 2 ? 'day' : 'morning', r);
+      if (ev && (ev.id === 'rats' || ev.id === 'h_rat_wire')) ratSeen = true;
+    }
+    check(!ratSeen, 'có mèo: không còn “chuột trong kho” / “chuột cắn dây điện”');
+
+    const h = base(10, false, false);
+    h.flags = { hen: 5 };
+    h.eventSeen = Object.fromEntries(EV.EVENTS.map((e) => [e.id, h.day + 1]));
+    const eggs = () => h.stock.filter((b) => b.ingredientId === 'trung').reduce((n, b) => n + b.qty, 0);
+    const r2 = seededRng(5);
+    E.openShop(h, r2);
+    h.activeEvent = null;
+    E.closeEarly(h);
+    const e0 = eggs();
+    E.nextDay(h, r2);
+    check(eggs() >= e0 + 2, `có gà: mỗi sáng +2 trứng (${e0} → ${eggs()})`);
+
+    const t = EV.EVENT_MAP.h_theft;
+    const cam = base(10, false, false);
+    cam.flags = { camera: 1 };
+    check(t.when!(cam) === false && EV.EVENT_MAP.h_theft_caught.when!(cam) === true, 'có camera: trộm két bị bắt, không mất tiền');
+    const dog = base(10, false, false);
+    dog.flags = { watchdog: 1 };
+    let hits = 0;
+    const r3 = seededRng(11);
+    for (let k = 0; k < 400; k += 1) {
+      const d2 = JSON.parse(JSON.stringify(dog));
+      if (t.setup!(d2, r3)) hits += 1;
+    }
+    check(hits > 60 && hits < 180, `có chó giữ nhà: trộm hiếm hơn (${hits}/400 lần)`);
+    const lock = base(10, false, false);
+    lock.flags = { newLock: 1 };
+    check(EV.EVENT_MAP.h_stock_theft.when!(lock) === false, 'có khoá mới: không mất kho');
+    const rich = base(10, false, false);
+    rich.money = 30_000_000;
+    const ctx = t.setup!(rich, seededRng(1));
+    check(ctx !== null && Number(ctx.lost) === 1_500_000 && rich.money === 28_500_000, 'két bị trộm tối đa 1,5 triệu');
+    const poor = base(10, false, false);
+    poor.money = -50_000;
+    check(t.setup!(poor, seededRng(1)) === null && poor.money === -50_000, 'hết tiền thì trộm không lấy được, tiền không âm thêm');
+    const mid = base(10, false, false);
+    mid.money = 400_000;
+    t.setup!(mid, seededRng(1));
+    check(mid.money === 340_000, `trộm lấy 15% tiền mặt (${mid.money})`);
+  }
+
+  // Không lặp lại trong 10 ngày; tần suất 1–2 tình huống / ngày.
+  {
+    const g = base(12, true, false);
+    const r = seededRng(21);
+    const seen: string[] = [];
+    for (let k = 0; k < 40; k += 1) {
+      g.activeEvent = null;
+      const ev = EV.rollEvent(g, 'morning', r);
+      if (ev) seen.push(ev.id);
+    }
+    check(seen.length > 5 && new Set(seen).size === seen.length, `không lặp lại tình huống trong 10 ngày (${seen.length} lần chọn, không trùng)`);
+    g.day = 23;
+    g.activeEvent = null;
+    const again = EV.rollEvent(g, 'morning', r);
+    check(again !== null, 'sau 10 ngày tình huống cũ được gặp lại');
+
+    const sim = E.newGame(seededRng(33));
+    sim.money = 5_000_000;
+    const rs = seededRng(34);
+    let events = 0;
+    let days = 0;
+    const perDay: number[] = [];
+    for (let d = 0; d < 60; d += 1) {
+      let today = 0;
+      const resolve = () => {
+        if (sim.activeEvent) {
+          const def = E.currentEvent(sim)!;
+          const i = Math.floor(rs() * def.choices.length);
+          const ok = !def.choices[i].enabled || def.choices[i].enabled!(sim, sim.activeEvent.ctx);
+          E.chooseEventOption(sim, ok ? i : def.choices.findIndex((c) => !c.enabled || c.enabled(sim, sim.activeEvent!.ctx)), rs, 0.5);
+          if (sim.activeEvent) sim.activeEvent = null;
+          today += 1;
+        }
+        if (sim.eventResult) E.dismissEventResult(sim);
+      };
+      resolve();
+      E.openShop(sim, rs);
+      resolve();
+      while (sim.phase === 'open') {
+        E.tick(sim, 500, rs);
+        resolve();
+      }
+      if (sim.day >= 4) {
+        events += today;
+        days += 1;
+        perDay.push(today);
+      }
+      sim.money = Math.max(sim.money, 2_000_000);
+      sim.gameOver = null;
+      E.nextDay(sim, rs);
+    }
+    const avg = events / Math.max(1, days);
+    check(avg >= 1 && avg <= 2.2 && Math.max(...perDay) <= 3, `trung bình ${avg.toFixed(2)} tình huống/ngày (1–2), nhiều nhất ${Math.max(...perDay)}`);
+    check(!Number.isNaN(sim.money) && sim.reputation >= 0.5 && sim.reputation <= 5, `60 ngày chọn ngẫu nhiên: tiền ${Math.round(sim.money)}, danh tiếng ${sim.reputation.toFixed(2)}`);
+  }
+
+  // Bản lưu cũ có mặc định các trường mới.
+  {
+    const old = JSON.parse(JSON.stringify(E.newGame(seededRng(3)))) as Record<string, unknown>;
+    for (const k of ['eventResult', 'buffs', 'pending', 'flags', 'eventSeen', 'miniBest']) delete old[k];
+    const m = MG.migrateSave(old as unknown as ReturnType<typeof E.newGame>);
+    check(m.eventResult === null && Array.isArray(m.buffs) && Array.isArray(m.pending) && !!m.flags && !!m.eventSeen && !!m.miniBest, 'bản lưu cũ: có mặc định buffs / pending / flags / eventSeen / miniBest');
+  }
 }
 
 process.exit(failed ? 1 : 0);

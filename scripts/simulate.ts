@@ -60,7 +60,24 @@ function botStep(s: GameState, rng: () => number, skill: number) {
   if (s.cleanliness < 50) E.playerClean(s);
 }
 
-function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: number, days: number, botSkill: number) {
+/** Bot chọn ngẫu nhiên một lựa chọn bấm được; mini game ra điểm ngẫu nhiên. Trả số tình huống đã xử lý. */
+function decide(s: GameState, rng: () => number): number {
+  let n = 0;
+  while (s.activeEvent) {
+    const def = E.currentEvent(s);
+    const ctx = s.activeEvent.ctx;
+    const ok = def ? def.choices.map((c, i) => (!c.enabled || c.enabled(s, ctx) ? i : -1)).filter((i) => i >= 0) : [0];
+    const i = process.env.FIRST_CHOICE ? ok[0] : ok[Math.floor(rng() * ok.length)];
+    const moods = s.staff.map((st) => st.mood).join('/');
+    E.chooseEventOption(s, i ?? 0, rng, rng());
+    if (process.env.TRACE) console.log(`  d${s.day} ${def?.id}#${i} mood ${moods} → ${s.staff.map((st) => st.mood).join('/')}`);
+    n += 1;
+  }
+  if (s.eventResult) E.dismissEventResult(s);
+  return n;
+}
+
+function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: number, days: number, botSkill: number, quiet = false) {
   const rng = seededRng(seed);
   const s = E.newGame(rng, { starter: process.env.STARTER }); // STARTER=com_ga … để thử món khởi đầu khác
   for (const role of staffRoles) {
@@ -69,8 +86,11 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
   }
   const rows: string[] = [];
   let bonus = 0;
+  let events = 0;
   for (let d = 0; d < days && !s.gameOver; d++) {
-    while (s.activeEvent) E.chooseEventOption(s, 0, rng);
+    events += decide(s, rng);
+    // Như người chơi thật: nhân viên buồn thì tăng lương.
+    for (const st of s.staff) if (st.mood < 45) E.raiseWage(s, st.id);
     E.discardExpired(s);
     // Bot tự "sáng tạo" mọi món đã đủ cấp ở Bếp thử món.
     for (const id of mysteryRecipes(s)) {
@@ -82,12 +102,12 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
     E.openShop(s, rng);
     let guard = 0;
     while (s.phase === 'open' && guard++ < 10000) {
-      while (s.activeEvent) E.chooseEventOption(s, 0, rng);
+      events += decide(s, rng);
       E.tick(s, 250, rng);
       if (s.phase === 'open') botStep(s, rng, botSkill);
     }
     const r = s.history[s.history.length - 1];
-    rows.push(`d${r.day} served=${r.served} lost=${r.lost} noSeat=${r.noSeat} rev=${Math.round(r.revenue/1000)}k tips=${Math.round(r.tips/1000)}k ing=${Math.round(r.ingredientCost/1000)}k wages=${r.wages/1000}k fines=${r.fines/1000}k other=${r.otherCosts/1000}k errs=${r.staffErrors} burnt=${r.burnt} wrong=${r.wrongDishes} allerg=${r.allergic} rep=${r.repEnd.toFixed(2)} money=${Math.round(s.money/1000)}k`);
+    rows.push(`d${r.day} served=${r.served} lost=${r.lost} noSeat=${r.noSeat} rev=${Math.round(r.revenue/1000)}k tips=${Math.round(r.tips/1000)}k ing=${Math.round(r.ingredientCost/1000)}k wages=${r.wages/1000}k fines=${r.fines/1000}k other=${r.otherCosts/1000}k errs=${r.staffErrors} burnt=${r.burnt} wrong=${r.wrongDishes} allerg=${r.allergic} rep=${r.repEnd.toFixed(2)} staff=${s.staff.length} money=${Math.round(s.money/1000)}k`);
     if (s.money > 3_000_000) E.payDebt(s, s.money - 2_000_000);
     // Nhiệm vụ: bot nhận thưởng (NO_MISSIONS=1 để so với khi chưa có sổ tay).
     if (process.env.NO_MISSIONS) s.missions.list = [];
@@ -97,8 +117,11 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
     }
     E.nextDay(s, rng);
   }
-  console.log(`\n=== ${label} → debt=${Math.round(s.debt/1000)}k gameOver=${s.gameOver} level=${levelOf(s.xp)} menu=${s.unlockedRecipes.length} · thưởng NV=${Math.round(bonus / 1000)}k 🎟️${s.tickets} ⭐${s.hopeStars}`);
+  const played = s.history.length;
+  if (quiet) return { money: s.money - s.debt, over: s.gameOver, perDay: events / Math.max(1, played - 2) };
+  console.log(`\n=== ${label} → 🎲 ${(events / Math.max(1, played - 2)).toFixed(2)} tình huống/ngày · debt=${Math.round(s.debt/1000)}k gameOver=${s.gameOver} level=${levelOf(s.xp)} menu=${s.unlockedRecipes.length} · thưởng NV=${Math.round(bonus / 1000)}k 🎟️${s.tickets} ⭐${s.hopeStars}`);
   console.log(rows.filter((_, i) => i < 3 || i % 5 === 0 || i === rows.length - 1).join('\n'));
+  return { money: s.money - s.debt, over: s.gameOver, perDay: events / Math.max(1, played - 2) };
 }
 
 void DAY_MS;
@@ -107,3 +130,8 @@ play('Tự làm một mình, tay chậm', 2, [], 0, 30, 0.3);
 play('2 NV tay nghề 20 + chủ', 3, ['cook', 'waiter'], 20, 30, 0.5);
 play('2 NV tay nghề 80 + chủ', 3, ['cook', 'waiter'], 80, 30, 0.5);
 play('3 NV (có phụ bếp) skill 50, chủ không làm', 4, ['cook', 'prep', 'waiter'], 50, 30, 0);
+
+// Nhiều seed, bot chọn tình huống ngẫu nhiên: tỉ lệ phá sản, tiền ngày 30, số tình huống / ngày.
+const runs = Array.from({ length: Number(process.env.SEEDS ?? 10) }, (_, i) => play('seed', 100 + i, [], 0, 30, 0.9, true)!);
+const nets = runs.map((r) => Math.round(r.money / 1000)).sort((a, b) => a - b);
+console.log(`\n=== ${runs.length} seed, một mình tay nhanh, chọn ngẫu nhiên → phá sản ${runs.filter((r) => r.over).length}/${runs.length} · tiền−nợ ngày 30 (k): min ${nets[0]} / giữa ${nets[Math.floor(nets.length / 2)]} / max ${nets.at(-1)} · ${(runs.reduce((a, r) => a + r.perDay, 0) / runs.length).toFixed(2)} tình huống/ngày`);

@@ -82,6 +82,7 @@ export type ChefNote =
   | { kind: 'trend'; recipeId: RecipeId; source: TrendSource }
   | { kind: 'role'; role: StaffRole }
   | { kind: 'notebook' }
+  | { kind: 'news'; text: string }
   | { kind: 'unlock'; key: 'day2' | 'day3' }
   | { kind: 'autoClaim' };
 
@@ -324,6 +325,46 @@ export interface DayModifiers {
   unavailable: IngredientId[];
   sellPriceMult: number;
   labels: string[];
+  /** Bàn tạm mất / thêm hôm nay (tình huống: mượn bàn, vỡ bàn...). */
+  seatDelta?: number;
+  /** Bếp dừng lúc mở cửa (ms) — tình huống buổi sáng làm mở cửa trễ. */
+  stoveDelay?: number;
+  /** Doanh thu cộng / trừ theo tỉ lệ lúc đóng cửa (xe đẩy +10%, nhà đầu tư −10%). */
+  revenueBonus?: number;
+  /** Tiền mặt bằng hôm nay × (chủ nhà tăng / miễn). */
+  rentMult?: number;
+}
+
+/** Hiệu ứng nhiều ngày từ tình huống (áp vào `mods` mỗi sáng, từ `from` tới `until`). */
+export interface Buff {
+  id: string;
+  label: string;
+  from: number;
+  until: number;
+  spawnMult?: number;
+  sellMult?: number;
+  deliveryMult?: number;
+  seatDelta?: number;
+  revenueBonus?: number;
+  rentMult?: number;
+  /** Tiền mất mỗi ngày (vd khách doạ bóc phốt ăn free). */
+  dailyCost?: number;
+  /** Tiền có thêm mỗi sáng (vd máy gắp thú, hợp đồng cà phê). */
+  dailyIncome?: number;
+}
+
+/** Hậu quả hẹn ngày: sáng `day` chạy hàm nối tiếp `key` (đăng ký trong src/game/events). */
+export interface PendingFx {
+  day: number;
+  key: string;
+}
+
+/** Thẻ kết quả sau khi chọn trong tình huống (hiện cho người chơi, rồi bấm OK). */
+export interface EventResult {
+  emoji: string;
+  title: string;
+  say: string;
+  lines: string[];
 }
 
 export interface ActiveEvent {
@@ -351,6 +392,8 @@ export interface DayRuntime {
   eventsFired: string[];
   nextEventCheck: number;
   log: LogEntry[];
+  /** Lúc có tình huống gần nhất trong ngày (để cách nhau ≥ 90 giây). */
+  lastEventAt?: number;
   /** Chủ quán đang đi chợ giữa giờ bán. */
   ownerAway: boolean;
   /** Đã báo "treo biển tạm đóng" trong lần đi chợ này. */
@@ -442,6 +485,15 @@ export interface GameState {
   report: DayReport;
   history: DayReport[];
   activeEvent: ActiveEvent | null;
+  /** Kết quả tình huống vừa chọn (đồng hồ dừng tới khi bấm OK). */
+  eventResult: EventResult | null;
+  /** Hiệu ứng nhiều ngày, hậu quả hẹn ngày, cờ ghi nhớ lựa chọn, ngày gặp tình huống gần nhất. */
+  buffs: Buff[];
+  pending: PendingFx[];
+  flags: Record<string, number>;
+  eventSeen: Record<string, number>;
+  /** Kỷ lục mini game (điểm 0..1 cao nhất theo kiểu). */
+  miniBest: Record<string, number>;
   gameOver: GameOver;
   idSeq: number;
   run: DayRuntime | null;

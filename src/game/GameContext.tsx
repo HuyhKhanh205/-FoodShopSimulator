@@ -119,7 +119,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Đồng hồ game: chạy khi quán mở cửa, không tạm dừng và không có sự kiện chờ quyết định.
-  const running = game?.phase === 'open' && !game.activeEvent && !paused;
+  const running = game?.phase === 'open' && !game.activeEvent && !game.eventResult && !paused;
   useEffect(() => {
     if (!running) return;
     let last = Date.now();

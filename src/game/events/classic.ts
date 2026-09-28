@@ -1,6 +1,6 @@
-import { startTrend, trendHeat } from './trend';
-import { INGREDIENTS, RECIPES } from './data';
-import { makeCustomer } from './customers';
+import { startTrend, trendHeat } from '../trend';
+import { INGREDIENTS, RECIPES } from '../data';
+import { makeCustomer } from '../customers';
 import {
   changeRep,
   clamp,
@@ -13,29 +13,11 @@ import {
   prepIngredients,
   spend,
   usableQty,
-} from './helpers';
-import type { GameState, IngredientId, RecipeId, Rng } from './types';
+} from '../helpers';
+import type { GameState, IngredientId, RecipeId, Rng } from '../types';
 
-type Ctx = Record<string, string | number>;
-
-export interface EventChoice {
-  label: string;
-  apply: (s: GameState, ctx: Ctx, rng: Rng) => void;
-  enabled?: (s: GameState, ctx: Ctx) => boolean;
-}
-
-export interface EventDef {
-  id: string;
-  /** morning: đầu ngày ở chợ; day: ngẫu nhiên khi mở cửa; trigger: do hành động gây ra. */
-  phase: 'morning' | 'day' | 'trigger';
-  emoji: string;
-  title: string;
-  weight: number;
-  /** Chuẩn bị ngữ cảnh + áp dụng ảnh hưởng ban đầu; trả null nếu không phù hợp. */
-  setup?: (s: GameState, rng: Rng) => Ctx | null;
-  body: (ctx: Ctx, s: GameState) => string;
-  choices: EventChoice[];
-}
+import type { Ctx, EventDef } from './types';
+import { say } from './kit';
 
 const staffById = (s: GameState, id: string | number) => s.staff.find((st) => st.id === id);
 const now = (s: GameState) => s.run?.elapsed ?? 0;
@@ -57,7 +39,8 @@ function inspect(s: GameState) {
   note(s, `Bị thanh tra phạt ${formatMoney(fine)} (${why})`);
 }
 
-export const EVENTS: EventDef[] = [
+/** 18 tình huống gốc (buổi sáng / trong ngày / do hành động). */
+export const CLASSIC: EventDef[] = [
   // ---------------- Buổi sáng ----------------
   {
     id: 'meat_price',
@@ -361,7 +344,8 @@ export const EVENTS: EventDef[] = [
     title: 'Chuột trong kho',
     weight: 6,
     setup: (s, rng) => {
-      if (s.cleanliness >= 60) return null;
+      // Có mèo (tình huống "Mèo hoang xin ăn") thì chuột không dám vào.
+      if (s.cleanliness >= 60 || s.flags?.cat) return null;
       const ids = [...new Set(s.stock.filter((b) => b.expiresOnDay >= s.day).map((b) => b.ingredientId))];
       if (!ids.length) return null;
       const id = pick(rng, ids);
@@ -376,6 +360,20 @@ export const EVENTS: EventDef[] = [
         apply: (s) => {
           spend(s, 300_000, 'otherCosts');
           s.cleanliness = clamp(s.cleanliness + 15, 0, 100);
+        },
+      },
+      {
+        label: 'Tự tay đập chuột!',
+        mini: { type: 'whack', params: { emoji: '🐀', need: 8 } },
+        apply: (s, _ctx, _rng, score = 0) => {
+          if (score >= 0.6) {
+            s.cleanliness = clamp(s.cleanliness + 10, 0, 100);
+            changeRep(s, 0.03);
+            say('🐀💨 Đập trúng liên tục, lũ chuột chạy mất dép!');
+          } else {
+            changeRep(s, -0.1);
+            say('🐀 Chuột nhanh quá… khách thấy chuột chạy qua bàn!');
+          }
         },
       },
       {
@@ -528,41 +526,3 @@ export const EVENTS: EventDef[] = [
   },
 ];
 
-export const EVENT_MAP: Record<string, EventDef> = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
-
-/** Chọn và khởi tạo một sự kiện ngẫu nhiên cho giai đoạn cho trước. */
-export function rollEvent(s: GameState, phase: 'morning' | 'day', rng: Rng, exclude: string[] = []) {
-  const pool = EVENTS.filter((e) => e.phase === phase && !exclude.includes(e.id));
-  // Thử vài lần vì có sự kiện không phù hợp hoàn cảnh (setup trả null).
-  for (let attempt = 0; attempt < 5 && pool.length; attempt += 1) {
-    const total = pool.reduce((sum, e) => sum + e.weight, 0);
-    let r = rng() * total;
-    let chosen = pool[0];
-    for (const e of pool) {
-      r -= e.weight;
-      if (r <= 0) {
-        chosen = e;
-        break;
-      }
-    }
-    const ctx = chosen.setup ? chosen.setup(s, rng) : {};
-    if (ctx) {
-      s.activeEvent = { defId: chosen.id, ctx };
-      return chosen;
-    }
-    pool.splice(pool.indexOf(chosen), 1);
-  }
-  return null;
-}
-
-export function resolveEvent(s: GameState, choiceIndex: number, rng: Rng) {
-  const ev = s.activeEvent;
-  if (!ev) return;
-  const def = EVENT_MAP[ev.defId];
-  const choice = def?.choices[choiceIndex];
-  if (def && choice?.enabled && !choice.enabled(s, ev.ctx)) return;
-  s.activeEvent = null;
-  if (!def || !choice) return;
-  choice.apply(s, ev.ctx, rng);
-  note(s, `${def.emoji} ${def.title}: ${choice.label}`);
-}

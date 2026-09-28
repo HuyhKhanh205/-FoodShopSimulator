@@ -167,6 +167,7 @@ export function noteText(n: ChefNote): string {
     const role = n.role === 'prep' ? '🔪 phụ bếp' : n.role === 'cook' ? '👨‍🍳 đầu bếp' : '🍽️ phục vụ';
     return `👥 Giờ con thuê được ${role} rồi! Có cả 🎓 sinh viên giá rẻ — nhưng coi chừng các em vụng về nha.`;
   }
+  if (n.kind === 'news') return n.text;
   if (n.kind === 'unlock')
     return n.key === 'day2'
       ? '🔓 Hôm nay mở thêm 📦 Kho, 🧽 Lau, 🔧 Nâng cấp và 📖 Sổ món. Cứ từ từ khám phá nha con!'

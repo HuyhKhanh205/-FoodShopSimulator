@@ -31,7 +31,8 @@ import {
   UTILITY_PER_STOVE,
 } from './data';
 import { customerLeavesAngry, makeCustomer, serveDish } from './customers';
-import { EVENT_MAP, resolveEvent, rollEvent } from './events';
+import { EVENT_MAP, applyBuffs, maxDayEvents, morningEventChance, resolveEvent, rollEvent, runPending } from './events';
+import { setEngineHooks } from './events/kit';
 import {
   canMake,
   clamp,
@@ -57,6 +58,7 @@ import { DEFAULT_PROFILE } from './profile';
 import type {
   CookJob,
   CookSlot,
+  Customer,
   DayModifiers,
   DayReport,
   DishQuality,
@@ -153,6 +155,12 @@ export function newGame(rng: Rng, opts: NewGameOptions = {}): GameState {
     report: emptyReport({ day: 1, reputation: 3 }),
     history: [],
     activeEvent: null,
+    eventResult: null,
+    buffs: [],
+    pending: [],
+    flags: {},
+    eventSeen: {},
+    miniBest: {},
     gameOver: null,
     idSeq: 0,
     run: null,
@@ -174,7 +182,12 @@ function beginMarket(s: GameState, rng: Rng) {
     st.absent = false;
     st.task = null;
   }
-  if (s.day > 2 && rng() < (s.day === 3 ? 0.3 : 0.55)) rollEvent(s, 'morning', rng);
+  // Tình huống: hiệu ứng nhiều ngày, hậu quả hẹn hôm nay, gà đẻ trứng; rồi có thể có tình huống buổi sáng.
+  s.eventResult = null;
+  applyBuffs(s);
+  runPending(s, rng);
+  if (s.flags?.hen && s.day > s.flags.hen) s.stock.push({ ingredientId: 'trung', qty: 2, expiresOnDay: s.day + INGREDIENTS.trung.shelfLife - 1 });
+  if (rng() < morningEventChance(s)) rollEvent(s, 'morning', rng);
   for (const id of INGREDIENT_IDS) {
     const base = INGREDIENTS[id].basePrice * (0.8 + rng() * 0.4) * (s.mods.priceMult[id] ?? 1);
     s.prices[id] = Math.max(100, Math.round(base / 100) * 100);
@@ -331,6 +344,8 @@ export function openShop(s: GameState, rng: Rng) {
     log: [],
   };
   log(s, `🏮 Ngày ${s.day}: ${s.profile.shopName} mở cửa đón khách!`, 'info');
+  // Tình huống buổi sáng làm bếp mở trễ.
+  if (s.mods.stoveDelay) s.run.powerOutUntil = s.mods.stoveDelay;
   for (const st of s.staff) {
     st.task = null;
     st.lateUntil = 0;
@@ -504,8 +519,13 @@ export function playerClean(s: GameState) {
   run.cleanReadyAt = run.elapsed + CLEAN_COOLDOWN_MS;
 }
 
-export function chooseEventOption(s: GameState, index: number, rng: Rng) {
-  resolveEvent(s, index, rng);
+export function chooseEventOption(s: GameState, index: number, rng: Rng, score?: number) {
+  resolveEvent(s, index, rng, score);
+}
+
+/** Đóng thẻ kết quả tình huống — đồng hồ chạy tiếp. */
+export function dismissEventResult(s: GameState) {
+  s.eventResult = null;
 }
 
 // ---------- Nhân viên tự làm việc ----------
@@ -791,15 +811,27 @@ function spawnCustomers(s: GameState, dt: number, rng: Rng) {
   const c = makeCustomer(s, rng);
   if (!c) return;
   run.sinceLastCustomer = 0;
+  seatCustomer(s, c);
+}
+
+/** Số bàn dùng được hôm nay (tình huống có thể làm mất / thêm bàn). */
+export function seatsToday(s: GameState): number {
+  return Math.max(1, Math.min(s.upgrades.seats, s.upgrades.seats + (s.mods.seatDelta ?? 0)));
+}
+
+/** Xếp khách vào bàn trống (hết bàn thì khách bỏ đi). Trả về true nếu khách ở lại. */
+function seatCustomer(s: GameState, c: Customer): boolean {
+  const run = s.run!;
+  const seats = seatsToday(s);
   const dineIn = run.customers.filter((x) => x.kind !== 'delivery' && x.kind !== 'group').length;
-  if (c.kind !== 'delivery' && dineIn >= s.upgrades.seats) {
+  if (c.kind !== 'delivery' && c.kind !== 'group' && dineIn >= seats) {
     s.report.noSeat += 1;
     log(s, `🚶 Hết chỗ ngồi, một khách bỏ đi`, 'bad');
-    return;
+    return false;
   }
   if (c.kind !== 'delivery' && c.kind !== 'group') {
     const used = new Set(run.customers.map((x) => x.tableIndex));
-    for (let i = 0; i < s.upgrades.seats; i += 1) {
+    for (let i = 0; i < seats; i += 1) {
       if (!used.has(i)) {
         c.tableIndex = i;
         break;
@@ -807,6 +839,18 @@ function spawnCustomers(s: GameState, dt: number, rng: Rng) {
     }
   }
   run.customers.push(c);
+  return true;
+}
+
+/** Tình huống: thêm `n` khách ngay (khách thường). */
+export function spawnGuests(s: GameState, rng: Rng, n: number): number {
+  if (!s.run) return 0;
+  let seated = 0;
+  for (let i = 0; i < n; i += 1) {
+    const c = makeCustomer(s, rng);
+    if (c && seatCustomer(s, c)) seated += 1;
+  }
+  return seated;
 }
 
 function maybeDayEvent(s: GameState, rng: Rng) {
@@ -814,18 +858,21 @@ function maybeDayEvent(s: GameState, rng: Rng) {
   if (s.activeEvent || run.elapsed < run.nextEventCheck) return;
   // Khoảng 18 lần xét mỗi ngày, bất kể ngày dài bao lâu.
   run.nextEventCheck = run.elapsed + DAY_MS / 18;
-  if (run.eventsFired.length >= 3 || run.elapsed > DAY_MS - 20_000) return;
-  // Ngày làm quen: ngày 1–2 không có sự kiện, ngày 3 ít hơn.
-  if (s.day <= 2) return;
-  if (rng() >= (s.day === 3 ? 0.08 : 0.2)) return;
+  // 1–2 tình huống mỗi ngày: tối đa `maxDayEvents` lần, cách nhau ít nhất 90 giây; ngày 1–2 không có.
+  if (run.eventsFired.length >= maxDayEvents(s) || run.elapsed > DAY_MS - 20_000) return;
+  if (run.elapsed - (run.lastEventAt ?? -Infinity) < 90_000) return;
+  if (rng() >= 0.07) return;
   const ev = rollEvent(s, 'day', rng, run.eventsFired);
-  if (ev) run.eventsFired.push(ev.id);
+  if (ev) {
+    run.eventsFired.push(ev.id);
+    run.lastEventAt = run.elapsed;
+  }
 }
 
 /** Tiến thời gian `dt` ms. Dừng khi có sự kiện cần người chơi quyết định. */
 export function tick(s: GameState, dt: number, rng: Rng) {
   const run = s.run;
-  if (s.phase !== 'open' || !run || s.activeEvent) return;
+  if (s.phase !== 'open' || !run || s.activeEvent || s.eventResult) return;
   run.elapsed += dt;
   const t = run.elapsed;
 
@@ -917,7 +964,16 @@ export function closeDay(s: GameState) {
   const wages = s.staff.reduce((sum, st) => sum + st.wage, 0);
   const utilities = s.upgrades.stoves * UTILITY_PER_STOVE + s.upgrades.aircon * UTILITY_AIRCON;
   // Ngày làm quen: chủ nhà giảm tiền mặt bằng tương ứng lượng khách ít hơn.
-  const rent = Math.round((RENT_PER_DAY * introFactor(s.day)) / 1000) * 1000;
+  const rent = Math.round((RENT_PER_DAY * introFactor(s.day) * (s.mods.rentMult ?? 1)) / 1000) * 1000;
+  // Tình huống: xe đẩy bán thêm (+%) / nhà đầu tư chia lãi (−%).
+  const bonus = Math.round(s.report.revenue * (s.mods.revenueBonus ?? 0));
+  if (bonus > 0) {
+    s.money += bonus;
+    s.report.revenue += bonus;
+  } else if (bonus < 0) {
+    s.money += bonus;
+    s.report.otherCosts -= bonus;
+  }
   s.money -= wages + rent + utilities;
   s.report.wages += wages;
   s.report.rent += rent;
@@ -987,3 +1043,13 @@ export function nextDay(s: GameState, rng: Rng) {
 export function currentEvent(s: GameState) {
   return s.activeEvent ? EVENT_MAP[s.activeEvent.defId] : null;
 }
+
+// Tình huống gọi ngược vào engine (thêm khách, đơn lớn, nghỉ sớm) mà không tạo vòng import lúc nạp.
+setEngineHooks({
+  spawn: spawnGuests,
+  order: (s, rng, recipeId, qty) => {
+    const c = makeCustomer(s, rng, 'group', { recipeId, qty });
+    if (c) s.run?.customers.push(c);
+  },
+  close: (s) => void closeEarly(s),
+});

@@ -337,11 +337,15 @@ export default function ShopMapView() {
   const RIVER_H = river ? 50 : 0;
   // HUD giờ chỉ là 1 hàng nhãn nhỏ.
   const HUD_H = 50 + RIVER_H;
-  const BAR_H = 74;
   const cleanReady = run.elapsed >= run.cleanReadyAt;
+  // Cụm nút tròn nhỏ ở góc phải dưới, tối đa 3 nút một hàng (ngày đầu chỉ có 🛒 Chợ).
+  const barCount = 1 + [shows(game, 'clean'), shows(game, 'stock'), shows(game, 'panel'), shows(game, 'notebook'), !simple && shows(game, 'arrange')].filter(Boolean).length;
+  const barRows = Math.ceil(barCount / BAR_PER_ROW);
+  const BAR_H = barRows * BTN + (barRows - 1) * BAR_GAP + 10;
+  const barW = Math.min(barCount, BAR_PER_ROW) * BTN + (Math.min(barCount, BAR_PER_ROW) - 1) * BAR_GAP;
 
   const actionBar = (
-    <View style={styles.bar}>
+    <View style={[styles.bar, { width: barW }]}>
       {/* Chỉ hiện nút đã mở (src/game/unlocks.ts): ngày đầu gần như chỉ còn 🛒 Chợ. */}
       <GoMarketButton render={(onPress) => <BarButton icon="🛒" label="Chợ" onPress={onPress} />} />
       {shows(game, 'clean') && <BarButton icon="🧽" label={cleanReady ? 'Lau' : 'Lau ⏳'} disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />}
@@ -383,7 +387,7 @@ export default function ShopMapView() {
             />
             <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} onQuestion={setAskId} arrange={arrange} onPlus={openUpgrades} onStation={goToStation} nearId={walkingTo ?? hereId} />
             {/* Xoay theo nấc 90° và zoom 2 mức */}
-            <View style={[styles.camCtl, { bottom: BAR_H + 56 }]}>
+            <View style={[styles.camCtl, { bottom: BAR_H + 12 }]}>
               <CamButton label="⟲" name="Xoay góc nhìn" onPress={() => setRot((r) => (r + 1) % 4)} />
               <CamButton label="+" name="Phóng to" disabled={zoomLevel === 1} onPress={() => setZoomLevel(1)} />
               <CamButton label="−" name="Thu nhỏ" disabled={zoomLevel === 0} onPress={() => setZoomLevel(0)} />
@@ -395,7 +399,7 @@ export default function ShopMapView() {
             )}
           </>
         ) : (
-          <SimpleView game={game} layout={layout} targets={targets} onStation={tapStation} topInset={HUD_H + 28} bottomInset={BAR_H + 44} />
+          <SimpleView game={game} layout={layout} targets={targets} onStation={tapStation} topInset={HUD_H + 28} bottomInset={Math.max(BAR_H, 56) + 12} />
         ))}
       {!fp && <MapHud canToggle={toggle} below={river ? <RiverPath game={game} compact onGo={flowGo} /> : null} />}
       {!fp && !paused && actionBar}
@@ -405,7 +409,7 @@ export default function ShopMapView() {
         const near = !simple && hereStation && hereStation.active && !walkingTo ? hereStation : null;
         if (!near)
           return (
-            <View pointerEvents="none" style={[styles.hands, { bottom: BAR_H + 10 }]}>
+            <View pointerEvents="none" style={[styles.hands, { maxWidth: size.w - barW - 34 }]}>
               <Text style={styles.handsText}>{hands}</Text>
             </View>
           );
@@ -413,7 +417,7 @@ export default function ShopMapView() {
         return (
           <Pressable
             onPress={() => (near.kind === 'fridge' ? setStockOpen(true) : arrive(near))}
-            style={({ pressed }) => [styles.hands, styles.handsAct, { bottom: BAR_H + 8 }, pressed && { transform: [{ translateY: 2 }] }]}
+            style={({ pressed }) => [styles.hands, styles.handsAct, { maxWidth: size.w - barW - 34 }, pressed && { transform: [{ translateY: 2 }] }]}
             accessibilityRole="button"
             accessibilityLabel={`${a.verb}: ${a.name}`}
           >
@@ -430,7 +434,7 @@ export default function ShopMapView() {
         );
       })()}
       {!fp && !paused && toast && (
-        <View pointerEvents="none" style={[styles.toast, { bottom: BAR_H + 60 }]}>
+        <View pointerEvents="none" style={[styles.toast, { bottom: BAR_H + 56 }]}>
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       )}
@@ -515,7 +519,11 @@ export default function ShopMapView() {
 /** Đã hỏi chuyển sang Đơn giản trong lần chơi này chưa. */
 let suggestAsked = false;
 
-/** Nút có nhãn trên thanh hành động (chunky, bo tròn). */
+const BTN = 52;
+const BAR_GAP = 6;
+const BAR_PER_ROW = 3;
+
+/** Nút tròn nhỏ có nhãn trên cụm hành động (chunky). */
 function BarButton({ icon, label, onPress, disabled, active }: { icon: string; label: string; onPress: () => void; disabled?: boolean; active?: boolean }) {
   return (
     <Pressable
@@ -545,22 +553,28 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   bar: {
     position: 'absolute',
-    left: 8,
-    right: 8,
-    bottom: 8,
-    flexDirection: 'row',
-    gap: 6,
+    right: 10,
+    bottom: 10,
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap-reverse',
+    gap: BAR_GAP,
+  },
+  barBtn: {
+    width: BTN,
+    height: BTN,
+    borderRadius: BTN / 2,
     backgroundColor: colors.cream,
-    borderRadius: 22,
-    padding: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.chunkyShadow,
-    borderBottomWidth: 5,
+    borderBottomWidth: 4,
+    flexGrow: 0,
+    flexShrink: 0,
   },
-  barBtn: { flex: 1, minHeight: 50, borderRadius: 18, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
   barBtnOn: { backgroundColor: colors.brown, borderColor: colors.brown },
-  barIcon: { fontSize: 20 },
-  barLabel: { fontSize: 12, fontWeight: '900', color: colors.brown },
+  barIcon: { fontSize: 20, lineHeight: 22 },
+  barLabel: { fontSize: 10, fontWeight: '900', color: colors.brown, lineHeight: 12 },
   camCtl: { position: 'absolute', right: 10, gap: 6 },
   camBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
   camText: { fontSize: 20, fontWeight: '900', color: colors.brown },
@@ -580,7 +594,7 @@ const styles = StyleSheet.create({
   hands: {
     position: 'absolute',
     left: 10,
-    bottom: 26,
+    bottom: 12,
     backgroundColor: 'rgba(255,255,255,0.94)',
     borderRadius: 16,
     paddingHorizontal: 12,

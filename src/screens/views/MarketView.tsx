@@ -158,7 +158,7 @@ export default function MarketView() {
               size={ready ? 'lg' : 'sm'}
               tone={ready ? 'primary' : 'plain'}
               onPress={() => act((s, rng) => openShop(s, rng))}
-              disabled={Boolean(game.activeEvent)}
+              disabled={Boolean(game.activeEvent || game.eventResult)}
               style={ready ? styles.openBtn : undefined}
             />
           </TutorialGlow>

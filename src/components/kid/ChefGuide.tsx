@@ -106,7 +106,7 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
         tutorialUi.clearHelp();
       },
     };
-  } else if (game && step && inGame && !game.activeEvent) {
+  } else if (game && step && inGame && !game.activeEvent && !game.eventResult) {
     say = {
       key: `tut-${game.tutorial.step}`,
       text: stepSay(step, game),
@@ -114,7 +114,7 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
       primary: step.tapToContinue ? { label: game.tutorial.step === 0 ? '▶ Bắt đầu' : '👍 OK', onPress: () => act((s) => advanceTutorial(s)) } : undefined,
       onSkip: () => act((s) => skipTutorial(s)),
     };
-  } else if (game && game.chefQueue.length > 0 && (inGame || route === 'Lab') && !game.activeEvent) {
+  } else if (game && game.chefQueue.length > 0 && (inGame || route === 'Lab') && !game.activeEvent && !game.eventResult) {
     const n = game.chefQueue[0];
     const pop = () => act((s) => void s.chefQueue.shift());
     say = {

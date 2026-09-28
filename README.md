@@ -170,6 +170,28 @@ Nền là **chợ bên sông 3D đang sống** (camera đung đưa, Chú Tư và
 
 Mỗi tình huống có nhiều lựa chọn với hậu quả khác nhau (tiền, danh tiếng, tâm trạng nhân viên).
 
+### 🎲 143 tình huống + 🎮 13 mini game
+- **Một kho chung** gồm 18 tình huống cũ và 125 tình huống mới:
+  - hài hước "khó đỡ": khách, nhân viên & Chú Tư, động vật & thời tiết, phố phường, chợ, mạng xã hội;
+  - quyết định lớn (từ ngày 5): nhà đầu tư, gia hạn nợ, xe đẩy, thi "Quán ngon quận"…;
+  - sự cố nghiêm trọng (kể vui, không bạo lực): trộm két, khách quá chén đổ bàn, bùng tiền, giả thanh tra, tiền giả, lừa đầu tư…;
+  - 12 sự kiện mini game.
+- **Tần suất: khoảng 1–2 tình huống mỗi ngày.**
+  - Từ ngày 3 buổi sáng có khoảng 50% gặp một tình huống.
+  - Trong giờ bán tối đa 2 tình huống, cách nhau ít nhất 90 giây.
+  - Một tình huống không lặp lại trong 10 ngày.
+- **Giấu hậu quả:** chọn xong mới hiện thẻ **Kết quả** (câu kết vui + các dòng 💰 ★ 🧽 👥 📅…). Đồng hồ dừng tới khi bấm 👍 OK.
+- **Hậu quả kéo dài:**
+  - hiệu ứng nhiều ngày: khách ×, giá ×, bàn ±, tiền nhà ×, doanh thu ±, tiền mất / thêm mỗi ngày;
+  - chuyện hẹn ngày sau do Chú Tư báo lúc sáng;
+  - vật nuôi / đồ bảo vệ: 🐈 mèo hết chuột, 🐔 gà đẻ trứng mỗi sáng, 🦜 vẹt, 🐸 ếch thêm khách, 📹 camera bắt trộm, 🐕 chó giữ nhà làm trộm ít dám vào, 🔑 khoá mới giữ kho.
+  - Két bị trộm mất 15% tiền mặt, tối đa 1,5 triệu.
+- **Mini game** (lựa chọn có 🎮):
+  - 13 kiểu: chạm thần tốc, đuổi bắt, nhớ thứ tự, canh đúng lúc, chọn đúng, đập trúng, giữ thăng bằng, lật hình, chém rau, xếp bát, tìm điểm khác, đố vui, theo nhịp.
+  - Mỗi lượt đếm ngược 3-2-1, có nút Bỏ qua. Được từ 60 điểm là thắng.
+  - Kỷ lục ghi trong 📒 Sổ tay → 👛 Túi.
+- **Cụm nút gọn:** 🛒 Chợ và các nút khác là nút tròn nhỏ ở góc phải dưới, tối đa 3 nút một hàng. Chip 🤲 tay cầm ở góc trái dưới.
+
 ## 👫 Chơi online co-op
 Đang ở giai đoạn kế hoạch — xem [`docs/COOP_PLAN.md`](docs/COOP_PLAN.md).
 
@@ -180,7 +202,8 @@ src/game/          Logic thuần (không phụ thuộc React) — dễ kiểm th
   data.ts          Nguyên liệu, công thức, nâng cấp, hằng số cân bằng
   engine.ts        Vòng lặp tick, hành động người chơi, AI nhân viên, đóng/mở ngày
   customers.ts     Sinh khách, phục vụ, thanh toán, đánh giá
-  events.ts        Các tình huống ngẫu nhiên và lựa chọn
+  events/          Tình huống: classic.ts (18 cũ), funny-*.ts, big-decisions.ts, serious.ts, mini-events.ts,
+                   kit.ts (bộ hiệu ứng + hậu quả hẹn ngày), index.ts (kho chung, thẻ kết quả, buff), mini.ts
   market.ts        Chợ: sạp, người bán, giá bớt bằng số tiền, trả giá, thân thiết, giỏ hàng, sức chứa kho
   missions.ts      Sổ tay: nhiệm vụ hằng ngày, món đặc biệt, thưởng (tiền / vé / sao), nhật ký
   dayflow.ts       Đường sông: bước đang làm trong ngày + việc tiếp theo
@@ -195,6 +218,7 @@ src/game/          Logic thuần (không phụ thuộc React) — dễ kiểm th
   GameContext.tsx  Kết nối engine với React (đồng hồ 200ms, tự lưu)
 src/screens/       Home, NewGame, Settings, Guide, Game (Chợ / Mở cửa / Tổng kết), Nhân vật, Nhân viên, Nâng cấp
 src/components/    CustomerCard, CookSlotCard, EventModal, Hud, ShopTopBar, ui
+  minigame/        13 mini game vẽ bằng emoji (MiniGame.tsx)
   map/             Bản đồ 2D dự phòng + bảng hành động
   scene/           Cảnh 3D: camera, nhân vật low-poly, đồ vật, lớp chữ nổi, HUD
 scripts/simulate.ts  Bot chơi thử 30 ngày để cân bằng số liệu
