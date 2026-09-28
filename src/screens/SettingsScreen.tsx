@@ -57,6 +57,15 @@ function downloadText(name: string, text: string): boolean {
   }
 }
 
+/** Đang chạy trong khung nhúng (vd Artifact): trình xem không cho tải file → chỉ dùng sao chép mã. */
+const IN_FRAME = (() => {
+  try {
+    return typeof window !== 'undefined' && window.self !== window.top;
+  } catch {
+    return true;
+  }
+})();
+
 /** Chọn file .json (bản web). */
 function pickFile(): Promise<string | null> {
   return new Promise((resolve) => {
@@ -178,9 +187,11 @@ export default function SettingsScreen() {
           <Text style={styles.section}>💾 Sao lưu tiến độ</Text>
           <Text style={styles.note}>🔒 Tiến độ chỉ lưu trong máy này. Sao lưu để chuyển sang máy khác hoặc giữ phòng khi xoá dữ liệu trình duyệt.</Text>
           <View style={styles.btnRow}>
-            <Pressable onPress={onDownload} style={styles.primary} accessibilityRole="button" accessibilityLabel="Tải file sao lưu">
-              <Text style={styles.primaryText}>📤 Tải file</Text>
-            </Pressable>
+            {!IN_FRAME && (
+              <Pressable onPress={onDownload} style={styles.primary} accessibilityRole="button" accessibilityLabel="Tải file sao lưu">
+                <Text style={styles.primaryText}>📤 Tải file</Text>
+              </Pressable>
+            )}
             <Pressable onPress={onCopy} style={styles.soft} accessibilityRole="button" accessibilityLabel="Sao chép mã sao lưu">
               <Text style={styles.softText}>📋 Sao chép mã</Text>
             </Pressable>
