@@ -182,7 +182,7 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
               onPress={() => {
                 const key = say!.key;
                 setMutedKey(null);
-                speak(say!.text.replace(/[^\p{L}\p{N}\s.,!?+=]/gu, ' '), () => setMutedKey(key));
+                speak(say!.text, () => setMutedKey(key));
               }} style={[styles.btn, styles.btnSoft]} accessibilityLabel="Đọc to">
               <Text style={styles.btnSoftText}>🔊</Text>
             </Pressable>

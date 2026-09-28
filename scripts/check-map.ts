@@ -1,5 +1,7 @@
 /** Kiểm tra nhanh chế độ bản đồ (không cần giao diện): `npx tsx scripts/check-map.ts` */
 import { QUESTIONS } from '../src/game/chat';
+import { VOICE } from '../src/assets/voice.generated';
+import { speechText, voiceLines } from '../src/game/voice';
 import { RECIPES } from '../src/game/data';
 import { dishFromCombo, registerDish, resolveCombo } from '../src/game/dishes';
 import { makeCustomer } from '../src/game/customers';
@@ -467,6 +469,14 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check(okAll && stoves.every((x) => x.job), 'nấu liên tiếp tự vào các bếp trống');
   check(E.playerCookCombo(g, ['banh_mi', 'trung', 'pate', 'hanh'], undefined) === 'Hết bếp trống', 'hết bếp trống thì báo');
   check(dishNeeds(run).get('banh_mi_trung')! <= 0, 'phiếu cần nấu đã trừ món đang nấu');
+}
+
+// ---------- Giọng Chú Tư: mọi câu cố định đều có giọng thu sẵn ----------
+{
+  const lines = voiceLines();
+  const missing = lines.filter((l) => !VOICE[l]);
+  check(missing.length === 0, `mọi câu cố định có giọng nam thu sẵn (${lines.length} câu)${missing.length ? ' — thiếu: ' + missing.slice(0, 3).join(' | ') + ' → chạy scripts/gen-voice.py' : ''}`);
+  check(speechText('Món đầu tiên là 🥪 Bánh mì trứng = 🥖 + 🥚. Bấm +5 nhé!') === 'Món đầu tiên là Bánh mì trứng gồm bánh mì, trứng. Bấm thêm 5 nhé!', 'đọc emoji thành chữ');
 }
 
 process.exit(failed ? 1 : 0);

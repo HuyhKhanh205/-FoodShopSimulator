@@ -7,6 +7,8 @@ import type { HelpTopic } from '../../game/help';
 import { useGame } from '../../game/GameContext';
 import { colors } from '../ui';
 import { tutorialUi } from './tutorialUi';
+import { canSpeak, MUTED_HINT, speak, stopSpeaking } from './speech';
+import { helpSpeech } from '../../game/voice';
 
 const seenKey = (t: HelpTopic) => `quanan-help-seen:${t}`;
 
@@ -29,79 +31,7 @@ function rememberSeen(t: HelpTopic) {
   }
 }
 
-/** Máy đọc to hướng dẫn (chỉ có trên trình duyệt hỗ trợ). */
-export function canSpeak() {
-  return Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window;
-}
-/** Giọng đọc của Chú Tư: giọng nam tiếng Việt nếu máy có, không thì giọng Việt bất kỳ đọc trầm xuống. */
-let voice: { v: SpeechSynthesisVoice | null; male: boolean } | null = null;
-const MALE = /nam|male|minh|an\b|khang|quang|tuấn|tuan/i;
-function pickVoice() {
-  const vi = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('vi'));
-  const male = vi.find((v) => MALE.test(v.name));
-  voice = { v: male ?? vi[0] ?? null, male: Boolean(male) };
-}
-if (canSpeak()) {
-  try {
-    // Danh sách giọng có thể tải trễ.
-    window.speechSynthesis.addEventListener?.('voiceschanged', pickVoice);
-  } catch {
-    // bỏ qua
-  }
-}
-
-/** Câu nhắc khi máy không phát ra tiếng (thường do iPhone đang bật chế độ im lặng). */
-export const MUTED_HINT = '🔇 Không nghe thấy? Tắt chế độ im lặng (nút gạt bên hông iPhone) và tăng âm lượng.';
-
-/**
- * Đọc to một câu. Viết cẩn thận cho Safari iPhone:
- * - chỉ `cancel()` khi đang đọc (gọi `speak` ngay sau `cancel` thì iOS bỏ luôn câu mới);
- * - còn lại đọc ngay trong lần chạm, iOS mới cho phát tiếng;
- * - chỉ gán giọng khi giọng đó còn trong danh sách hiện tại.
- * `onFail`: sau 2,5 giây vẫn chưa bắt đầu đọc (hoặc lỗi).
- */
-export function speak(text: string, onFail?: () => void) {
-  if (!canSpeak()) {
-    onFail?.();
-    return;
-  }
-  try {
-    const synth = window.speechSynthesis;
-    pickVoice();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'vi-VN';
-    u.rate = 1.2;
-    const list = synth.getVoices();
-    if (voice?.v && list.includes(voice.v)) u.voice = voice.v;
-    // Không có giọng nam (vd iPhone chỉ có giọng nữ "Linh"): đọc trầm xuống cho ra giọng nam.
-    u.pitch = voice?.male ? 1 : 0.6;
-    let started = false;
-    let failed = false;
-    const fail = () => {
-      if (started || failed) return;
-      failed = true;
-      onFail?.();
-    };
-    u.onstart = () => {
-      started = true;
-    };
-    u.onerror = (e) => {
-      // Bị câu mới cắt ngang thì không tính là lỗi.
-      if ((e as SpeechSynthesisErrorEvent).error !== 'interrupted' && (e as SpeechSynthesisErrorEvent).error !== 'canceled') fail();
-    };
-    setTimeout(fail, 2500);
-    const go = () => {
-      synth.resume();
-      synth.speak(u);
-    };
-    if (synth.speaking || synth.pending) {
-      synth.cancel();
-      setTimeout(go, 120);
-    } else go();
-  } catch {
-    onFail?.();
-  }
-}
+export { MUTED_HINT, canSpeak, speak, stopSpeaking } from './speech';
 
 /** Bảng hướng dẫn bằng hình. */
 export function HelpSheet({ topic, visible, onClose }: { topic: HelpTopic; visible: boolean; onClose: () => void }) {
@@ -110,7 +40,7 @@ export function HelpSheet({ topic, visible, onClose }: { topic: HelpTopic; visib
   const h = HELP[topic];
   const steps = more && h.more ? [...h.steps, ...h.more] : h.steps;
   const close = () => {
-    if (canSpeak()) window.speechSynthesis.cancel();
+    stopSpeaking();
     setMore(false);
     setMuted(false);
     onClose();
@@ -133,7 +63,7 @@ export function HelpSheet({ topic, visible, onClose }: { topic: HelpTopic; visib
             {canSpeak() && (
               <Pressable style={[styles.btn, styles.btnSoft]} onPress={() => {
                   setMuted(false);
-                  speak(`${h.title}. ${steps.map((s) => s.text).join(' ')}`, () => setMuted(true));
+                  speak(helpSpeech(topic, more), () => setMuted(true));
                 }} accessibilityRole="button">
                 <Text style={styles.btnSoftText}>🔊 Đọc</Text>
               </Pressable>
