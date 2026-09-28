@@ -12,11 +12,13 @@ export interface Settings {
   volume: 'low' | 'mid' | 'high';
   /** Tiết kiệm pin = vẽ 3D ở độ phân giải thấp hơn. */
   quality: 'saver' | 'pretty';
+  /** Tên đồ vật trong quán: 'auto' = chỉ hiện khi đứng gần / có việc; 'always' = luôn hiện. */
+  labels: 'auto' | 'always';
 }
 
 const SETTINGS_KEY = 'foodshop.settings';
 const LOOK_KEY = 'foodshop.profile';
-export const DEFAULT_SETTINGS: Settings = { voice: true, volume: 'mid', quality: 'pretty' };
+export const DEFAULT_SETTINGS: Settings = { voice: true, volume: 'mid', quality: 'pretty', labels: 'auto' };
 export const VOLUME_GAIN: Record<Settings['volume'], number> = { low: 0.4, mid: 0.75, high: 1 };
 
 let state: Settings = { ...DEFAULT_SETTINGS };

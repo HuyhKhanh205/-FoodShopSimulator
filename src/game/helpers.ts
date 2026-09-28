@@ -255,3 +255,30 @@ export function handledCustomers(run: DayRuntime): Set<string> {
   }
   return out;
 }
+
+/**
+ * Nên thái gì tiếp (chạm thớt khi đang rảnh): đồ cần thái của món khách đang chờ còn thiếu nhiều nhất,
+ * không có đơn thì món trong menu có ít phần thái sẵn nhất. Chỉ chọn đồ còn trong kho.
+ */
+export function suggestChop(s: GameState): IngredientId | null {
+  const run = s.run;
+  if (!run) return null;
+  const score = new Map<IngredientId, number>();
+  for (const id of s.unlockedRecipes) {
+    const r = RECIPES[id];
+    if (!r) continue;
+    for (const i of Object.keys(r.ingredients) as IngredientId[]) {
+      if (!INGREDIENTS[i].needsPrep || usableQty(s, i) <= 0) continue;
+      score.set(i, (score.get(i) ?? 0) - (run.prepped[i] ?? 0) * 0.01);
+    }
+  }
+  for (const [rid, n] of dishNeeds(run)) {
+    if (n <= 0 || !RECIPES[rid]) continue;
+    for (const [i, q] of Object.entries(RECIPES[rid].ingredients) as [IngredientId, number][]) {
+      if (score.has(i)) score.set(i, (score.get(i) ?? 0) + n * q - (run.prepped[i] ?? 0));
+    }
+  }
+  let best: IngredientId | null = null;
+  for (const [i, v] of score) if (best === null || v > score.get(best)!) best = i;
+  return best;
+}

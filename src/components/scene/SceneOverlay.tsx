@@ -1,8 +1,8 @@
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { questionOf } from '../../game/chat';
 import { handledCustomers } from '../../game/helpers';
-import { tutorialTargets } from '../../game/tutorial';
-import TutorialGlow from '../kid/TutorialGlow';
+import TutorialGlow, { useTutorialTargets } from '../kid/TutorialGlow';
+import { useSettings } from '../../game/settings';
 import { burnGrace, PLAYER_PREP_MS, RECIPES } from '../../game/data';
 import { passDishOffset } from '../../game/layout';
 import type { MapLayout, MapStation } from '../../game/layout';
@@ -100,6 +100,22 @@ function Chip({ title, status, group, bar, glow, onPress }: { title: string; sta
   );
 }
 
+/** Nhãn gọn khi không đứng gần: chỉ 1 biểu tượng tròn (có việc gấp: chín, sắp cháy, có món chờ...). */
+function Dot({ icon, name, tone = 'plain', onPress, bar }: { icon: string; name: string; tone?: 'plain' | 'good' | 'bad'; onPress?: () => void; bar?: { value: number; color: string } | null }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityLabel={name}
+      style={({ pressed }) => [styles.dot, tone === 'good' && styles.dotGood, tone === 'bad' && styles.dotBad, pressed && { transform: [{ scale: 0.92 }] }]}
+    >
+      <Text style={styles.dotText}>{icon}</Text>
+      {bar && <Bar value={bar.value} color={bar.color} width={30} />}
+    </Pressable>
+  );
+}
+
 /**
  * Lớp chữ nổi trên cảnh 3D (không nhận chạm): món khách gọi, tiến độ nấu,
  * món trên quầy ra món, nhãn đồ vật. Vị trí được chiếu từ toạ độ 3D qua cùng camera.
@@ -115,7 +131,10 @@ export default function SceneOverlay({
   arrange = false,
   onPlus,
   onStation,
+  nearId = null,
 }: {
+  /** Trạm chủ quán đang đứng / đang đi tới: chỉ trạm này hiện nhãn đầy đủ (còn lại gọn). */
+  nearId?: string | null;
   /** Chạm chip trạm: đi tới trạm đó. */
   onStation?: (st: MapStation) => void;
   /** Chế độ Bố trí: hiện "+" ở chỗ chưa mua. */
@@ -142,7 +161,10 @@ export default function SceneOverlay({
   const unit = Math.max(Math.hypot(b.x - a.x, b.y - a.y), Math.hypot(c2.x - a.x, c2.y - a.y));
   const font = Math.max(11, Math.min(22, unit * 0.34));
   const center = (st: MapStation): [number, number] => [st.x + st.w / 2, st.y + st.h / 2];
-  const targets = tutorialTargets(game);
+  const targets = useTutorialTargets();
+  const settings = useSettings();
+  /** Nhãn đầy đủ: luôn hiện (cài đặt), đang đứng gần, hoặc đang được chỉ vào (hướng dẫn / đường sông). */
+  const full = (st: MapStation, target?: string) => settings.labels === 'always' || st.id === nearId || arrange || (target ? targets.includes(target) : false);
   const go = (st: MapStation) => (onStation && !arrange ? () => onStation(st) : undefined);
   const handled = handledCustomers(run);
   const carried = new Set(run.carrying.map((id) => run.pass.find((d) => d.id === id)?.recipeId).filter(Boolean));
@@ -207,11 +229,27 @@ export default function SceneOverlay({
       }
       // Bếp / quầy liền nhau: chip so le trái – phải, cao – thấp cho khỏi chồng lên nhau.
       const pair = layout.stations.filter((x) => x.kind === st.kind && x.active).length > 1;
-      const at = p(cx, pair && idx % 2 ? 1.6 : 2.4, cz);
-      place(`chip-${st.id}`, { x: at.x + (pair ? (idx % 2 ? -34 : 34) : 0), y: at.y }, <Chip title={title} status={status} group={st.kind === 'stove' ? 'meat' : 'egg'} bar={bar} onPress={go(st)} />, 96);
+      if (full(st, 'shop.board')) {
+        const at = p(cx, pair && idx % 2 ? 1.6 : 2.4, cz);
+        place(`chip-${st.id}`, { x: at.x + (pair ? (idx % 2 ? -34 : 34) : 0), y: at.y }, <Chip title={title} status={status} group={st.kind === 'stove' ? 'meat' : 'egg'} bar={bar} onPress={go(st)} />, 96);
+      } else if (job) {
+        // Gọn: chỉ hình món + vạch tiến độ; chín ✅, sắp cháy ⚠️.
+        const r = RECIPES[job.recipeId];
+        const done = job.progress >= job.cookTime;
+        const burning = done && r.burns && (job.progress - job.cookTime) / burnGrace(job.cookTime) > 0.5;
+        place(
+          `dot-${st.id}`,
+          p(cx, 1.9, cz),
+          <Dot icon={`${r.emoji}${burning ? '⚠️' : done ? '✅' : ''}`} name={`${title}: ${status}`} tone={burning ? 'bad' : done ? 'good' : 'plain'} bar={done ? null : bar} onPress={go(st)} />,
+          70
+        );
+      }
       continue;
     }
-    if (st.kind === 'board') {
+    if (st.kind === 'board' && !full(st, 'shop.board')) {
+      if (run.playerPrep)
+        place('board', p(cx, 1.45, cz), <Dot icon="🔪⏳" name="Thớt: đang thái" onPress={go(st)} bar={{ value: 1 - (run.playerPrep.endsAt - run.elapsed) / PLAYER_PREP_MS, color: colors.info }} />, 70);
+    } else if (st.kind === 'board') {
       const prepped = Object.values(run.prepped).reduce((n, v) => n + (v ?? 0), 0);
       place(
         'board',
@@ -229,15 +267,23 @@ export default function SceneOverlay({
         96
       );
     }
-    if (st.kind === 'fridge') {
+    if (st.kind === 'fridge' && full(st)) {
       const total = game.stock.filter((b) => b.expiresOnDay >= game.day).reduce((n, b) => n + b.qty, 0);
       place('fridge', p(cx, 2.45, cz), <Chip title="Kho" status={`📦 ${total}`} group="fish" onPress={go(st)} />, 80);
     }
-    if (st.kind === 'trash') place('trash', p(cx, 1.3, cz), <Chip title="Rác" group="neutral" onPress={go(st)} />, 60);
-    if (st.kind === 'mop') place('mop', p(cx, 1.25, cz), <Chip title="Rửa · lau" status={`🧽 ${Math.round(game.cleanliness)}%`} group="fish" onPress={go(st)} />, 84);
+    if (st.kind === 'trash') {
+      const badHeld = run.carrying.some((id) => run.pass.find((d) => d.id === id)?.quality === 'burnt');
+      if (full(st)) place('trash', p(cx, 1.3, cz), <Chip title="Rác" group="neutral" onPress={go(st)} />, 60);
+      else if (badHeld) place('trash', p(cx, 1.3, cz), <Dot icon="🗑️" name="Rác: bỏ món cháy" tone="bad" onPress={go(st)} />, 50);
+    }
+    if (st.kind === 'mop') {
+      if (full(st)) place('mop', p(cx, 1.25, cz), <Chip title="Rửa · lau" status={`🧽 ${Math.round(game.cleanliness)}%`} group="fish" onPress={go(st)} />, 84);
+      else if (game.cleanliness < 60) place('mop', p(cx, 1.25, cz), <Dot icon="🧽❗" name={`Rửa · lau: ${Math.round(game.cleanliness)}%`} tone="bad" onPress={go(st)} />, 60);
+    }
     if (st.kind === 'pass') {
       const dishes = run.pass.filter((d) => !run.carrying.includes(d.id)).slice(0, 10);
-      place('pass', p(cx, 1.55, cz - 0.4), <Chip title="Quầy ra món" status={dishes.length ? `🍽️ ${dishes.length} dĩa` : 'trống'} group="egg" onPress={go(st)} />, 110);
+      if (full(st)) place('pass', p(cx, 1.55, cz - 0.4), <Chip title="Quầy ra món" status={dishes.length ? `🍽️ ${dishes.length} dĩa` : 'trống'} group="egg" onPress={go(st)} />, 110);
+      else if (dishes.length) place('pass', p(cx, 1.75, cz - 0.4), <Dot icon={`🛎️${dishes.length}`} name={`Quầy ra món: ${dishes.length} dĩa`} tone="good" onPress={go(st)} />, 60);
       dishes.forEach((d, i) => {
         const [ox, oz] = passDishOffset(i, st.w);
         place(`dish-${d.id}`, p(cx + ox, 1.2, cz + oz), <Text style={{ fontSize: font * 0.85 }}>{d.quality === 'burnt' ? '🔥' : RECIPES[d.recipeId].emoji}</Text>, 40);
@@ -336,6 +382,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   chipGlow: { borderWidth: 3 },
+  dot: { minWidth: 34, minHeight: 34, borderRadius: 17, paddingVertical: 2, paddingHorizontal: 6, backgroundColor: 'rgba(255,246,233,0.95)', borderWidth: 2, borderColor: colors.chunkyShadow, alignItems: 'center', justifyContent: 'center' },
+  dotGood: { borderColor: colors.good, backgroundColor: '#F1F8E9' },
+  dotBad: { borderColor: colors.bad, backgroundColor: '#FFEBEE' },
+  dotText: { fontSize: 15 },
   chipTitle: { fontSize: 12, fontWeight: '900' },
   chipStatus: { fontSize: 11, fontWeight: '800' },
   track: { height: 4, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.15)', overflow: 'hidden' },

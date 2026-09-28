@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { maxDpr } from '../../game/settings';
 import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { burnGrace, INGREDIENTS, PLAYER_PREP_MS, RECIPES } from '../../game/data';
-import { MAX_CARRY, playerChop, playerStir, playerTakeOut } from '../../game/engine';
+import { MAX_CARRY, playerChop, playerPrep, playerStir, playerTakeOut } from '../../game/engine';
+import { suggestChop } from '../../game/helpers';
 import type { GameMutation } from '../../game/GameContext';
 import type { MapStation } from '../../game/layout';
 import type { CookSlot, GameState, IngredientId } from '../../game/types';
@@ -190,9 +191,17 @@ function KitchenView({ stations, game, act, onExit }: Props) {
   }, [prep]);
   const pot = usePotBuilder({ game, station: 'stove', slotIds, act, targets });
 
+  /** Chạm thớt: đang thái thì thái nhanh hơn; đang rảnh thì bắt đầu thái thêm món cần nhất (thái được nhiều lần). */
   const chop = () => {
     boardPulse.current = now();
     if (prep) act((s) => playerChop(s));
+    else {
+      const next = suggestChop(game);
+      if (next) {
+        setLastPrep(next);
+        act((s) => void playerPrep(s, next));
+      }
+    }
   };
   /** Chạm vào nồi: chín thì nhấc ra, chưa chín thì khuấy. */
   const tapStove = (slotId: string) => {
@@ -226,7 +235,7 @@ function KitchenView({ stations, game, act, onExit }: Props) {
   const prepLine = prep
     ? { text: `🔪 ${INGREDIENTS[prep.ingredientId].emoji} ⏳`, bar: { value: prepProgress ?? 0, color: colors.info } }
     : { text: lastPrep ? `🔪 ${INGREDIENTS[lastPrep].emoji} ✅ ×${run.prepped[lastPrep] ?? 0}` : '🔪 —', bar: null };
-  const hint = prep ? '👆🔪' : busiest ? '👆🥄' : null;
+  const hint = prep ? '👆🔪' : busiest ? '👆🥄' : suggestChop(game) ? '👆🔪+' : null;
 
   // ---------- Cảnh 3D ----------
   const width = Math.max(1.5, stoves.length * STOVE_GAP);

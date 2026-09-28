@@ -178,19 +178,34 @@ export function usePotBuilder({
           // Cần thái mà chưa có phần thái sẵn: chạm = thái.
           const mustChop = ing.needsPrep && ready < 1 && !pot.includes(id);
           const choppingThis = run.playerPrep?.ingredientId === id;
+          // Đã có phần thái sẵn: chạm ô = bỏ vào nồi; nút 🔪+ nhỏ bên dưới = thái thêm (thái được nhiều lần).
+          const canChopMore = ing.needsPrep && !mustChop && raw > 0;
           return (
-            <TutorialGlow key={id} on={targets.includes(`kitchen.prep:${id}`) && !toChop}>
-              <IconTile
-                icon={ing.emoji}
-                name={mustChop ? `Thái ${ing.name}` : `Bỏ ${ing.name} vào nồi`}
-                size="sm"
-                badge={choppingThis ? '⏳' : mustChop && raw > 0 ? '🔪' : undefined}
-                sub={ing.needsPrep ? `🔪${ready} 📦${raw}` : `📦${raw}`}
-                selected={pot.includes(id)}
-                disabled={mustChop ? raw < 1 || prepping : ready < 1 && !pot.includes(id)}
-                onPress={() => (mustChop ? chop(id) : toggle(id))}
-              />
-            </TutorialGlow>
+            <View key={id} style={styles.ingCol}>
+              <TutorialGlow on={targets.includes(`kitchen.prep:${id}`) && !toChop}>
+                <IconTile
+                  icon={ing.emoji}
+                  name={mustChop ? `Thái ${ing.name}` : `Bỏ ${ing.name} vào nồi`}
+                  size="sm"
+                  badge={choppingThis ? '⏳' : mustChop && raw > 0 ? '🔪' : undefined}
+                  sub={ing.needsPrep ? `🔪${ready} 📦${raw}` : `📦${raw}`}
+                  selected={pot.includes(id)}
+                  disabled={mustChop ? raw < 1 || prepping : ready < 1 && !pot.includes(id)}
+                  onPress={() => (mustChop ? chop(id) : toggle(id))}
+                />
+              </TutorialGlow>
+              {canChopMore && (
+                <Pressable
+                  onPress={() => chop(id)}
+                  disabled={prepping}
+                  style={({ pressed }) => [styles.more, prepping && { opacity: 0.4 }, pressed && { transform: [{ translateY: 2 }] }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Thái thêm ${ing.name}`}
+                >
+                  <Text style={styles.moreText}>🔪+</Text>
+                </Pressable>
+              )}
+            </View>
           );
         })}
       </View>
@@ -227,4 +242,7 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingTop: 6 },
   hr: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
   idle: { opacity: 0.75 },
+  ingCol: { alignItems: 'center', gap: 3 },
+  more: { minWidth: 46, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 10, backgroundColor: '#E8F5E9', borderWidth: 2, borderColor: colors.good, borderBottomWidth: 3, alignItems: 'center' },
+  moreText: { fontSize: 13, fontWeight: '900', color: colors.good },
 });

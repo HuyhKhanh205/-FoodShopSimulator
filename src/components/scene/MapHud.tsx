@@ -133,6 +133,12 @@ function PauseMenu({ canToggle, onResume }: { canToggle: boolean; onResume: () =
           onPress={() => settingsStore.set({ voice: !settings.voice })}
         />
         <MenuRow
+          icon="🏷️"
+          label={settings.labels === 'always' ? 'Tên đồ vật: luôn hiện' : 'Tên đồ vật: khi đứng gần'}
+          action={settings.labels === 'always' ? 'Gọn lại' : 'Luôn hiện'}
+          onPress={() => settingsStore.set({ labels: settings.labels === 'always' ? 'auto' : 'always' })}
+        />
+        <MenuRow
           icon="❗"
           label="Cách chơi"
           action="Xem"

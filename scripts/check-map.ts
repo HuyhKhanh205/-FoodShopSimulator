@@ -11,6 +11,7 @@ import { speechText, voiceLines } from '../src/game/voice';
 import { DAY_MS, INGREDIENTS, PLAYER_PREP_MS, RECIPES, STARTERS } from '../src/game/data';
 import { dishFromCombo, registerDish, resolveCombo } from '../src/game/dishes';
 import { makeCustomer } from '../src/game/customers';
+import { suggestChop } from '../src/game/helpers';
 import { dishNeeds, errorRate, handledCustomers, makeStaff, usableQty as uq } from '../src/game/helpers';
 import { addToMenu, unlockedRoles } from '../src/game/progression';
 import { orderWeight, startTrend, trendHeat, trendPriceMult, trendRepMult, trendSpawnMult } from '../src/game/trend';
@@ -721,6 +722,24 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   delete oldSave.extraIngredients;
   const up = MG.migrateSave(oldSave);
   check(up.starter === 'banh_mi_trung' && up.extraIngredients.length === 0, 'bản lưu cũ: món khởi đầu mặc định bánh mì trứng');
+}
+
+// ================= Thái được nhiều lần =================
+{
+  const g = E.newGame(seededRng(51));
+  g.activeEvent = null;
+  M.checkout(g, M.suggestBasket(g));
+  E.openShop(g, seededRng(1));
+  g.activeEvent = null;
+  const first = suggestChop(g);
+  check(first === 'hanh', `thớt rảnh: gợi ý thái ${first}`);
+  E.playerPrep(g, 'hanh');
+  E.tick(g, PLAYER_PREP_MS + 50, seededRng(2));
+  g.activeEvent = null;
+  const after1 = g.run!.prepped.hanh ?? 0;
+  check(suggestChop(g) === 'hanh' && E.playerPrep(g, 'hanh') === null, 'đã có hành thái sẵn vẫn thái thêm được');
+  E.tick(g, PLAYER_PREP_MS + 50, seededRng(3));
+  check((g.run!.prepped.hanh ?? 0) > after1, `thái lần 2 cộng thêm (${after1} → ${g.run!.prepped.hanh})`);
 }
 
 process.exit(failed ? 1 : 0);

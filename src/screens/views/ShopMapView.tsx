@@ -25,6 +25,31 @@ import { MapStation, Tile, buildLayout, findPath, isWalkable, stationAt, station
 import { hasWebGL } from '../../three/webgl';
 import { useWalker } from './useWalker';
 
+/** Tên + việc sẽ làm khi tương tác (nút cạnh "Tay không"). */
+function stationAction(st: MapStation, carrying: number, has3D: boolean): { icon: string; name: string; verb: string } {
+  const n = st.slotId ? Number(st.slotId.replace(/\D/g, '')) + 1 : st.tableIndex !== undefined ? st.tableIndex + 1 : 0;
+  switch (st.kind) {
+    case 'board':
+      return { icon: '🔪', name: 'Thớt', verb: has3D ? 'Vào bếp' : 'Thái' };
+    case 'stove':
+      return { icon: '🔥', name: `Bếp ${n}`, verb: 'Nấu' };
+    case 'counter':
+      return { icon: '🧋', name: `Quầy pha ${n}`, verb: 'Pha' };
+    case 'fridge':
+      return { icon: '📦', name: 'Kho', verb: 'Mở' };
+    case 'pass':
+      return { icon: '🛎️', name: 'Quầy ra món', verb: 'Lấy món' };
+    case 'trash':
+      return { icon: '🗑️', name: 'Rác', verb: 'Bỏ' };
+    case 'mop':
+      return { icon: '🧽', name: 'Rửa · lau', verb: 'Lau' };
+    case 'door':
+      return { icon: '🚪', name: 'Cửa', verb: carrying ? 'Đưa món' : 'Xem' };
+    default:
+      return { icon: '🪑', name: `Bàn ${n}`, verb: carrying ? 'Đưa món' : 'Xem' };
+  }
+}
+
 const KEY_DIRS: Record<string, Tile> = {
   ArrowUp: { x: 0, y: -1 },
   ArrowDown: { x: 0, y: 1 },
@@ -356,7 +381,7 @@ export default function ShopMapView() {
               cutaway={cutaway}
               arrange={arrange}
             />
-            <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} onQuestion={setAskId} arrange={arrange} onPlus={openUpgrades} onStation={goToStation} />
+            <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} onQuestion={setAskId} arrange={arrange} onPlus={openUpgrades} onStation={goToStation} nearId={walkingTo ?? hereId} />
             {/* Xoay theo nấc 90° và zoom 2 mức */}
             <View style={[styles.camCtl, { bottom: BAR_H + 56 }]}>
               <CamButton label="⟲" name="Xoay góc nhìn" onPress={() => setRot((r) => (r + 1) % 4)} />
@@ -374,6 +399,26 @@ export default function ShopMapView() {
         ))}
       {!fp && <MapHud canToggle={toggle} below={river ? <RiverPath game={game} compact onGo={flowGo} /> : null} />}
       {!fp && !paused && actionBar}
+      {/* Đứng cạnh đồ vật: nút tương tác ngay cạnh "Tay không" (hoặc chạm lại vào đồ vật đó). */}
+      {!fp && !paused && !simple && hereStation && hereStation.active && !walkingTo && (() => {
+        const a = stationAction(hereStation, run.carrying.length, has3D);
+        return (
+          <Pressable
+            onPress={() => (hereStation.kind === 'fridge' ? setStockOpen(true) : arrive(hereStation))}
+            style={({ pressed }) => [styles.interact, { bottom: BAR_H + 8 }, pressed && { transform: [{ translateY: 2 }] }]}
+            accessibilityRole="button"
+            accessibilityLabel={`${a.verb}: ${a.name}`}
+          >
+            <Text style={styles.interactIcon}>{a.icon}</Text>
+            <View>
+              <Text style={styles.interactName} numberOfLines={1}>
+                {a.name}
+              </Text>
+              <Text style={styles.interactVerb}>👆 {a.verb}</Text>
+            </View>
+          </Pressable>
+        );
+      })()}
       {!fp && !paused && (
         <View pointerEvents="none" style={[styles.hands, { bottom: BAR_H + 10 }]}>
           <Text style={styles.handsText}>
@@ -541,6 +586,22 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   handsLow: { bottom: 14 },
+  interact: {
+    position: 'absolute',
+    right: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderBottomWidth: 4,
+    borderColor: colors.primaryDark,
+  },
+  interactIcon: { fontSize: 24 },
+  interactName: { fontSize: 13, fontWeight: '900', color: '#fff' },
+  interactVerb: { fontSize: 12, fontWeight: '800', color: '#FFE0B2' },
   toast: {
     position: 'absolute',
     alignSelf: 'center',

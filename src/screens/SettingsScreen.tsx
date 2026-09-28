@@ -180,6 +180,17 @@ export default function SettingsScreen() {
           <Row title="Chất lượng">
             <Segment label="Chất lượng" value={settings.quality} items={[{ key: 'saver', label: '🔋 Tiết kiệm pin' }, { key: 'pretty', label: '✨ Đẹp' }]} onChange={(v) => settingsStore.set({ quality: v })} />
           </Row>
+          <Row title="Tên đồ vật trong quán">
+            <Segment
+              label="Tên đồ vật"
+              value={settings.labels}
+              items={[
+                { key: 'auto', label: '👆 Khi đứng gần' },
+                { key: 'always', label: '🏷️ Luôn hiện' },
+              ]}
+              onChange={(v) => settingsStore.set({ labels: v })}
+            />
+          </Row>
           <Text style={styles.note}>Máy chạy chậm, nóng? Chọn 🔲 Đơn giản hoặc 🔋 Tiết kiệm pin.</Text>
         </View>
 
