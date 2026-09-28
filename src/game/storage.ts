@@ -1,9 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RECIPES } from './data';
-import { DEFAULT_PROFILE } from './profile';
-import { syncDishes } from './dishes';
-import { xpForRecipes } from './progression';
-import { newVendors } from './market';
+import { migrateSave } from './migrate';
 import type { GameState } from './types';
 
 const SAVE_KEY = 'foodshop.save.v1';
@@ -24,29 +20,7 @@ export async function loadGame(): Promise<GameState | null> {
     if (!raw) return null;
     const data = JSON.parse(raw) as GameState;
     if (data.version !== 1) return null;
-    // Bản lưu cũ chưa có nhân vật: dùng nhân vật mặc định.
-    const profile = { ...DEFAULT_PROFILE, ...(data.profile ?? {}) };
-    // Bản lưu trước khi có cấp độ: mở đủ cấp cho các món đã có, bỏ qua hướng dẫn ngày đầu.
-    syncDishes({ dishes: data.dishes ?? {} } as GameState);
-    const unlockedRecipes = (data.unlockedRecipes ?? []).filter((id) => RECIPES[id]);
-    const old = data.xp === undefined;
-    return {
-      ...data,
-      profile,
-      unlockedRecipes,
-      xp: data.xp ?? xpForRecipes(unlockedRecipes),
-      chefQueue: data.chefQueue ?? [],
-      tutorial: data.tutorial ?? { step: 0, done: old },
-      labFails: data.labFails ?? 0,
-      labHints: data.labHints ?? {},
-      dishes: data.dishes ?? {},
-      discovered: data.discovered ?? [...unlockedRecipes],
-      launched: data.launched ?? {},
-      trend: data.trend ?? null,
-      vendors: data.vendors ?? newVendors(),
-      run: null,
-      phase: data.phase === 'open' ? 'market' : data.phase,
-    };
+    return migrateSave(data);
   } catch {
     return null;
   }

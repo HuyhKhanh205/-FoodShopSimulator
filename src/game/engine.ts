@@ -4,6 +4,7 @@ import { registerDish, resolveCombo } from './dishes';
 import { unlockedRoles } from './progression';
 import { expireTrend, trendSpawnMult } from './trend';
 import { newVendors, resetMarketDay, stockCapacity, stockUnits } from './market';
+import { autoClaimAll, emptyTally, rollMissions } from './missions';
 import {
   BANKRUPT_AT,
   burnAt,
@@ -132,6 +133,11 @@ export function newGame(rng: Rng): GameState {
     launched: {},
     trend: null,
     vendors: newVendors(),
+    tickets: 0,
+    hopeStars: 0,
+    missions: { day: 0, special: null, list: [] },
+    today: emptyTally(),
+    diary: [],
     mods: emptyMods(),
     report: emptyReport({ day: 1, reputation: 3 }),
     history: [],
@@ -164,6 +170,10 @@ function beginMarket(s: GameState, rng: Rng) {
   }
   // Ứng viên chỉ ở vị trí đã mở theo cấp; mỗi vị trí có 1 người thường + 1 sinh viên giá rẻ.
   s.candidates = unlockedRoles(s).flatMap((role) => [makeStaff(s, rng, role), makeStaff(s, rng, role, true)]);
+  // Sổ tay chủ quán: nhiệm vụ + món đặc biệt hôm nay (sau cùng để không đổi dãy ngẫu nhiên phía trên).
+  s.today = emptyTally();
+  rollMissions(s, rng);
+  if (s.day === 2) s.chefQueue.push({ kind: 'notebook' });
 }
 
 // ================= Chợ / quản lý (ngoài giờ mở cửa) =================
@@ -326,6 +336,7 @@ function freeSlot(s: GameState, station: Station): CookSlot | undefined {
 
 function pushDish(s: GameState, recipeId: RecipeId, quality: DishQuality, noGarnish: boolean, by: string) {
   s.run!.pass.push({ id: nextId(s, 'd'), recipeId, quality, noGarnish, by });
+  if (quality !== 'burnt') s.today.cooked += 1;
 }
 
 // ---------- Hành động của người chơi ----------
@@ -354,8 +365,13 @@ export function playerCookCombo(s: GameState, ids: IngredientId[], slotId?: stri
   const slot = slotId ? s.run?.slots.find((x) => x.id === slotId) : undefined;
   if (slot && slot.station !== recipe.station) return recipe.station === 'counter' ? 'Món này làm ở quầy pha chế' : 'Món này phải nấu trên bếp';
   registerDish(s, recipe);
-  if (!s.discovered.includes(recipe.id)) s.discovered.push(recipe.id);
-  return playerCook(s, recipe.id, noGarnish, slotId);
+  const fresh = !s.discovered.includes(recipe.id);
+  const err = playerCook(s, recipe.id, noGarnish, slotId);
+  if (fresh && !err) {
+    s.discovered.push(recipe.id);
+    s.today.newDishes += 1;
+  } else if (fresh) s.discovered.push(recipe.id);
+  return err;
 }
 
 /** Nhấc món khỏi bếp: chưa đủ thời gian → sống. `toHand`: cầm luôn trên tay nếu còn tay trống. */
@@ -589,10 +605,12 @@ function finishStaffTask(s: GameState, st: Staff, rng: Rng) {
     if (task.error === 'waste') {
       const good = Math.max(0, qty - 2);
       run.prepped[task.ingredientId] = (run.prepped[task.ingredientId] ?? 0) + good;
+      s.today.prepped += good;
       s.report.staffErrors += 1;
       log(s, `🔪 ${st.name} sơ chế ẩu, làm hỏng ${qty - good} phần ${name}`, 'bad');
     } else {
       run.prepped[task.ingredientId] = (run.prepped[task.ingredientId] ?? 0) + qty;
+      s.today.prepped += qty;
     }
     return;
   }
@@ -834,6 +852,7 @@ export function tick(s: GameState, dt: number, rng: Rng) {
   if (run.playerPrep && t >= run.playerPrep.endsAt) {
     const { ingredientId, qty } = run.playerPrep;
     run.prepped[ingredientId] = (run.prepped[ingredientId] ?? 0) + qty;
+    s.today.prepped += qty;
     run.playerPrep = null;
   }
 
@@ -938,6 +957,7 @@ export function answerChat(s: GameState, customerId: string, answerIndex: number
 
 export function nextDay(s: GameState, rng: Rng) {
   if (s.phase !== 'summary' || s.gameOver) return;
+  autoClaimAll(s);
   s.day += 1;
   beginMarket(s, rng);
 }

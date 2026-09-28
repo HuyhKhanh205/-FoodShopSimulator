@@ -5,6 +5,8 @@ import Hud from '../../components/Hud';
 import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
+import RiverPath from '../../components/kid/RiverPath';
+import { NotebookButton } from '../../components/notebook/NotebookSheet';
 import { Button, ProgressBar, colors } from '../../components/ui';
 import { levelOf, levelProgress, mysteryRecipes } from '../../game/progression';
 import { trendHeat } from '../../game/trend';
@@ -54,7 +56,7 @@ export default function MarketView() {
     setPayError(null);
   };
   const sceneW = wide ? Math.min(width - 24, 900) : width;
-  const sceneH = Math.round(Math.min(420, height * 0.44));
+  const sceneH = Math.round(Math.min(400, height * 0.4));
 
   const expired = expiredQty(game);
   // Đi chợ giữa giờ bán: đồng hồ vẫn chạy, quán có thể đang treo biển tạm đóng.
@@ -87,7 +89,9 @@ export default function MarketView() {
     <View style={styles.flex}>
       <Hud game={game} />
       <View style={styles.headRow}>
-        <Text style={styles.heading}>{midday ? '🛒 Chợ' : `☀️ Chợ · ngày ${game.day}`}</Text>
+        <Text style={styles.heading} numberOfLines={1}>
+          {midday ? '🛒 Chợ' : `☀️ Ngày ${game.day}`}
+        </Text>
         {has3D && (
           <Pressable
             onPress={() => setSceneMode(simple ? '3d' : 'simple')}
@@ -98,8 +102,21 @@ export default function MarketView() {
             <Text style={styles.modeText}>{simple ? '🌴 3D' : '🔲 Đơn giản'}</Text>
           </Pressable>
         )}
+        <NotebookButton game={game} style={styles.nbBtn} />
         <HelpButton topic="market" />
       </View>
+      <RiverPath
+        game={game}
+        compact
+        style={styles.river}
+        onGo={(next) => {
+          // "Mua theo menu" trên đường sông: điền sẵn giỏ luôn (rồi chỉ vào 💳 Trả tiền).
+          if (next.target === 'market.pay') {
+            setPayError(null);
+            setBasket(suggestBasket(game));
+          }
+        }}
+      />
       {simple ? (
         <StallGrid game={game} onStall={setStall} deals={deals} />
       ) : (
@@ -114,7 +131,9 @@ export default function MarketView() {
               🕐 {formatClock(game.run!.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)} · {closed ? '🚪 Quán đóng tạm' : '👥 Có người trông quán'}
               {waiting ? ` · 🪑 ${waiting}` : ''}
             </Text>
-            <IconTile icon="🏃" label="Về quán" tone="primary" onPress={() => act((s) => returnToShop(s))} style={{ alignSelf: 'flex-start' }} />
+            <TutorialGlow on={targets.includes('market.back')} style={{ alignSelf: 'flex-start' }}>
+              <IconTile icon="🏃" label="Về quán" tone="primary" onPress={() => act((s) => returnToShop(s))} />
+            </TutorialGlow>
           </View>
         )}
         {!midday && game.day <= 3 && (
@@ -229,6 +248,8 @@ const styles = StyleSheet.create({
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 6, gap: 8 },
   modeBtn: { marginLeft: 'auto', backgroundColor: colors.cream, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 2, borderColor: colors.chunkyShadow },
   modeText: { fontWeight: '900', color: colors.brown },
+  nbBtn: { backgroundColor: colors.cream, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 2, borderColor: colors.chunkyShadow, flexDirection: 'row', gap: 4 },
+  river: { marginHorizontal: 12, marginTop: 6 },
   heading: { fontSize: 22, fontWeight: '900', color: colors.text },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tag: { backgroundColor: colors.warnBg, color: colors.primaryDark, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, fontWeight: '700', overflow: 'hidden' },

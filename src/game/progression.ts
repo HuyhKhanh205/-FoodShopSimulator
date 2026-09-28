@@ -65,6 +65,7 @@ export function experiment(s: GameState, ids: IngredientId[]): LabResult {
   registerDish(s, r);
   if (s.discovered.includes(r.id)) return { kind: 'known', recipeId: r.id };
   s.discovered.push(r.id);
+  if (s.today) s.today.newDishes += 1;
   const standard = !r.kind || r.kind === 'chuan';
   addXp(s, standard ? 15 : 5);
   if (standard) s.labFails = 0;

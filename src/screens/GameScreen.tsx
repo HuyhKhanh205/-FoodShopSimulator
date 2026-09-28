@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import EventModal from '../components/EventModal';
 import Toast from '../components/Toast';
+import NotebookSheet from '../components/notebook/NotebookSheet';
 import { colors } from '../components/ui';
 import { useGame } from '../game/GameContext';
 import MarketView from './views/MarketView';
@@ -29,6 +30,7 @@ export default function GameScreen() {
         {game.phase === 'open' && !game.run?.ownerAway && (viewMode === 'map' ? <ShopMapView /> : <ShopView />)}
         {game.phase === 'summary' && <SummaryView />}
       </View>
+      <NotebookSheet />
       <EventModal />
       <Toast />
     </SafeAreaView>

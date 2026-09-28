@@ -1,9 +1,13 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Hud from '../../components/Hud';
 import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
+import RiverPath from '../../components/kid/RiverPath';
+import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
+import { tutorialUi } from '../../components/kid/tutorialUi';
+import { claimMission, claimableCount, missionProgress, missionText, rewardText, todayMissions } from '../../game/missions';
 import { Panel, Stars, colors } from '../../components/ui';
 import { nextDay } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
@@ -26,6 +30,10 @@ export default function SummaryView() {
   const { act, startNewGame } = useGame();
   const { width } = useWindowDimensions();
   const [details, setDetails] = useState(false);
+  const targets = useTutorialTargets();
+  const missions = todayMissions(game);
+  const claimable = claimableCount(game);
+  const wroteDiary = game.diary.some((d) => d.day === game.day);
   const r = game.history[game.history.length - 1];
   if (!r) return null;
 
@@ -43,6 +51,7 @@ export default function SummaryView() {
           <Text style={styles.heading}>🌙 Ngày {r.day}</Text>
           <HelpButton topic="summary" />
         </View>
+        <RiverPath game={game} style={{ marginBottom: 12 }} />
 
         {game.gameOver === 'bankrupt' && (
           <Panel style={{ backgroundColor: colors.badBg }}>
@@ -80,12 +89,52 @@ export default function SummaryView() {
             </Text>
           </View>
         </View>
+        {missions.length > 0 && (
+          <TutorialGlow on={targets.includes('summary.missions')} style={{ marginBottom: 12 }}>
+            <View style={styles.missions}>
+              <View style={styles.missionHead}>
+                <Text style={styles.missionTitle}>
+                  🎯 Nhiệm vụ hôm nay {missions.filter((m) => m.claimed || missionProgress(game, m).done).length}/{missions.length}
+                </Text>
+                {claimable > 0 && (
+                  <Pressable
+                    onPress={() => act((s) => missions.forEach((m) => void claimMission(s, m.id)))}
+                    style={styles.claimAll}
+                    accessibilityRole="button"
+                    accessibilityLabel="Nhận hết thưởng"
+                  >
+                    <Text style={styles.claimAllText}>🎁 Nhận hết ({claimable})</Text>
+                  </Pressable>
+                )}
+              </View>
+              {missions.map((m) => {
+                const p = missionProgress(game, m);
+                const t = missionText(m);
+                return (
+                  <Text key={m.id} style={[styles.missionLine, m.claimed && { color: colors.muted }]} numberOfLines={2}>
+                    {m.claimed ? '✅' : p.done ? '🎁' : p.failed ? '❌' : '⬜'} {t.icon} {t.text}
+                    {m.tier === 'hard' ? ' · KHÓ' : ''} — {rewardText(m.reward)}
+                  </Text>
+                );
+              })}
+              <Text style={styles.wallet}>
+                Túi: 🎟️ {game.tickets} · ⭐ {game.hopeStars}
+              </Text>
+            </View>
+          </TutorialGlow>
+        )}
         {game.gameOver ? (
           <IconTile icon="🔄" label="Chơi lại" name="Chơi lại từ đầu" size="lg" tone="primary" onPress={startNewGame} style={styles.nextBtn} />
         ) : (
-          <IconTile icon="☀️" label="Ngày mới" name="Sang ngày mới" size="lg" tone="primary" onPress={() => act((s, rng) => nextDay(s, rng))} style={styles.nextBtn} />
+          <TutorialGlow on={targets.includes('summary.next')} style={styles.nextBtn}>
+            <IconTile icon="☀️" label="Ngày mới" name="Sang ngày mới" size="lg" tone="primary" onPress={() => act((s, rng) => nextDay(s, rng))} style={{ minHeight: 100 }} />
+          </TutorialGlow>
         )}
         <View style={styles.smallRow}>
+          <TutorialGlow on={targets.includes('summary.diary')}>
+            <IconTile icon="✍️" label={wroteDiary ? 'Nhật ký ✓' : 'Nhật ký'} name="Viết nhật ký" size="sm" badge={wroteDiary ? undefined : '+🎟️'} onPress={() => tutorialUi.openNotebook('diary')} />
+          </TutorialGlow>
+          <IconTile icon="📒" label="Sổ tay" name="Mở sổ tay" size="sm" badge={claimable || undefined} onPress={() => tutorialUi.openNotebook('tasks')} />
           <IconTile icon="📊" label="Chi tiết" name="Xem chi tiết" size="sm" selected={details} onPress={() => setDetails((v) => !v)} />
           <IconTile icon="🏠" label="Menu" name="Về menu" size="sm" onPress={() => navigation.navigate('Home')} />
         </View>
@@ -180,5 +229,12 @@ const styles = StyleSheet.create({
   p: { color: colors.text, lineHeight: 19 },
   muted: { color: colors.muted },
   warn: { color: colors.bad, marginTop: 6, fontSize: 12 },
+  missions: { backgroundColor: '#FFFBF2', borderRadius: 18, borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4, padding: 12, gap: 4 },
+  missionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 },
+  missionTitle: { fontSize: 17, fontWeight: '900', color: colors.text },
+  missionLine: { fontSize: 13, fontWeight: '700', color: colors.text },
+  claimAll: { backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 4, borderColor: colors.primaryDark },
+  claimAllText: { color: '#fff', fontWeight: '900' },
+  wallet: { marginTop: 4, fontSize: 13, fontWeight: '900', color: colors.primaryDark },
   review: { borderBottomWidth: 1, borderBottomColor: '#F7EDE2', paddingVertical: 5 },
 });

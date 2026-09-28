@@ -3,17 +3,19 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { useGame } from '../../game/GameContext';
 import { tutorialTargets } from '../../game/tutorial';
+import { useTutorialUi, withFlowGlow } from './tutorialUi';
 
 /** Chỗ này đang được bếp trưởng chỉ vào không (vd 'market.open', 'kitchen.prep:hanh'). */
 export function useTutorialTarget(key: string): boolean {
-  const { game } = useGame();
-  return game ? tutorialTargets(game).includes(key) : false;
+  return useTutorialTargets().includes(key);
 }
 
 /** Tất cả chỗ đang được chỉ vào (gọi một lần rồi dùng `includes` trong vòng lặp). */
 export function useTutorialTargets(): string[] {
   const { game } = useGame();
-  return game ? tutorialTargets(game) : [];
+  const ui = useTutorialUi();
+  // Kèm chỗ Đường sông đang chỉ (bấm "▶ Tiếp tục").
+  return withFlowGlow(game ? tutorialTargets(game) : [], ui);
 }
 
 /** Viền vàng nhấp nháy + ngón tay 👆 nhún nhảy quanh thứ cần bấm. */

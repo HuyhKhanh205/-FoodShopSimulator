@@ -80,6 +80,18 @@ Màn chợ là **cảnh 3D chợ trên bờ sông** (mô hình Kenney + KayKit, 
 - Dữ liệu người bán (thân thiết, lượt trả giá) nằm trong bản lưu **trên máy người chơi**, không gửi đi đâu.
 - Chế độ **Đơn giản**: 4 ô sạp lớn tô màu nhóm, chạm là mở sạp ngay.
 
+### 🛶 Đường sông — biết ngay việc cần làm
+Dải sông nhỏ ở màn chợ, trong quán và lúc tổng kết cho thấy tiến trình một ngày: **🛶 Chợ nổi → 🔪 Sơ chế → 🍳 Nấu ăn → 🍽️ Phục vụ → 🌙 Tổng kết**.
+- Bến đã làm có **✓**, bến đang làm có ghe 🛶 nhấp nhô và nhãn **ĐANG**. Trong giờ bán, Sơ chế ↺ Nấu ↺ Phục vụ là một vòng: bến "ĐANG" là việc cần nhất lúc đó (chưa thái đồ → sơ chế; khách chờ → nấu; món chín / đang cầm → mang ra bàn).
+- Nút **▶ Tiếp tục…** chỉ viền vàng vào chỗ cần bấm, trong quán còn tự đi tới thớt / bếp / quầy ra món / bàn khách; ở chợ thì điền sẵn giỏ theo menu. Chạm một bến để Chú Tư đọc gợi ý.
+
+### 📒 Sổ tay chủ quán — nhiệm vụ, nhật ký, vé thưởng, sao hy vọng
+Bấm **📒 Sổ** (chấm đỏ = có thưởng chờ nhận). Sổ giấy kẻ dòng, tab bên phải:
+- **📋 Việc hôm nay**: mỗi sáng 3 nhiệm vụ (mua, sơ chế, nấu, phục vụ, bán món đặc biệt, thử công thức mới…), **từ ngày 3 thêm 1 nhiệm vụ KHÓ** (không bàn nào bỏ về, lãi ít nhất X, nhận N đánh giá 5★). Xong thì bấm **🎁 Nhận**: thưởng **💰 tiền + 🎟️ vé thưởng**; việc khó có thêm **⭐ sao hy vọng**. Quên nhận thì sang ngày tự nhận. Mục tiêu co giãn theo số bàn mấy ngày gần đây.
+- **🌟 Món đặc biệt hôm nay**: bán món này được **XP ×2**, nhiệm vụ món đặc biệt thưởng ×2.
+- **✍️ Nhật ký**: chọn mặt cười, nhãn dán, viết tối đa 300 chữ; có dòng tóm tắt ngày tự sinh; lật xem trang cũ. Trang đầu mỗi ngày +1 🎟️. Chỉ lưu trong máy.
+- **👛 Túi**: tiền, 🎟️ vé (sau này mua nội thất), ⭐ sao (sau này quay thưởng) — hai cửa hàng này **sắp mở**.
+
 ### 🛒 Đi chợ giữa giờ bán
 Hết nguyên liệu giữa ngày? Bấm **🛒** trên màn chơi để chạy ra chợ (thời gian vẫn trôi).
 - **Chưa có nhân viên nào đang làm** → quán **treo biển tạm đóng**: không đón khách mới; khách đang ngồi vẫn chờ và có thể bỏ về, món trên bếp vẫn có thể cháy.
@@ -163,12 +175,15 @@ src/game/          Logic thuần (không phụ thuộc React) — dễ kiểm th
   customers.ts     Sinh khách, phục vụ, thanh toán, đánh giá
   events.ts        Các tình huống ngẫu nhiên và lựa chọn
   market.ts        Chợ: sạp, người bán, giá bớt bằng số tiền, trả giá, thân thiết, giỏ hàng, sức chứa kho
+  missions.ts      Sổ tay: nhiệm vụ hằng ngày, món đặc biệt, thưởng (tiền / vé / sao), nhật ký
+  dayflow.ts       Đường sông: bước đang làm trong ngày + việc tiếp theo
   dishes.ts        Tổ hợp nguyên liệu → món (chuẩn / lạ / quái dị), tên, giá, hình
   trend.ts         Trend: độ hot giảm dần, hệ số giá / khách / danh tiếng
   progression.ts   Cấp độ, mở khoá nguyên liệu / vị trí nhân viên, thử món, menu
   layout.ts        Bố cục bản đồ quán + tìm đường (BFS) cho chế độ góc nhìn nhân vật
   staffTarget.ts   Nhân viên đứng ở đâu trên bản đồ theo việc đang làm
   storage.ts       Lưu/tải bằng AsyncStorage (tự lưu ngoài giờ mở cửa)
+  migrate.ts       Nâng cấp bản lưu cũ (thêm trường mới với giá trị mặc định)
   GameContext.tsx  Kết nối engine với React (đồng hồ 200ms, tự lưu)
 src/screens/       Home, Game (Chợ / Mở cửa / Tổng kết), Nhân viên, Nâng cấp
 src/components/    CustomerCard, CookSlotCard, EventModal, Hud, ShopTopBar, ui

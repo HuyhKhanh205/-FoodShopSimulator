@@ -1,9 +1,12 @@
 /** Kiểm tra nhanh chế độ bản đồ (không cần giao diện): `npx tsx scripts/check-map.ts` */
 import { QUESTIONS } from '../src/game/chat';
 import * as M from '../src/game/market';
+import * as MI from '../src/game/missions';
+import * as MS from '../src/game/dayflow';
+import * as MG from '../src/game/migrate';
 import { VOICE } from '../src/assets/voice.generated';
 import { speechText, voiceLines } from '../src/game/voice';
-import { DAY_MS, RECIPES } from '../src/game/data';
+import { DAY_MS, PLAYER_PREP_MS, RECIPES } from '../src/game/data';
 import { dishFromCombo, registerDish, resolveCombo } from '../src/game/dishes';
 import { makeCustomer } from '../src/game/customers';
 import { dishNeeds, errorRate, handledCustomers, makeStaff, usableQty as uq } from '../src/game/helpers';
@@ -535,6 +538,111 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   g2.phase = 'summary';
   E.nextDay(g2, seededRng(9));
   check(g2.vendors.thit.haggles === M.HAGGLES_PER_DAY && g2.vendors.thit.haggleRate === 0, 'sáng mới hồi lượt trả giá');
+}
+
+// ================= Sổ tay chủ quán: nhiệm vụ, món đặc biệt, nhật ký; Đường sông =================
+{
+  const toDay = (g: ReturnType<typeof E.newGame>, day: number, seed: number) => {
+    while (g.day < day) {
+      g.activeEvent = null;
+      g.phase = 'summary';
+      E.nextDay(g, seededRng(seed + g.day));
+    }
+    g.activeEvent = null;
+    return g;
+  };
+  const g1 = E.newGame(seededRng(21));
+  g1.activeEvent = null;
+  check(g1.missions.day === 1 && g1.missions.list.length === 3 && g1.missions.special === 'banh_mi_trung', 'ngày 1: 3 nhiệm vụ cố định + món đặc biệt 🥪');
+  check(g1.tickets === 0 && g1.hopeStars === 0 && g1.diary.length === 0, 'bắt đầu 0 vé, 0 sao, nhật ký trống');
+  check(MS.dayFlow(g1).current === 'market' && MS.dayFlow(g1).next.target === 'market.pay', 'đường sông sáng đầu: ĐANG ở chợ, gợi ý Mua theo menu');
+  // Mua theo menu → nhiệm vụ mua trứng xong
+  check(M.checkout(g1, M.suggestBasket(g1)) === null, 'mua theo menu (sổ tay)');
+  const buyM = g1.missions.list.find((m) => m.kind === 'buy')!;
+  check(MI.missionProgress(g1, buyM).done, 'nhiệm vụ mua trứng xong sau khi trả tiền');
+  check(MS.dayFlow(g1).next.target === 'market.open', 'đủ đồ thì đường sông gợi ý 🏮 Mở cửa');
+  const money0 = g1.money;
+  const t0 = g1.tickets;
+  const rw = MI.claimMission(g1, buyM.id);
+  check(Boolean(rw) && g1.money === money0 + buyM.reward.money && g1.tickets === t0 + buyM.reward.tickets, 'nhận thưởng: cộng đúng tiền + vé');
+  check(MI.claimMission(g1, buyM.id) === null, 'không nhận được hai lần');
+  // Sơ chế trong giờ bán
+  E.openShop(g1, seededRng(3));
+  g1.activeEvent = null;
+  check(MS.dayFlow(g1).current === 'prep', 'mở cửa có hành chưa thái: ĐANG sơ chế');
+  check(E.playerPrep(g1, 'hanh') === null, 'bắt đầu thái hành');
+  E.tick(g1, PLAYER_PREP_MS + 50, seededRng(4));
+  g1.activeEvent = null;
+  const prepM = g1.missions.list.find((m) => m.kind === 'prep')!;
+  check(g1.today.prepped >= 4 && MI.missionProgress(g1, prepM).done, `nhiệm vụ sơ chế đo đúng (${g1.today.prepped} phần)`);
+  // Khách chờ → nấu; cầm món → phục vụ
+  g1.run!.customers.push({
+    id: 'cx', name: 'Test', emoji: '🙂', kind: 'normal', size: 1, tableIndex: 0, arrivedAt: 0, patience: 90_000, maxPatience: 90_000,
+    items: [{ recipeId: 'banh_mi_trung', noGarnish: false, served: false, quality: 0 }],
+  });
+  check(MS.dayFlow(g1).current === 'cook', 'khách chờ, đủ đồ sơ chế: ĐANG nấu');
+  g1.run!.pass.push({ id: 'dx', recipeId: 'banh_mi_trung', quality: 'perfect', noGarnish: false, by: 'Bạn' });
+  E.pickUpDish(g1, 'dx');
+  check(MS.dayFlow(g1).current === 'serve' && MS.dayFlow(g1).next.station === 'table', 'cầm món: ĐANG phục vụ, chỉ tới bàn');
+  // Món đặc biệt: XP ×2
+  const xp0 = g1.xp;
+  E.serveCarried(g1, 'cx', seededRng(5));
+  check(g1.today.specialServed === 1 && g1.xp - xp0 === 20, `phục vụ món đặc biệt: XP ×2 (+${g1.xp - xp0})`);
+  const st1 = MS.dayFlow(g1).stages;
+  check(st1[0].status === 'done' && st1[1].status === 'done' && st1[4].status === 'todo', 'bến đã làm có ✓ (chợ, sơ chế), tổng kết chưa tới');
+
+  // Ngày 3+: có nhiệm vụ khó, chỉ nhiệm vụ khó có ⭐
+  const g3 = toDay(E.newGame(seededRng(22)), 4, 100);
+  const hard = g3.missions.list.filter((m) => m.tier === 'hard');
+  check(g3.missions.list.length === 4 && hard.length === 1 && hard[0].reward.stars === 1, `ngày 4: 3 thường + 1 khó có ⭐ (${g3.missions.list.map((m) => m.kind).join(', ')})`);
+  check(g3.missions.list.filter((m) => m.tier !== 'hard').every((m) => m.reward.stars === 0), 'chỉ nhiệm vụ khó mới cho sao hy vọng');
+  const g3b = toDay(E.newGame(seededRng(22)), 4, 100);
+  check(JSON.stringify(g3b.missions) === JSON.stringify(g3.missions), 'cùng seed sinh cùng nhiệm vụ');
+  check(E.newGame(seededRng(23)).chefQueue.length === 0 && toDay(E.newGame(seededRng(23)), 2, 7).chefQueue.some((n) => n.kind === 'notebook'), 'sáng ngày 2 Chú Tư giới thiệu sổ tay');
+  const sp = g3.missions.list.find((m) => m.kind === 'special');
+  if (sp) check(sp.reward.money === MI.TIER_REWARD.medium.money * 2, 'nhiệm vụ món đặc biệt thưởng ×2');
+
+  // Nhiệm vụ chốt cuối ngày chỉ xong lúc tổng kết
+  const g5 = toDay(E.newGame(seededRng(24)), 3, 200);
+  const nl: import('../src/game/types').Mission = { id: 'm_test', kind: 'noLost', tier: 'hard', target: 2, reward: { money: 30_000, tickets: 3, stars: 1 }, claimed: false };
+  g5.missions.list.push(nl);
+  E.openShop(g5, seededRng(1));
+  g5.activeEvent = null;
+  g5.report.served = 3;
+  check(!MI.missionProgress(g5, nl).done, 'nhiệm vụ "không bàn nào bỏ về" chưa xong khi chưa hết ngày');
+  E.closeDay(g5);
+  check(MI.missionProgress(g5, nl).done, 'tổng kết: nhiệm vụ khó xong');
+  check(MS.dayFlow(g5).current === 'summary' && MS.dayFlow(g5).next.target === 'summary.missions', 'tổng kết: đường sông gợi ý Nhận thưởng');
+  const stars0 = g5.hopeStars;
+  const tk0 = g5.tickets;
+  const claimable = MI.claimableCount(g5);
+  E.nextDay(g5, seededRng(2));
+  check(g5.hopeStars === stars0 + 1 && g5.tickets > tk0 && claimable > 0 && g5.chefQueue.some((n) => n.kind === 'autoClaim'), 'quên nhận thì sang ngày tự nhận (có ⭐)');
+  check(g5.missions.day === 4 && g5.today.prepped === 0, 'sáng mới: nhiệm vụ mới, bộ đếm về 0');
+
+  // Nhật ký
+  const gd = E.newGame(seededRng(25));
+  check(MI.writeDiary(gd, '😄', 'Hôm nay vui quá', ['🍜']) && gd.tickets === 1, 'trang nhật ký đầu tiên trong ngày: +1 🎟️');
+  check(!MI.writeDiary(gd, '😢', 'x'.repeat(400)) && gd.tickets === 1 && gd.diary.length === 1, 'viết lại cùng ngày: ghi đè, không thêm vé');
+  check(gd.diary[0].mood === '😢' && gd.diary[0].text.length === MI.DIARY_TEXT_MAX, 'cắt còn 300 ký tự');
+  for (let d = 2; d <= 70; d += 1) {
+    gd.day = d;
+    MI.writeDiary(gd, '🙂', `ngày ${d}`);
+  }
+  check(gd.diary.length === MI.DIARY_MAX && gd.diary[0].day === 70 - MI.DIARY_MAX + 1, 'giữ tối đa 60 trang');
+
+  // Lưu / tải: bản lưu cũ được thêm giá trị mặc định; bản mới giữ nguyên
+  const saved = JSON.parse(JSON.stringify({ ...g5, run: null }));
+  const back = MG.migrateSave(saved);
+  check(back.tickets === g5.tickets && back.hopeStars === g5.hopeStars && JSON.stringify(back.missions) === JSON.stringify(g5.missions), 'lưu rồi tải: còn vé, sao, nhiệm vụ');
+  const old = JSON.parse(JSON.stringify({ ...g5, run: null }));
+  delete old.tickets;
+  delete old.hopeStars;
+  delete old.missions;
+  delete old.today;
+  delete old.diary;
+  const up = MG.migrateSave(old);
+  check(up.tickets === 0 && up.hopeStars === 0 && up.diary.length === 0 && up.missions.day === up.day && up.missions.list.length >= 3, 'bản lưu cũ: 0 vé, 0 sao, sinh nhiệm vụ hôm nay');
 }
 
 process.exit(failed ? 1 : 0);

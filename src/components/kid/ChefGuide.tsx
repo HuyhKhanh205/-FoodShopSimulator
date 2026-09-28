@@ -122,7 +122,15 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
       at: 'bottom',
       primary: { label: '👍 OK', onPress: pop },
       secondary:
-        n.kind === 'levelUp' && route !== 'Lab' && game.phase !== 'open'
+        n.kind === 'notebook' || n.kind === 'autoClaim'
+          ? {
+              label: '📒 Mở sổ',
+              onPress: () => {
+                pop();
+                tutorialUi.openNotebook(n.kind === 'autoClaim' ? 'bag' : 'tasks');
+              },
+            }
+          : n.kind === 'levelUp' && route !== 'Lab' && game.phase !== 'open'
           ? {
               label: '🧪 Thử món',
               onPress: () => {

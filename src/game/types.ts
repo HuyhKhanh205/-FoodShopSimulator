@@ -80,7 +80,44 @@ export type ChefNote =
   | { kind: 'newDish'; recipeId: RecipeId }
   | { kind: 'lab' }
   | { kind: 'trend'; recipeId: RecipeId; source: TrendSource }
-  | { kind: 'role'; role: StaffRole };
+  | { kind: 'role'; role: StaffRole }
+  | { kind: 'notebook' }
+  | { kind: 'autoClaim' };
+
+export type MissionKind = 'buy' | 'prep' | 'cook' | 'serve' | 'special' | 'newDish' | 'noLost' | 'profit' | 'stars';
+export type MissionTier = 'easy' | 'medium' | 'hard';
+
+/** Nhiệm vụ trong ngày (sổ tay chủ quán). Tiến độ tính từ báo cáo / bộ đếm, không lưu riêng. */
+export interface Mission {
+  id: string;
+  kind: MissionKind;
+  tier: MissionTier;
+  target: number;
+  ingredientId?: IngredientId;
+  recipeId?: RecipeId;
+  reward: { money: number; tickets: number; stars: number };
+  claimed: boolean;
+}
+
+/** Bộ đếm trong ngày cho nhiệm vụ (reset mỗi sáng). */
+export interface DayTally {
+  prepped: number;
+  cooked: number;
+  newDishes: number;
+  specialServed: number;
+  fiveStars: number;
+}
+
+export type DiaryMood = '😄' | '🙂' | '😐' | '😢' | '😡';
+
+/** Một trang nhật ký (chỉ lưu trên máy người chơi). */
+export interface DiaryEntry {
+  day: number;
+  mood: DiaryMood;
+  text: string;
+  summary: string;
+  stickers?: string[];
+}
 
 export type TrendSource = 'viral' | 'reviewer' | 'launch';
 
@@ -386,6 +423,16 @@ export interface GameState {
   trend: Trend | null;
   /** Người bán ở chợ: thân thiết, lượt trả giá (lưu cùng bản lưu, trên máy người chơi). */
   vendors: Record<'thit' | 'bot' | 'rau' | 'nuoc', { friendship: number; haggles: number; haggleRate: number }>;
+  /** 🎟️ Vé thưởng (sau này mua nội thất). */
+  tickets: number;
+  /** ⭐ Sao hy vọng (từ nhiệm vụ khó; sau này dùng vòng quay). */
+  hopeStars: number;
+  /** Nhiệm vụ hôm nay + món đặc biệt. */
+  missions: { day: number; special: RecipeId | null; list: Mission[] };
+  /** Bộ đếm trong ngày cho nhiệm vụ. */
+  today: DayTally;
+  /** Nhật ký chủ quán (mới nhất ở cuối). */
+  diary: DiaryEntry[];
   mods: DayModifiers;
   report: DayReport;
   history: DayReport[];

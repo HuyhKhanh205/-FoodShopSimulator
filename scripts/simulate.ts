@@ -3,6 +3,7 @@
  * Bot đơn giản tự mua đồ, sơ chế, nấu và phục vụ để kiểm tra cân bằng game.
  */
 import { DAY_MS, INGREDIENTS, RECIPES } from '../src/game/data';
+import * as MI from '../src/game/missions';
 import * as E from '../src/game/engine';
 import { addToMenu, experiment, levelOf, mysteryRecipes } from '../src/game/progression';
 import { canMake, makeStaff, seededRng, usableQty } from '../src/game/helpers';
@@ -67,6 +68,7 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
     s.staff.push(st);
   }
   const rows: string[] = [];
+  let bonus = 0;
   for (let d = 0; d < days && !s.gameOver; d++) {
     while (s.activeEvent) E.chooseEventOption(s, 0, rng);
     E.discardExpired(s);
@@ -87,9 +89,15 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
     const r = s.history[s.history.length - 1];
     rows.push(`d${r.day} served=${r.served} lost=${r.lost} noSeat=${r.noSeat} rev=${Math.round(r.revenue/1000)}k tips=${Math.round(r.tips/1000)}k ing=${Math.round(r.ingredientCost/1000)}k wages=${r.wages/1000}k fines=${r.fines/1000}k other=${r.otherCosts/1000}k errs=${r.staffErrors} burnt=${r.burnt} wrong=${r.wrongDishes} allerg=${r.allergic} rep=${r.repEnd.toFixed(2)} money=${Math.round(s.money/1000)}k`);
     if (s.money > 3_000_000) E.payDebt(s, s.money - 2_000_000);
+    // Nhiệm vụ: bot nhận thưởng (NO_MISSIONS=1 để so với khi chưa có sổ tay).
+    if (process.env.NO_MISSIONS) s.missions.list = [];
+    for (const m of s.missions.list) {
+      const r2 = MI.claimMission(s, m.id);
+      if (r2) bonus += r2.money;
+    }
     E.nextDay(s, rng);
   }
-  console.log(`\n=== ${label} → debt=${Math.round(s.debt/1000)}k gameOver=${s.gameOver} level=${levelOf(s.xp)} menu=${s.unlockedRecipes.length}`);
+  console.log(`\n=== ${label} → debt=${Math.round(s.debt/1000)}k gameOver=${s.gameOver} level=${levelOf(s.xp)} menu=${s.unlockedRecipes.length} · thưởng NV=${Math.round(bonus / 1000)}k 🎟️${s.tickets} ⭐${s.hopeStars}`);
   console.log(rows.filter((_, i) => i < 3 || i % 5 === 0 || i === rows.length - 1).join('\n'));
 }
 

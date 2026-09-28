@@ -139,5 +139,7 @@ export function noteText(n: ChefNote): string {
     const role = n.role === 'prep' ? '🔪 phụ bếp' : n.role === 'cook' ? '👨‍🍳 đầu bếp' : '🍽️ phục vụ';
     return `👥 Giờ con thuê được ${role} rồi! Có cả 🎓 sinh viên giá rẻ — nhưng coi chừng các em vụng về nha.`;
   }
+  if (n.kind === 'notebook') return '📒 Mở Sổ tay coi việc hôm nay nè! Xong việc có tiền, 🎟️ vé thưởng, việc khó còn có ⭐ sao hy vọng. Tối về nhớ viết nhật ký nha!';
+  if (n.kind === 'autoClaim') return '🎁 Hôm qua con quên nhận thưởng nhiệm vụ, chú bỏ vô túi cho con rồi đó!';
   return 'Chọn 2–4 nguyên liệu bỏ vào nồi rồi bấm 🧪 Nấu thử!';
 }

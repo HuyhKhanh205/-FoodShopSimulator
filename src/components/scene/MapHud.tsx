@@ -28,13 +28,15 @@ function IconButton({ label, onPress, active, disabled, size }: { label: string;
  * giờ, tiền, ★ / độ sạch; nút chuyển Đơn giản / 3D ở giữa; chỉ giữ ⏸ và ❗.
  * Các nút khác (Chợ, Lau, Kho, Bố trí...) nằm ở thanh hành động có nhãn phía dưới.
  */
-export default function MapHud({ canToggle = true }: { compact?: boolean; canToggle?: boolean }) {
+export default function MapHud({ canToggle = true, below }: { compact?: boolean; canToggle?: boolean; below?: React.ReactNode }) {
   const btn = 42;
   const game = useGameState();
   const { paused, setPaused, sceneMode, setSceneMode } = useGame();
   const run = game.run!;
   const dayRatio = Math.min(1, run.elapsed / DAY_MS);
   const clean = Math.round(game.cleanliness);
+  // Món đặc biệt hôm nay (XP ×2).
+  const special = game.missions?.day === game.day && game.missions.special ? RECIPES[game.missions.special] : null;
   const warnings = [
     isPeak(run.elapsed) ? { text: '🔥 Đông khách', tone: 'warn' as const } : null,
     run.elapsed < run.powerOutUntil ? { text: '🔌 Cúp điện', tone: 'bad' as const } : null,
@@ -42,6 +44,7 @@ export default function MapHud({ canToggle = true }: { compact?: boolean; canTog
     game.trend && trendHeat(game) > 0 && RECIPES[game.trend.recipeId]
       ? { text: `🔥 ${RECIPES[game.trend.recipeId].emoji} ${Math.round(trendHeat(game) * 100)}%`, tone: 'warn' as const }
       : null,
+    special ? { text: `🌟 ${special.emoji} ×2`, tone: 'warn' as const } : null,
   ].filter(Boolean) as { text: string; tone: 'warn' | 'bad' }[];
   // Hai tin mới nhất, hiện trong 6 giây.
   const fresh = run.log.filter((l) => run.elapsed - l.t < 6000).slice(0, 2);
@@ -86,6 +89,7 @@ export default function MapHud({ canToggle = true }: { compact?: boolean; canTog
           <HelpButton topic="shop" style={{ width: btn, height: btn, borderRadius: btn / 2 }} />
         </View>
       </View>
+      {below}
       {warnings.length > 0 && (
         <View style={styles.pills}>
           {warnings.map((w) => (

@@ -10,6 +10,9 @@ import MapHud from '../../components/scene/MapHud';
 import SceneOverlay from '../../components/scene/SceneOverlay';
 import ChatPrompt from '../../components/kid/ChatPrompt';
 import { tutorialUi } from '../../components/kid/tutorialUi';
+import RiverPath from '../../components/kid/RiverPath';
+import { NotebookButton } from '../../components/notebook/NotebookSheet';
+import type { FlowNext } from '../../game/dayflow';
 import ShopScene3D from '../../components/scene/ShopScene3D';
 import { ISO_YAW, fitCamera, makeCamera, screenDirToTile } from '../../components/scene/camera';
 import { colors } from '../../components/ui';
@@ -286,7 +289,23 @@ export default function ShopMapView() {
     [has3D, arrive]
   );
   const openUpgrades = () => navigation.navigate('Upgrades' as never);
-  const HUD_H = 124;
+  /** Đường sông "▶ Tiếp tục": đi tới trạm cần làm (bàn đang chờ món trên tay, thớt, bếp, quầy ra món). */
+  const flowGo = useCallback(
+    (next: FlowNext) => {
+      if (!next.station) return;
+      const st =
+        next.station === 'table'
+          ? layout.stations.find((x) => wanted.has(x.id))
+          : layout.stations.find((x) => x.id === next.station && x.active) ?? layout.stations.find((x) => x.kind === 'board');
+      if (!st) return;
+      if (simple) tapStation(st);
+      else goToStation(st);
+    },
+    [layout, wanted, simple, tapStation, goToStation]
+  );
+  // Dải Đường sông thu gọn nằm ngay dưới HUD.
+  const RIVER_H = 50;
+  const HUD_H = 124 + RIVER_H;
   const BAR_H = 74;
   const cleanReady = run.elapsed >= run.cleanReadyAt;
 
@@ -296,6 +315,7 @@ export default function ShopMapView() {
       <BarButton icon="🧽" label={cleanReady ? 'Lau' : 'Lau ⏳'} disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />
       <BarButton icon="📦" label="Kho" onPress={() => setStockOpen(true)} />
       <BarButton icon="📋" label="Bảng" onPress={() => setViewMode('panel')} />
+      <NotebookButton game={game} style={styles.barBtn} />
       {!simple && <BarButton icon="🧱" label="Bố trí" active={arrange} onPress={() => setArrange(!arrange)} />}
     </View>
   );
@@ -345,7 +365,7 @@ export default function ShopMapView() {
         ) : (
           <SimpleView game={game} layout={layout} targets={targets} onStation={tapStation} topInset={HUD_H + 28} bottomInset={BAR_H + 44} />
         ))}
-      {!fp && <MapHud canToggle={has3D} />}
+      {!fp && <MapHud canToggle={has3D} below={<RiverPath game={game} compact onGo={flowGo} />} />}
       {!fp && actionBar}
       {!fp && (
         <View pointerEvents="none" style={[styles.hands, { bottom: BAR_H + 10 }]}>

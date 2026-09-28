@@ -2,7 +2,7 @@
  * Hướng dẫn bằng hình cho nút "!" trên từng màn: mỗi bước là một hình to + một câu ngắn
  * (đủ để bé 5 tuổi nghe bố mẹ đọc, hoặc bấm 🔊 để máy đọc).
  */
-export type HelpTopic = 'home' | 'character' | 'market' | 'shop' | 'kitchen' | 'counter' | 'event' | 'summary' | 'staff' | 'upgrades' | 'lab';
+export type HelpTopic = 'home' | 'character' | 'market' | 'shop' | 'kitchen' | 'counter' | 'event' | 'summary' | 'staff' | 'upgrades' | 'lab' | 'notebook';
 
 export interface HelpStep {
   icon: string;
@@ -120,6 +120,19 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
       { icon: '➕', text: 'Thích món nào thì bấm Thêm vào menu — khách sẽ gọi món mới nhiều hơn trong ngày đầu.' },
       { icon: '🧟', text: 'Món quái dị dễ bị khách chê, nhưng biết đâu thành trend 🔥!' },
       { icon: '📖', text: 'Chạm vào món trong sổ để đưa vào hoặc bỏ khỏi menu.' },
+    ],
+  },
+  notebook: {
+    title: 'Sổ tay chủ quán',
+    steps: [
+      { icon: '📋', text: 'Mỗi sáng có việc hôm nay. Làm xong thì bấm Nhận thưởng.' },
+      { icon: '🎟️', text: 'Thưởng có tiền và vé thưởng. Vé để dành mua đồ trang trí quán sau này.' },
+      { icon: '⭐', text: 'Việc khó có thêm sao hy vọng. Sao để dành quay thưởng sau này.' },
+      { icon: '🌟', text: 'Bán món đặc biệt hôm nay được gấp đôi điểm.' },
+      { icon: '✍️', text: 'Tối về viết nhật ký: chọn mặt cười, nhãn dán, viết vài dòng rồi bấm Lưu trang.' },
+    ],
+    more: [
+      { icon: '🛶', text: 'Đường sông ở trên cho biết đang tới bước nào trong ngày. Bấm Tiếp tục để được chỉ chỗ cần làm.' },
     ],
   },
   upgrades: {

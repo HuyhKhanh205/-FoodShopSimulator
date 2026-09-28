@@ -241,6 +241,7 @@ function completeCustomer(s: GameState, c: Customer, rng: Rng) {
   changeRep(s, repDelta > 0 ? repDelta * trendBoost : repDelta);
   const stars = clamp(Math.round(1 + 4 * score), 1, 5);
   addReview(s, c, stars, rng);
+  if (stars === 5) s.today.fiveStars += 1;
   if (c.kind === 'reviewer') {
     log(s, `📸 ${c.name} là food reviewer! Chấm ${stars}★`, stars >= 4 ? 'good' : 'bad');
   } else if (paid > 0) {
@@ -292,7 +293,10 @@ export function serveDish(s: GameState, dishId: string, customerId: string, rng:
   // Nhận được món thì khách vui lên một chút.
   c.patience = Math.min(c.maxPatience, c.patience + c.maxPatience * SERVE_REFILL);
   reactToOddDish(s, c, target, rng);
-  addXp(s, dish.quality === 'perfect' ? 10 : 4);
+  // Món đặc biệt hôm nay: XP ×2.
+  const special = s.missions?.day === s.day && s.missions.special === dish.recipeId;
+  if (special) s.today.specialServed += 1;
+  addXp(s, (dish.quality === 'perfect' ? 10 : 4) * (special ? 2 : 1));
   if (dish.quality === 'raw') log(s, `😖 ${c.name}: "${recipe.name} còn sống!"`, 'bad');
   if (dish.quality === 'burnt') log(s, `🤮 ${c.name}: "${recipe.name} cháy khét!"`, 'bad');
   if (c.items.every((i) => i.served)) completeCustomer(s, c, rng);
