@@ -5,6 +5,7 @@ import * as MI from '../src/game/missions';
 import * as MS from '../src/game/dayflow';
 import * as MG from '../src/game/migrate';
 import * as U from '../src/game/unlocks';
+import * as RV from '../src/game/reviews';
 type UF = U.UiFeature;
 import { VOICE } from '../src/assets/voice.generated';
 import { speechText, voiceLines } from '../src/game/voice';
@@ -19,7 +20,7 @@ import type { IngredientId } from '../src/game/types';
 import { TUTORIAL, advanceTutorial, currentStep, stepSay, tutorialTargets } from '../src/game/tutorial';
 import { addXp, experiment, levelOf, unlockedIngredients } from '../src/game/progression';
 const usableQty = uq;
-import { START_UPGRADES } from '../src/game/data';
+import { START_UPGRADES, UPGRADES } from '../src/game/data';
 import * as E from '../src/game/engine';
 import * as CULL from '../src/components/scene/cull';
 import * as STREET from '../src/game/street';
@@ -1219,13 +1220,141 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
     for (let k = 0; k < 200; k += 1) {
       const chips = Array.from({ length: 4 }, () => ({ x: 40 + r() * (w - 80), y: 60 + r() * (h * 0.6) }));
       const call = { x: chips[k % 4].x + (r() - 0.5) * 60, y: chips[k % 4].y + 40 };
-      const lay = LABELS.placeLabels(chips, call, w, h);
-      const rects = [...lay.chips, ...(lay.bubble ? [lay.bubble] : [])];
+      const owner = k % 3 === 0 ? { x: call.x + 30, y: call.y + 20 } : null;
+      const lay = LABELS.placeLabels(chips, call, w, h, 0, 0, owner);
+      const rects = [...lay.chips, ...(lay.bubble ? [lay.bubble] : []), ...(lay.owner ? [lay.owner] : [])];
+      if (owner && !lay.owner) bad += 1;
       for (let i = 0; i < rects.length; i += 1) for (let j = i + 1; j < rects.length; j += 1) if (LABELS.overlaps(rects[i], rects[j], 0)) bad += 1;
       if (!lay.bubble) bad += 1;
     }
   }
-  check(bad === 0, `chữ tên sạp + câu rao không đè nhau (400 bố cục ngẫu nhiên, ${bad} lỗi)`);
+  check(bad === 0, `chữ tên sạp + câu rao + chủ quán chào không đè nhau (400 bố cục ngẫu nhiên, ${bad} lỗi)`);
+}
+
+// ================= Nâng cấp mua được tới mức cao nhất; bản lưu lệch mức =================
+{
+  for (const def of UPGRADES) {
+    const g = E.newGame(seededRng(90));
+    g.money = 1e9;
+    check(def.levels.includes(g.upgrades[def.key]) && def.costs.length === def.levels.length - 1, `${def.key}: mức khởi đầu có trong danh sách, đủ giá`);
+    const seen = [g.upgrades[def.key]];
+    while (E.buyUpgrade(g, def.key)) seen.push(g.upgrades[def.key]);
+    check(seen.join() === def.levels.join(), `${def.key}: mua lần lượt ${seen.join(' → ')}`);
+  }
+  const old = E.newGame(seededRng(91));
+  old.money = 1e9;
+  const broken = MG.migrateSave(JSON.parse(JSON.stringify({ ...old, upgrades: { ...old.upgrades, seats: 7 } })));
+  const seatsOf = (x: { upgrades: { seats: number } }) => x.upgrades.seats;
+  check(seatsOf(broken) === 6 && E.buyUpgrade(broken, 'seats') && seatsOf(broken) === 8, 'bản lưu 7 bàn (lệch mức) → làm tròn 6, mua tiếp được 8');
+  const four = E.newGame(seededRng(92));
+  four.money = 1e9;
+  check(seatsOf(four) === 4 && E.buyUpgrade(four, 'seats') && seatsOf(four) === 5, 'quán 4 bàn mua thêm được bàn thứ 5');
+}
+
+// ================= Phong cảnh: mặt cỏ luôn thấp hơn mặt nước =================
+{
+  const kit = require('fs').readFileSync('src/components/scene/SceneryKit.tsx', 'utf8');
+  const num = (name: string) => Number(kit.match(new RegExp(`export const ${name} = (-?[\\d.]+)`))?.[1]);
+  const grass = num('GRASS_Y');
+  const water = num('WATER_Y');
+  check(grass < water - 0.05, `mặt cỏ (${grass}) thấp hơn mặt nước (${water})`);
+  let ok = true;
+  for (const f of ['src/components/scene/Surroundings.tsx', 'src/components/scene/MarketSurroundings.tsx', 'src/components/street/StreetScene3D.tsx']) {
+    const src = require('fs').readFileSync(f, 'utf8');
+    // Mặt cỏ lớn (160×160) phải dùng GRASS_Y, không đặt tay.
+    for (const m of src.matchAll(/<Flat[^>]*w=\{1[0-9]{2}\}[^>]*>/g)) if (!m[0].includes('GRASS_Y')) ok = false;
+  }
+  check(ok, 'mặt cỏ lớn ở quán / chợ / khu phố đều dùng GRASS_Y');
+}
+
+// ================= Trả lời đánh giá =================
+{
+  const tone = (t: string, st: number) => RV.analyzeReply(t, st).tone;
+  const cases: [string, number, string][] = [
+    ['Cảm ơn bạn nhiều nha!', 5, 'thanks'],
+    ['cam on ban nhieu nhe', 5, 'thanks'],
+    ['🙏', 5, 'thanks'],
+    ['ok', 5, 'short'],
+    ['ok', 2, 'short'],
+    ['Xin lỗi bạn, hôm đó quán đông khách quá, lần sau quán sẽ nhanh hơn.', 2, 'sorry'],
+    ['xin loi ban, lan sau quan se co gang hon', 2, 'sorry'],
+    ['Cảm ơn góp ý của bạn', 2, 'sorry'],
+    ['Quán mất điện nên chậm, xin lỗi bạn', 2, 'sorry'],
+    ['Xin lỗi bạn nha, mời bạn quay lại quán tặng ly trà đá!', 1, 'invite'],
+    ['xin loi, moi ban quay lai quan giam gia', 1, 'invite'],
+    ['Không thích thì đừng ăn nữa', 1, 'rude'],
+    ['KHÁCH GÌ KHÓ TÍNH VẬY', 2, 'rude'],
+    ['Kệ bạn', 3, 'rude'],
+    ['mày biết gì', 1, 'rude'],
+    ['Món xào hôm nay quán sáng tạo thêm rau', 5, 'meh'],
+    ['Chúc bạn ngủ ngon', 5, 'meh'],
+    ['Quán rất vui vì bạn thích món, cảm ơn nha!', 4, 'thanks'],
+    ['Hôm đó bếp bị hỏng', 2, 'meh'],
+    ['Điện cúp nên chậm, xin lỗi bạn nhiều', 3, 'sorry'],
+  ];
+  const wrong = cases.filter(([t, st, want]) => tone(t, st) !== want).map(([t, st, want]) => `"${t}" ${st}★ → ${tone(t, st)} (cần ${want})`);
+  check(wrong.length === 0, `đọc giọng trả lời đúng ${cases.length - wrong.length}/${cases.length}${wrong.length ? ': ' + wrong.join('; ') : ''}`);
+
+  const g = E.newGame(seededRng(95));
+  g.reputation = 3;
+  g.report.reviews = [
+    { name: 'An', stars: 5, text: 'Ngon!' },
+    { name: 'Bình', stars: 1, text: 'Chờ lâu quá' },
+    { name: 'Chi', stars: 2, text: 'Hơi mặn' },
+    { name: 'Dũng', stars: 1, text: 'Dở' },
+  ];
+  const r0 = g.reputation;
+  const a = RV.replyReview(g, 1, 'Xin lỗi bạn nha, hôm đó đông khách. Mời bạn quay lại, quán tặng ly trà đá!', () => 0.9);
+  check(Boolean(a?.reply && a.reply.tone === 'invite' && a.reply.back) && Math.abs(g.reputation - r0 - 0.05) < 1e-9, 'xin lỗi + mời quay lại: +0,05 danh tiếng, khách mai quay lại');
+  check(g.buffs.some((b) => b.id === 'reply-back' && b.from === g.day + 1), 'khách quay lại: hôm sau đông khách hơn chút');
+  check(RV.replyReview(g, 1, 'Cảm ơn lần nữa') === null, 'mỗi đánh giá chỉ trả lời 1 lần');
+  const r1 = g.reputation;
+  RV.replyReview(g, 3, 'Không thích thì đừng ăn');
+  check(Math.abs(g.reputation - r1 + 0.05) < 1e-9 && g.report.reviews[3].reply?.tone === 'rude' && g.report.reviews[3].reply!.reaction.length > 0, 'thô lỗ: −0,05, khách đáp lại giận');
+  RV.replyReview(g, 2, 'x'.repeat(500));
+  check(g.report.reviews[2].reply!.text.length === RV.REPLY_MAX, 'câu trả lời dài bị cắt còn 200 chữ');
+  // Giới hạn +0,1 mỗi ngày.
+  const h = E.newGame(seededRng(96));
+  h.reputation = 3;
+  h.report.reviews = Array.from({ length: 6 }, (_, i) => ({ name: `K${i}`, stars: 1, text: 'Tệ' }));
+  for (let i = 0; i < 6; i += 1) RV.replyReview(h, i, 'Xin lỗi bạn, mời bạn quay lại quán tặng trà đá nha!', () => 0.9);
+  check(Math.abs(h.reputation - 3.1) < 1e-9, `danh tiếng từ trả lời tối đa +0,1 mỗi ngày (${(h.reputation - 3).toFixed(3)})`);
+  check(RV.unanswered(h) === 0 && RV.answered(h) === 6, 'đếm đánh giá đã / chưa trả lời');
+  // Nhiệm vụ trả lời đánh giá: chốt lúc tổng kết.
+  const m = { id: 'x', kind: 'reply' as const, tier: 'medium' as const, target: 3, reward: { money: 1, tickets: 1, stars: 0 }, claimed: false };
+  h.phase = 'summary';
+  check(MI.missionProgress(h, m).done && MI.missionText(m).text.includes('Trả lời 3'), 'nhiệm vụ "Trả lời 3 đánh giá" xong khi trả lời đủ');
+  // Chú Tư nhắc cách trả lời lần đầu bị chê.
+  const t = E.newGame(seededRng(97));
+  t.report.reviews = [{ name: 'Z', stars: 2, text: 'Tệ' }];
+  RV.queueReplyTip(t);
+  RV.queueReplyTip(t);
+  check(t.chefQueue.filter((n) => n.kind === 'news' && n.text === RV.REPLY_TIP).length === 1, 'lần đầu bị chê: Chú Tư nhắc 1 lần');
+}
+
+// ================= Nút 👉 Làm tiếp luôn có nhãn + chỗ đi =================
+{
+  const g = E.newGame(seededRng(98));
+  g.activeEvent = null;
+  g.tutorial.done = true;
+  let ok = true;
+  const labels = new Set<string>();
+  const look = () => {
+    const n = MS.dayFlow(g).next;
+    labels.add(n.label);
+    if (!n.label || n.label.length > 32) ok = false;
+    if (n.station && n.station !== 'table' && !buildLayout(g.upgrades).stations.some((s) => s.id === n.station)) ok = false;
+  };
+  look();
+  M.checkout(g, M.suggestBasket(g));
+  look();
+  E.openShop(g, seededRng(99));
+  for (let i = 0; i < 300 && g.run; i += 1) {
+    E.tick(g, 200, seededRng(i));
+    g.activeEvent = null;
+    look();
+  }
+  check(ok && labels.size >= 3, `nhãn Làm tiếp ngắn, trạm có thật (${[...labels].slice(0, 6).join(' | ')})`);
 }
 
 process.exit(failed ? 1 : 0);

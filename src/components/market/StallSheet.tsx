@@ -127,7 +127,7 @@ export default function StallSheet({
             <Pressable onPress={doHaggle} disabled={st.haggles <= 0} style={[styles.haggle, st.haggles <= 0 && { opacity: 0.4 }]} accessibilityRole="button" accessibilityLabel="Trả giá">
               <Text style={styles.haggleText}>🤝 Trả giá · còn {st.haggles} lượt</Text>
             </Pressable>
-            <TutorialGlow on={targets.includes('stall.done')} radius={14}>
+            <TutorialGlow on={targets.includes('stall.done')} radius={14} style={{ alignSelf: 'stretch' }}>
               <Pressable onPress={onClose} style={styles.done} accessibilityRole="button" accessibilityLabel="Xong sạp này">
                 <Text style={styles.doneText}>✓ Xong</Text>
               </Pressable>
@@ -163,6 +163,6 @@ const styles = StyleSheet.create({
   foot: { flexDirection: 'row', gap: 8 },
   haggle: { flex: 1, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 12, alignItems: 'center', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
   haggleText: { fontSize: 15, fontWeight: '900', color: colors.brown },
-  done: { backgroundColor: colors.brown, borderRadius: 16, paddingHorizontal: 20, justifyContent: 'center' },
+  done: { flex: 1, backgroundColor: colors.brown, borderRadius: 16, paddingHorizontal: 20, justifyContent: 'center' },
   doneText: { color: colors.cream, fontWeight: '900', fontSize: 16 },
 });

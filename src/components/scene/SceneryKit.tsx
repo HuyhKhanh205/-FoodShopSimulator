@@ -271,7 +271,7 @@ export function FishBridge({ x, zBank, len = 3.2, lite }: { x: number; zBank: nu
         <meshLambertMaterial color="#C0A15A" />
       </mesh>
       {/* Chòi */}
-      <group position={[0, 0, hutZ]}>
+      <group position={[0, 0, hutZ]} scale={1.25}>
         {posts.map(([px, pz], i) => (
           <mesh key={i} position={[px * 0.9, 0.05, pz * 0.9]}>
             <cylinderGeometry args={[0.05, 0.05, 0.9, 6]} />

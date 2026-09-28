@@ -117,7 +117,7 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
       key: `tut-${game.tutorial.step}`,
       text: stepSay(step, game),
       at: step.at,
-      primary: step.tapToContinue ? { label: game.tutorial.step === 0 ? '▶ Bắt đầu' : '👍 OK', onPress: () => act((s) => advanceTutorial(s)) } : undefined,
+      primary: step.tapToContinue ? { label: game.tutorial.step === 0 ? '▶ Bắt đầu' : step.id.startsWith('meet-') ? '👋 Sạp tiếp' : '👍 OK', onPress: () => act((s) => advanceTutorial(s)) } : undefined,
       onSkip: () => act((s) => skipTutorial(s)),
     };
   } else if (game && game.chefQueue.length > 0 && (inGame || route === 'Lab') && !game.activeEvent && !game.eventResult) {

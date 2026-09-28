@@ -150,7 +150,7 @@ export default function MarketView() {
             <StallGrid game={game} onStall={setStall} deals={deals} />
           </ScrollView>
         ) : (
-          area.w > 0 && <MarketScene3D game={game} onStall={setStall} width={area.w} height={area.h} insets={{ top: nextBtn ? (midday ? 128 : 114) : 52, bottom: 70 }} meet={meetId} />
+          area.w > 0 && <MarketScene3D game={game} onStall={setStall} width={area.w} height={area.h} insets={{ top: tutMarket ? 270 : nextBtn ? (midday ? 128 : 114) : 52, bottom: 70 }} meet={meetId} />
         )}
 
         {/* Góc trên: 1 hàng chip nhỏ + nút tròn; đường sông gợi ý việc tiếp theo ngay dưới */}
