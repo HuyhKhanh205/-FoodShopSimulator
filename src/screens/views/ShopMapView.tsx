@@ -399,16 +399,26 @@ export default function ShopMapView() {
         ))}
       {!fp && <MapHud canToggle={toggle} below={river ? <RiverPath game={game} compact onGo={flowGo} /> : null} />}
       {!fp && !paused && actionBar}
-      {/* Đứng cạnh đồ vật: nút tương tác ngay cạnh "Tay không" (hoặc chạm lại vào đồ vật đó). */}
-      {!fp && !paused && !simple && hereStation && hereStation.active && !walkingTo && (() => {
-        const a = stationAction(hereStation, run.carrying.length, has3D);
+      {/* Chip tay cầm gộp với tương tác: đứng cạnh đồ vật thì chip thành nút "🤲 … | 🔪 Thớt 👆 Vào bếp" (hoặc chạm lại vào đồ vật). */}
+      {!fp && !paused && (() => {
+        const hands = `🤲 ${carried.length ? carried.map((d) => RECIPES[d.recipeId].emoji + (d.noGarnish ? '🚫' : '')).join(' ') : 'Tay không'}`;
+        const near = !simple && hereStation && hereStation.active && !walkingTo ? hereStation : null;
+        if (!near)
+          return (
+            <View pointerEvents="none" style={[styles.hands, { bottom: BAR_H + 10 }]}>
+              <Text style={styles.handsText}>{hands}</Text>
+            </View>
+          );
+        const a = stationAction(near, run.carrying.length, has3D);
         return (
           <Pressable
-            onPress={() => (hereStation.kind === 'fridge' ? setStockOpen(true) : arrive(hereStation))}
-            style={({ pressed }) => [styles.interact, { bottom: BAR_H + 8 }, pressed && { transform: [{ translateY: 2 }] }]}
+            onPress={() => (near.kind === 'fridge' ? setStockOpen(true) : arrive(near))}
+            style={({ pressed }) => [styles.hands, styles.handsAct, { bottom: BAR_H + 8 }, pressed && { transform: [{ translateY: 2 }] }]}
             accessibilityRole="button"
             accessibilityLabel={`${a.verb}: ${a.name}`}
           >
+            <Text style={styles.handsText}>{hands}</Text>
+            <View style={styles.handsSep} />
             <Text style={styles.interactIcon}>{a.icon}</Text>
             <View>
               <Text style={styles.interactName} numberOfLines={1}>
@@ -419,13 +429,6 @@ export default function ShopMapView() {
           </Pressable>
         );
       })()}
-      {!fp && !paused && (
-        <View pointerEvents="none" style={[styles.hands, { bottom: BAR_H + 10 }]}>
-          <Text style={styles.handsText}>
-            🤲 {carried.length ? carried.map((d) => RECIPES[d.recipeId].emoji + (d.noGarnish ? '🚫' : '')).join(' ') : 'Tay không'}
-          </Text>
-        </View>
-      )}
       {!fp && !paused && toast && (
         <View pointerEvents="none" style={[styles.toast, { bottom: BAR_H + 60 }]}>
           <Text style={styles.toastText}>{toast}</Text>
@@ -586,22 +589,11 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   handsLow: { bottom: 14 },
-  interact: {
-    position: 'absolute',
-    right: 60,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.primary,
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderBottomWidth: 4,
-    borderColor: colors.primaryDark,
-  },
+  handsAct: { flexDirection: 'row', alignItems: 'center', gap: 6, borderColor: colors.primaryDark, borderBottomWidth: 4, paddingVertical: 4 },
+  handsSep: { width: 2, alignSelf: 'stretch', backgroundColor: colors.border, marginHorizontal: 2 },
   interactIcon: { fontSize: 24 },
-  interactName: { fontSize: 13, fontWeight: '900', color: '#fff' },
-  interactVerb: { fontSize: 12, fontWeight: '800', color: '#FFE0B2' },
+  interactName: { fontSize: 13, fontWeight: '900', color: colors.brown },
+  interactVerb: { fontSize: 12, fontWeight: '900', color: colors.primaryDark },
   toast: {
     position: 'absolute',
     alignSelf: 'center',

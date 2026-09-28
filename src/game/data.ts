@@ -6,7 +6,7 @@ export const DAY_MS = 600_000;
  * Nhịp khách so với ngày 3 phút cũ: ngày dài gấp 3,3 nhưng số khách cả ngày chỉ khoảng 65% lúc trước
  * (ít bị hết chỗ hơn nên số khách phục vụ được tương đương) — khách tới thưa, dễ thở hơn.
  */
-export const CUSTOMER_PACE = (180_000 / DAY_MS) * 0.65;
+export const CUSTOMER_PACE = (180_000 / DAY_MS) * 0.65 * 1.2; // ×1.2: đông khách hơn 20%
 export const OPEN_HOUR = 7;
 export const CLOSE_HOUR = 21;
 
