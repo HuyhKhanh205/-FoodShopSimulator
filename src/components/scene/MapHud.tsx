@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CLOSE_HOUR, DAY_MS, OPEN_HOUR, RECIPES } from '../../game/data';
 import { trendHeat } from '../../game/trend';
-import { isPeak } from '../../game/engine';
+import { closeEarly, isPeak } from '../../game/engine';
+import { useState } from 'react';
 import { useGame, useGameState } from '../../game/GameContext';
 import { formatClock, formatMoney } from '../../game/helpers';
 import { settingsStore, useSettings } from '../../game/settings';
@@ -109,8 +110,10 @@ export default function MapHud({ canToggle = true, below }: { compact?: boolean;
 
 /** Menu ⏸ Tạm dừng: ít lựa chọn, chữ to, che mờ cảnh phía sau. */
 function PauseMenu({ canToggle, onResume }: { canToggle: boolean; onResume: () => void }) {
-  const { sceneMode, setSceneMode } = useGame();
+  const { sceneMode, setSceneMode, act, game } = useGame();
   const settings = useSettings();
+  const [askClose, setAskClose] = useState(false);
+  const seated = game?.run?.customers.length ?? 0;
   return (
     <View style={styles.backdrop}>
       <View style={styles.menu} accessibilityLabel="Tạm dừng">
@@ -138,6 +141,29 @@ function PauseMenu({ canToggle, onResume }: { canToggle: boolean; onResume: () =
           action={settings.labels === 'always' ? 'Gọn lại' : 'Luôn hiện'}
           onPress={() => settingsStore.set({ labels: settings.labels === 'always' ? 'auto' : 'always' })}
         />
+        {askClose ? (
+          <View style={styles.confirm}>
+            <Text style={styles.confirmText}>🌙 Đóng cửa sớm, sang tổng kết?{seated ? ` ${seated} bàn khách đang chờ sẽ ra về.` : ''}</Text>
+            <View style={styles.confirmRow}>
+              <Pressable
+                onPress={() => {
+                  onResume();
+                  act((s) => void closeEarly(s));
+                }}
+                style={[styles.confirmBtn, { backgroundColor: colors.brown }]}
+                accessibilityRole="button"
+                accessibilityLabel="Nghỉ sớm luôn"
+              >
+                <Text style={[styles.confirmBtnText, { color: colors.cream }]}>🌙 Nghỉ luôn</Text>
+              </Pressable>
+              <Pressable onPress={() => setAskClose(false)} style={styles.confirmBtn} accessibilityRole="button" accessibilityLabel="Bán tiếp">
+                <Text style={styles.confirmBtnText}>Bán tiếp</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <MenuRow icon="🌙" label="Nghỉ sớm, qua ngày" action="Đóng cửa" onPress={() => setAskClose(true)} />
+        )}
         <MenuRow
           icon="❗"
           label="Cách chơi"
@@ -214,6 +240,11 @@ const styles = StyleSheet.create({
   resumeText: { fontSize: 22, fontWeight: '900', color: '#fff' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 12, borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
   rowIcon: { fontSize: 24 },
+  confirm: { backgroundColor: '#FFF3DC', borderRadius: 16, padding: 12, gap: 8, borderWidth: 2, borderColor: colors.accent },
+  confirmText: { fontSize: 15, fontWeight: '800', color: colors.brown },
+  confirmRow: { flexDirection: 'row', gap: 8 },
+  confirmBtn: { flex: 1, borderRadius: 14, paddingVertical: 11, alignItems: 'center', backgroundColor: '#fff', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
+  confirmBtnText: { fontSize: 15, fontWeight: '900', color: colors.brown },
   rowLabel: { flex: 1, fontSize: 16, fontWeight: '800', color: colors.brown },
   rowAction: { fontSize: 14, fontWeight: '900', color: colors.primaryDark },
 });

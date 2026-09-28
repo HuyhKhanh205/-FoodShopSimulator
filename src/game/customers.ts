@@ -42,7 +42,7 @@ function pickMenu<T extends { id: RecipeId }>(s: GameState, rng: Rng, list: T[])
 
 /** Ngày làm quen: lượng khách ngày 1 ≈ 1/3, ngày 2 ≈ 1/2, ngày 3 ≈ 3/4, từ ngày 4 bình thường. */
 export function introFactor(day: number): number {
-  return day <= 1 ? 0.33 : day === 2 ? 0.5 : day === 3 ? 0.75 : 1;
+  return day <= 1 ? 0.55 : day === 2 ? 0.7 : day === 3 ? 0.85 : 1;
 }
 
 export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, groupOrder?: { recipeId: RecipeId; qty: number }): Customer | null {

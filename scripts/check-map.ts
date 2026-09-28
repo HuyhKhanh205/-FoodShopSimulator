@@ -742,4 +742,27 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check((g.run!.prepped.hanh ?? 0) > after1, `thái lần 2 cộng thêm (${after1} → ${g.run!.prepped.hanh})`);
 }
 
+// ================= Ngày 7 phút, khách ngày đầu, nghỉ sớm =================
+{
+  check(DAY_MS === 420_000, 'một ngày bán hàng 7 phút');
+  const g = E.newGame(seededRng(61));
+  g.tutorial.done = true;
+  g.activeEvent = null;
+  M.checkout(g, M.suggestBasket(g));
+  E.openShop(g, seededRng(1));
+  g.activeEvent = null;
+  const r1 = seededRng(2);
+  let firstAt = -1;
+  for (let t = 0; t < 60_000 && firstAt < 0; t += 250) {
+    E.tick(g, 250, r1);
+    g.activeEvent = null;
+    if (g.run!.customers.length) firstAt = g.run!.elapsed;
+  }
+  check(firstAt > 0 && firstAt <= 26_000, `ngày 1: khách đầu tiên tới sau ${Math.round(firstAt / 1000)} giây (≤ 25 giây)`);
+  const money = g.money;
+  check(E.closeEarly(g) && g.phase === 'summary' && g.run === null && g.history.at(-1)!.notes.some((n) => n.includes('Nghỉ sớm')), 'nghỉ sớm: sang tổng kết ngay, ghi vào sự việc trong ngày');
+  check(g.money < money, 'nghỉ sớm vẫn trả tiền mặt bằng / điện gas');
+  check(!E.closeEarly(g), 'đã tổng kết thì không nghỉ sớm lần nữa');
+}
+
 process.exit(failed ? 1 : 0);

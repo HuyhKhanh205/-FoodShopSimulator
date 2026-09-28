@@ -1,7 +1,7 @@
 import type { CustomerKind, Ingredient, IngredientId, Recipe, RecipeId, StaffRole, StaffTrait, Upgrades } from './types';
 
-/** Một ngày mở cửa kéo dài 10 phút thời gian thực (7:00 → 21:00 trong game). */
-export const DAY_MS = 600_000;
+/** Một ngày bán hàng: 7 phút thật. */
+export const DAY_MS = 420_000;
 /**
  * Nhịp khách so với ngày 3 phút cũ: ngày dài gấp 3,3 nhưng số khách cả ngày chỉ khoảng 65% lúc trước
  * (ít bị hết chỗ hơn nên số khách phục vụ được tương đương) — khách tới thưa, dễ thở hơn.

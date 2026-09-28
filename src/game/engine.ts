@@ -38,6 +38,7 @@ import {
   consumeFor,
   errorRate,
   fairWage,
+  formatClock,
   formatMoney,
   handledCustomers,
   log,
@@ -783,7 +784,8 @@ function spawnCustomers(s: GameState, dt: number, rng: Rng) {
   const rate =
     0.14 * trafficCurve(hourAt(run.elapsed)) * (0.4 + s.reputation * 0.25) * (1 + 0.15 * s.upgrades.sign) * s.mods.spawnMult * intro * trendSpawnMult(s) * CUSTOMER_PACE;
   // Đang hướng dẫn ngày đầu: khách đầu tiên tới sớm (~10 giây) để kịp học mang món.
-  const tutorialWait = s.day === 1 && !s.tutorial?.done ? 10_000 : (15_000 / intro) * (DAY_MS / 180_000);
+  // Quán vắng tối đa ~25 giây thì chắc chắn có khách mới.
+  const tutorialWait = s.day === 1 && !s.tutorial?.done ? 10_000 : Math.min(25_000, (15_000 / intro) * (DAY_MS / 180_000));
   const force = run.sinceLastCustomer > tutorialWait && run.customers.length === 0;
   if (!force && rng() >= (rate * dt) / 1000) return;
   const c = makeCustomer(s, rng);
@@ -896,6 +898,14 @@ export function tick(s: GameState, dt: number, rng: Rng) {
 }
 
 // ================= Đóng cửa & sang ngày =================
+
+/** Nghỉ sớm: đóng cửa ngay, sang tổng kết (khách đang ngồi ra về, tiền mặt bằng / lương vẫn tính đủ). */
+export function closeEarly(s: GameState): boolean {
+  if (s.phase !== 'open' || !s.run || s.run.ownerAway) return false;
+  note(s, `🌙 Nghỉ sớm lúc ${formatClock(s.run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)}`);
+  closeDay(s);
+  return true;
+}
 
 export function closeDay(s: GameState) {
   const run = s.run;
