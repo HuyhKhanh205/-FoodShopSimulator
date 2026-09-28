@@ -29,6 +29,8 @@ const ORDER: { topic: HelpTopic; icon: string }[] = [
 export default function GuideScreen() {
   const navigation = useNavigation();
   const [open, setOpen] = useState<HelpTopic | null>(null);
+  /** Bến đang chọn trên vòng một ngày (chạm mới hiện lời giải thích). */
+  const [stage, setStage] = useState<number | null>(null);
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
@@ -42,8 +44,17 @@ export default function GuideScreen() {
           <Text style={styles.dayTitle}>🛶 Vòng một ngày</Text>
           <View style={styles.river}>
             {STAGES.map((st, i) => (
-              <Pressable key={st.id} onPress={() => speak(st.say)} style={styles.stop} accessibilityRole="button" accessibilityLabel={`${st.label}: ${st.say}`}>
-                <View style={styles.node}>
+              <Pressable
+                key={st.id}
+                onPress={() => {
+                  setStage(i);
+                  speak(st.say);
+                }}
+                style={styles.stop}
+                accessibilityRole="button"
+                accessibilityLabel={`${st.label}: ${st.say}`}
+              >
+                <View style={[styles.node, stage === i && styles.nodeOn]}>
                   <Text style={styles.nodeIcon}>{st.icon}</Text>
                 </View>
                 <Text style={styles.stopLabel}>
@@ -52,19 +63,17 @@ export default function GuideScreen() {
               </Pressable>
             ))}
           </View>
-          {STAGES.map((st) => (
-            <Text key={st.id} style={styles.dayLine}>
-              {st.say}
-            </Text>
-          ))}
-          {canSpeak() && <Text style={styles.hint}>👆 Chạm một bến để Chú Tư đọc.</Text>}
+          {stage !== null ? (
+            <Text style={styles.dayLine}>{STAGES[stage].say}</Text>
+          ) : (
+            <Text style={styles.hint}>👆 Chạm một bến để xem{canSpeak() ? ' và nghe Chú Tư đọc' : ''}.</Text>
+          )}
         </View>
         <View style={styles.grid}>
           {ORDER.map(({ topic, icon }) => (
             <Pressable key={topic} onPress={() => setOpen(topic)} style={({ pressed }) => [styles.card, pressed && { transform: [{ translateY: 3 }] }]} accessibilityRole="button" accessibilityLabel={HELP[topic].title}>
               <Text style={styles.cardIcon}>{icon}</Text>
               <Text style={styles.cardTitle}>{HELP[topic].title}</Text>
-              <Text style={styles.cardSub}>{HELP[topic].steps.map((s) => s.icon).join(' ')}</Text>
             </Pressable>
           ))}
         </View>
@@ -86,6 +95,7 @@ const styles = StyleSheet.create({
   river: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#7CC6EE', borderRadius: 16, paddingVertical: 8, paddingHorizontal: 4 },
   stop: { alignItems: 'center', width: '20%', gap: 2 },
   node: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#2B7BB9' },
+  nodeOn: { borderColor: colors.primary, borderWidth: 3, backgroundColor: '#FFF3E0' },
   nodeIcon: { fontSize: 20 },
   stopLabel: { fontSize: 10, fontWeight: '900', color: '#0D3B5E', textAlign: 'center' },
   dayLine: { fontSize: 13, fontWeight: '700', color: colors.brown },
@@ -94,5 +104,4 @@ const styles = StyleSheet.create({
   card: { flexGrow: 1, flexBasis: '45%', backgroundColor: colors.cream, borderRadius: 18, borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 5, padding: 12, alignItems: 'center', gap: 4 },
   cardIcon: { fontSize: 34 },
   cardTitle: { fontSize: 15, fontWeight: '900', color: colors.brown, textAlign: 'center' },
-  cardSub: { fontSize: 14 },
 });

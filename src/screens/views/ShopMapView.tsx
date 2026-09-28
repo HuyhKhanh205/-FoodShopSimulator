@@ -38,7 +38,7 @@ const KEY_DIRS: Record<string, Tile> = {
 
 export default function ShopMapView() {
   const game = useGameState();
-  const { act, sceneMode, setSceneMode, setViewMode } = useGame();
+  const { act, sceneMode, setSceneMode, setViewMode, paused } = useGame();
   const navigation = useNavigation();
   const { width } = useWindowDimensions();
   const wide = width >= 900;
@@ -310,7 +310,8 @@ export default function ShopMapView() {
   const river = game.tutorial.done;
   const toggle = has3D && shows(game, 'modeToggle');
   const RIVER_H = river ? 50 : 0;
-  const HUD_H = (toggle ? 124 : 76) + RIVER_H;
+  // HUD giờ chỉ là 1 hàng nhãn nhỏ.
+  const HUD_H = 50 + RIVER_H;
   const BAR_H = 74;
   const cleanReady = run.elapsed >= run.cleanReadyAt;
 
@@ -372,20 +373,20 @@ export default function ShopMapView() {
           <SimpleView game={game} layout={layout} targets={targets} onStation={tapStation} topInset={HUD_H + 28} bottomInset={BAR_H + 44} />
         ))}
       {!fp && <MapHud canToggle={toggle} below={river ? <RiverPath game={game} compact onGo={flowGo} /> : null} />}
-      {!fp && actionBar}
-      {!fp && (
+      {!fp && !paused && actionBar}
+      {!fp && !paused && (
         <View pointerEvents="none" style={[styles.hands, { bottom: BAR_H + 10 }]}>
           <Text style={styles.handsText}>
             🤲 {carried.length ? carried.map((d) => RECIPES[d.recipeId].emoji + (d.noGarnish ? '🚫' : '')).join(' ') : 'Tay không'}
           </Text>
         </View>
       )}
-      {!fp && toast && (
+      {!fp && !paused && toast && (
         <View pointerEvents="none" style={[styles.toast, { bottom: BAR_H + 60 }]}>
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       )}
-      {!fp && suggest && !simple && shows(game, 'perfHint') && (
+      {!fp && !paused && suggest && !simple && shows(game, 'perfHint') && (
         <View style={[styles.suggest, { top: HUD_H + 6 }]}>
           <Text style={styles.suggestText}>🐢 Máy đang hơi chậm. Chuyển sang chế độ Đơn giản cho mượt?</Text>
           <View style={styles.suggestRow}>

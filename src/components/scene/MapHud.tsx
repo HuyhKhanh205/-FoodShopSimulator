@@ -4,199 +4,210 @@ import { trendHeat } from '../../game/trend';
 import { isPeak } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
 import { formatClock, formatMoney } from '../../game/helpers';
-import HelpButton from '../kid/HelpButton';
-import { colors } from '../ui';
+import { settingsStore, useSettings } from '../../game/settings';
 import { shows } from '../../game/unlocks';
+import { tutorialUi } from '../kid/tutorialUi';
+import { colors } from '../ui';
 
-function Pill({ children, tone = 'plain' }: { children: React.ReactNode; tone?: 'plain' | 'warn' | 'bad' }) {
-  return <View style={[styles.pill, tone === 'warn' && styles.pillWarn, tone === 'bad' && styles.pillBad]}>{children}</View>;
+/** Nhãn nhỏ nổi trên cảnh (không tạo thành khối che màn hình). */
+function Chip({ children, tone = 'plain', label }: { children: React.ReactNode; tone?: 'plain' | 'warn' | 'bad'; label?: string }) {
+  return (
+    <View style={[styles.chip, tone === 'warn' && styles.chipWarn, tone === 'bad' && styles.chipBad]} accessibilityLabel={label}>
+      {children}
+    </View>
+  );
 }
 
-function IconButton({ label, onPress, active, disabled, size }: { label: string; onPress: () => void; active?: boolean; disabled?: boolean; size: number }) {
+function RoundButton({ label, name, onPress, active }: { label: string; name: string; onPress: () => void; active?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [styles.iconBtn, { width: size, height: size, borderRadius: size / 2 }, active && styles.iconBtnActive, disabled && { opacity: 0.4 }, pressed && { transform: [{ scale: 0.94 }] }]}
+      style={({ pressed }) => [styles.round, active && styles.roundActive, pressed && { transform: [{ scale: 0.92 }] }]}
+      accessibilityRole="button"
+      accessibilityLabel={name}
     >
-      <Text style={styles.iconText}>{label}</Text>
+      <Text style={styles.roundText}>{label}</Text>
     </Pressable>
   );
 }
 
 /**
- * HUD màn quán (dùng chung cho 3D và Đơn giản): một dải kem to ở trên cùng —
- * giờ, tiền, ★ / độ sạch; nút chuyển Đơn giản / 3D ở giữa; chỉ giữ ⏸ và ❗.
- * Các nút khác (Chợ, Lau, Kho, Bố trí...) nằm ở thanh hành động có nhãn phía dưới.
+ * HUD màn quán (3D và Đơn giản): chỉ vài nhãn nhỏ ở góc — 🕐 giờ, 💰 tiền, ★ sao (🧽 khi đã mở) — và 2 nút tròn ⏸ / ❗.
+ * Đổi chế độ, giọng đọc... nằm trong menu ⏸ Tạm dừng để màn chơi không bị che.
  */
 export default function MapHud({ canToggle = true, below }: { compact?: boolean; canToggle?: boolean; below?: React.ReactNode }) {
-  const btn = 42;
   const game = useGameState();
-  const { paused, setPaused, sceneMode, setSceneMode } = useGame();
+  const { paused, setPaused } = useGame();
   const run = game.run!;
   const dayRatio = Math.min(1, run.elapsed / DAY_MS);
   const clean = Math.round(game.cleanliness);
+  const clock = formatClock(run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR);
   // Món đặc biệt hôm nay (XP ×2).
   const special = shows(game, 'notebook') && game.missions?.day === game.day && game.missions.special ? RECIPES[game.missions.special] : null;
   const warnings = [
     isPeak(run.elapsed) ? { text: '🔥 Đông khách', tone: 'warn' as const } : null,
     run.elapsed < run.powerOutUntil ? { text: '🔌 Cúp điện', tone: 'bad' as const } : null,
     run.elapsed < run.gasOutUntil ? { text: '🛢️ Hết gas', tone: 'bad' as const } : null,
-    game.trend && trendHeat(game) > 0 && RECIPES[game.trend.recipeId]
-      ? { text: `🔥 ${RECIPES[game.trend.recipeId].emoji} ${Math.round(trendHeat(game) * 100)}%`, tone: 'warn' as const }
-      : null,
-    special ? { text: `🌟 ${special.emoji} ×2`, tone: 'warn' as const } : null,
+    game.trend && trendHeat(game) > 0 && RECIPES[game.trend.recipeId] ? { text: `🔥 ${RECIPES[game.trend.recipeId].emoji}`, tone: 'warn' as const } : null,
+    special ? { text: `🌟 ${special.emoji}×2`, tone: 'warn' as const } : null,
   ].filter(Boolean) as { text: string; tone: 'warn' | 'bad' }[];
-  // Hai tin mới nhất, hiện trong 6 giây.
-  const fresh = run.log.filter((l) => run.elapsed - l.t < 6000).slice(0, 1);
+  // Tin mới nhất, hiện trong 5 giây.
+  const fresh = run.log.filter((l) => run.elapsed - l.t < 5000).slice(0, 1);
 
   return (
-    <View pointerEvents="box-none" style={styles.wrap}>
-      <View style={styles.strip}>
-        <View style={[styles.stats, !canToggle && { paddingRight: 84 }]}>
-          <View style={styles.stat} accessibilityLabel={`Giờ ${formatClock(run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)}`}>
-            <Text style={styles.statText}>🕐 {formatClock(run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)}</Text>
-            <View style={styles.dayTrack}>
-              <View style={[styles.dayFill, { width: `${dayRatio * 100}%` }]} />
-            </View>
+    <>
+      <View pointerEvents="box-none" style={styles.wrap}>
+        <View pointerEvents="box-none" style={styles.top}>
+          <View pointerEvents="none" style={styles.chips}>
+            <Chip label={`Giờ ${clock}`}>
+              <Text style={styles.chipText}>🕐 {clock}</Text>
+              <View style={styles.dayTrack}>
+                <View style={[styles.dayFill, { width: `${dayRatio * 100}%` }]} />
+              </View>
+            </Chip>
+            <Chip label={`Tiền ${formatMoney(game.money)}`}>
+              <Text style={styles.chipText}>💰 {formatMoney(game.money)}</Text>
+            </Chip>
+            <Chip label={`Danh tiếng ${game.reputation.toFixed(1)} sao`}>
+              <Text style={styles.chipText}>
+                <Text style={{ color: colors.accent }}>★</Text> {game.reputation.toFixed(1)}
+              </Text>
+            </Chip>
+            {shows(game, 'clean') && (
+              <Chip tone={clean < 40 ? 'bad' : 'plain'} label={`Độ sạch ${clean}%`}>
+                <Text style={styles.chipText}>🧽 {clean}%</Text>
+              </Chip>
+            )}
+            {warnings.map((w) => (
+              <Chip key={w.text} tone={w.tone}>
+                <Text style={styles.chipText}>{w.text}</Text>
+              </Chip>
+            ))}
           </View>
-          <Text style={[styles.statText, styles.stat]} numberOfLines={1}>
-            💰 {formatMoney(game.money)}
-          </Text>
-          <Text style={[styles.statText, styles.stat, clean < 40 && { color: colors.bad }]} numberOfLines={1}>
-            <Text style={{ color: colors.accent }}>★</Text> {game.reputation.toFixed(1)}
-            {shows(game, 'clean') ? ` · 🧽 ${clean}%` : ''}
-          </Text>
-        </View>
-        {!canToggle && (
-          <View style={[styles.controls, { position: 'absolute', right: 8, top: 5 }]}>
-            <IconButton size={36} label={paused ? '▶️' : '⏸️'} active={paused} onPress={() => setPaused(!paused)} />
-            <HelpButton topic="shop" style={{ width: 36, height: 36, borderRadius: 18 }} />
+          <View style={styles.buttons}>
+            <RoundButton label="⏸️" name="Tạm dừng" onPress={() => setPaused(true)} />
+            <RoundButton label="!" name="Hướng dẫn" onPress={() => tutorialUi.requestHelp('shop')} />
           </View>
-        )}
-        {canToggle && (
-        <View style={styles.controls}>
-          {canToggle ? (
-            <View style={styles.segment} accessibilityRole="radiogroup">
-              {(['simple', '3d'] as const).map((m) => (
-                <Pressable
-                  key={m}
-                  onPress={() => setSceneMode(m)}
-                  style={[styles.segBtn, sceneMode === m && styles.segOn]}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: sceneMode === m }}
-                  accessibilityLabel={m === 'simple' ? 'Chế độ Đơn giản' : 'Chế độ 3D'}
-                >
-                  <Text style={[styles.segText, sceneMode === m && styles.segTextOn]}>{m === 'simple' ? 'Đơn giản' : '3D'}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <View style={{ flex: 1 }} />
-          )}
-          <IconButton size={btn} label={paused ? '▶️' : '⏸️'} active={paused} onPress={() => setPaused(!paused)} />
-          <HelpButton topic="shop" style={{ width: btn, height: btn, borderRadius: btn / 2 }} />
         </View>
-        )}
-      </View>
-      {below}
-      {warnings.length > 0 && (
-        <View style={styles.pills}>
-          {warnings.map((w) => (
-            <Pill key={w.text} tone={w.tone}>
-              <Text style={styles.pillText}>{w.text}</Text>
-            </Pill>
+        {!paused && below}
+        {!paused &&
+          fresh.map((l) => (
+            <Text
+              key={l.id}
+              numberOfLines={1}
+              pointerEvents="none"
+              style={[styles.toast, { opacity: 1 - (run.elapsed - l.t) / 5000 }, l.tone === 'bad' && { color: '#FFCDD2' }, l.tone === 'good' && { color: '#C8E6C9' }]}
+            >
+              {l.text}
+            </Text>
           ))}
-        </View>
-      )}
-      {fresh.map((l) => (
-        <Text
-          key={l.id}
-          numberOfLines={1}
-          style={[styles.toast, { opacity: 1 - (run.elapsed - l.t) / 6000 }, l.tone === 'bad' && { color: '#FFCDD2' }, l.tone === 'good' && { color: '#C8E6C9' }]}
-        >
-          {l.text}
-        </Text>
-      ))}
-      {paused && (
-        <View style={styles.pausedBox}>
-          <Text style={styles.paused}>⏸️</Text>
-        </View>
-      )}
+      </View>
+      {paused && <PauseMenu canToggle={canToggle} onResume={() => setPaused(false)} />}
+    </>
+  );
+}
+
+/** Menu ⏸ Tạm dừng: ít lựa chọn, chữ to, che mờ cảnh phía sau. */
+function PauseMenu({ canToggle, onResume }: { canToggle: boolean; onResume: () => void }) {
+  const { sceneMode, setSceneMode } = useGame();
+  const settings = useSettings();
+  return (
+    <View style={styles.backdrop}>
+      <View style={styles.menu} accessibilityLabel="Tạm dừng">
+        <Text style={styles.menuTitle}>⏸️ Tạm dừng</Text>
+        <Pressable onPress={onResume} style={({ pressed }) => [styles.resume, pressed && { transform: [{ translateY: 3 }] }]} accessibilityRole="button" accessibilityLabel="Chơi tiếp">
+          <Text style={styles.resumeText}>▶ Chơi tiếp</Text>
+        </Pressable>
+        {canToggle && (
+          <MenuRow
+            icon={sceneMode === '3d' ? '🌴' : '🔲'}
+            label={sceneMode === '3d' ? 'Cảnh 3D' : 'Cảnh Đơn giản'}
+            action={sceneMode === '3d' ? 'Đổi sang Đơn giản' : 'Đổi sang 3D'}
+            onPress={() => setSceneMode(sceneMode === '3d' ? 'simple' : '3d')}
+          />
+        )}
+        <MenuRow
+          icon={settings.voice ? '🔊' : '🔇'}
+          label={settings.voice ? 'Giọng Chú Tư: bật' : 'Giọng Chú Tư: tắt'}
+          action={settings.voice ? 'Tắt' : 'Bật'}
+          onPress={() => settingsStore.set({ voice: !settings.voice })}
+        />
+        <MenuRow
+          icon="❗"
+          label="Cách chơi"
+          action="Xem"
+          onPress={() => {
+            onResume();
+            tutorialUi.requestHelp('shop');
+          }}
+        />
+      </View>
     </View>
+  );
+}
+
+function MenuRow({ icon, label, action, onPress }: { icon: string; label: string; action: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { transform: [{ translateY: 2 }] }]} accessibilityRole="button" accessibilityLabel={`${label}: ${action}`}>
+      <Text style={styles.rowIcon}>{icon}</Text>
+      <Text style={styles.rowLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={styles.rowAction}>{action}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 0, right: 0, top: 0, padding: 8, gap: 6 },
-  strip: {
-    backgroundColor: colors.cream,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    gap: 6,
-    borderWidth: 2,
-    borderColor: colors.chunkyShadow,
-    borderBottomWidth: 5,
-  },
-  stats: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 6, minHeight: 36 },
-  stat: { flexShrink: 1 },
-  statText: { fontSize: 16, fontWeight: '900', color: colors.brown, fontVariant: ['tabular-nums'] },
-  controls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  segment: { flex: 1, flexDirection: 'row', backgroundColor: '#EFE2CF', borderRadius: 21, padding: 3, height: 42 },
-  segBtn: { flex: 1, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  segOn: { backgroundColor: colors.brown },
-  segText: { fontSize: 15, fontWeight: '900', color: colors.brown },
-  segTextOn: { color: colors.cream },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, flexShrink: 1 },
-  pill: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 14,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+  top: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  chips: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  chip: {
+    backgroundColor: 'rgba(255,246,233,0.9)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: 1,
-    borderColor: 'rgba(62,39,35,0.12)',
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
+    borderColor: 'rgba(62,47,42,0.15)',
   },
-  pillWarn: { backgroundColor: '#FFF3E0', borderColor: colors.accent },
-  pillBad: { backgroundColor: '#FFEBEE', borderColor: colors.bad },
-  pillText: { fontSize: 12, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
-  dayTrack: { height: 4, borderRadius: 2, backgroundColor: '#EFE2CF', marginTop: 3, overflow: 'hidden' },
-  dayFill: { height: 4, backgroundColor: colors.primary },
+  chipWarn: { backgroundColor: 'rgba(255,243,224,0.95)', borderColor: colors.accent },
+  chipBad: { backgroundColor: 'rgba(255,235,238,0.95)', borderColor: colors.bad },
+  chipText: { fontSize: 13, fontWeight: '900', color: colors.brown, fontVariant: ['tabular-nums'] },
+  dayTrack: { height: 3, borderRadius: 2, backgroundColor: '#EFE2CF', marginTop: 2, overflow: 'hidden' },
+  dayFill: { height: 3, backgroundColor: colors.primary },
   buttons: { flexDirection: 'row', gap: 6 },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
+  round: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,246,233,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.chunkyShadow,
-    borderBottomWidth: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
+    borderBottomWidth: 3,
   },
-  iconBtnActive: { backgroundColor: colors.primary },
-  iconText: { fontSize: 20 },
+  roundActive: { backgroundColor: colors.primary },
+  roundText: { fontSize: 17, fontWeight: '900', color: colors.brown },
   toast: {
     alignSelf: 'flex-start',
-    maxWidth: '92%',
+    maxWidth: '80%',
     color: '#fff',
-    backgroundColor: 'rgba(62,39,35,0.72)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    fontSize: 12,
+    backgroundColor: 'rgba(62,39,35,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 9,
+    fontSize: 11,
     fontWeight: '600',
     overflow: 'hidden',
   },
-  pausedBox: { alignSelf: 'center', marginTop: 40, backgroundColor: 'rgba(62,39,35,0.8)', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 10 },
-  paused: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  backdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(40,25,15,0.55)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  menu: { width: '100%', maxWidth: 360, backgroundColor: colors.cream, borderRadius: 24, padding: 16, gap: 10, borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 6 },
+  menuTitle: { fontSize: 22, fontWeight: '900', color: colors.brown, textAlign: 'center' },
+  resume: { backgroundColor: colors.primary, borderRadius: 18, paddingVertical: 16, alignItems: 'center', borderBottomWidth: 6, borderColor: colors.primaryDark },
+  resumeText: { fontSize: 22, fontWeight: '900', color: '#fff' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 12, borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
+  rowIcon: { fontSize: 24 },
+  rowLabel: { flex: 1, fontSize: 16, fontWeight: '800', color: colors.brown },
+  rowAction: { fontSize: 14, fontWeight: '900', color: colors.primaryDark },
 });
