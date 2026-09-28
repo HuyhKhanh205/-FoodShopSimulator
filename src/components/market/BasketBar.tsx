@@ -3,7 +3,7 @@ import { INGREDIENTS } from '../../game/data';
 import { VENDORS, basketTotal, fmt, friendLevel, stockCapacity, stockUnits, vendorState } from '../../game/market';
 import type { Basket, VendorId } from '../../game/market';
 import type { GameState, IngredientId } from '../../game/types';
-import TutorialGlow from '../kid/TutorialGlow';
+import TutorialGlow, { useTutorialTargets } from '../kid/TutorialGlow';
 import { GROUP, colors } from '../ui';
 
 /**
@@ -82,14 +82,17 @@ export function BasketBar({
 
 /** Chế độ Đơn giản: 4 ô sạp lớn tô màu nhóm, chạm là mở sạp ngay. */
 export function StallGrid({ game, onStall, deals }: { game: GameState; onStall: (id: VendorId) => void; deals: { id: IngredientId; off: number }[] }) {
+  const targets = useTutorialTargets();
   return (
     <View style={styles.grid}>
       {VENDORS.map((v) => {
         const g = GROUP[v.group];
         const deal = deals.find((d) => v.items.includes(d.id));
         const lv = friendLevel(vendorState(game, v.id).friendship);
+        const glow = targets.includes(`market.stall:${v.id}`);
         return (
-          <Pressable key={v.id} onPress={() => onStall(v.id)} style={[styles.stall, { backgroundColor: g.bg, borderColor: g.fg }]} accessibilityRole="button" accessibilityLabel={`${v.stall} ${v.name}`}>
+          <Pressable key={v.id} onPress={() => onStall(v.id)} style={[styles.stall, { backgroundColor: g.bg, borderColor: g.fg }, glow && { borderColor: '#FFC107', borderWidth: 5 }]} accessibilityRole="button" accessibilityLabel={`${v.stall} ${v.name}`}>
+            {glow && <Text style={styles.stallPoint}>👇</Text>}
             <Text style={styles.stallEmoji}>{v.emoji}</Text>
             <Text style={styles.stallName}>{v.stall}</Text>
             <Text style={[styles.stallSub, { color: g.fg }]}>
@@ -104,6 +107,7 @@ export function StallGrid({ game, onStall, deals }: { game: GameState; onStall: 
 }
 
 const styles = StyleSheet.create({
+  stallPoint: { position: 'absolute', top: -6, right: 6, fontSize: 24 },
   bar: { backgroundColor: colors.cream, borderTopWidth: 2, borderColor: colors.chunkyShadow, paddingHorizontal: 8, paddingVertical: 6, gap: 4 },
   info: { flex: 1, minWidth: 0 },
   items: { fontSize: 14, fontWeight: '900', color: colors.brown },

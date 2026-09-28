@@ -15,7 +15,7 @@ export function useTutorialTargets(): string[] {
   const { game } = useGame();
   const ui = useTutorialUi();
   // Kèm chỗ Đường sông đang chỉ (bấm "▶ Tiếp tục").
-  return withFlowGlow(game ? tutorialTargets(game) : [], ui);
+  return withFlowGlow(game ? tutorialTargets(game, { fpOpen: ui.fpOpen, basket: ui.basket, stall: ui.stall }) : [], ui);
 }
 
 /** Viền vàng nhấp nháy + ngón tay 👆 nhún nhảy quanh thứ cần bấm. */

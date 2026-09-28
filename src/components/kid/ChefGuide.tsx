@@ -76,12 +76,18 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
   // Bước tự hoàn thành khi người chơi làm đúng.
   useEffect(() => {
     if (!game || !step || step.tapToContinue) return;
-    if (step.done(game, { fpOpen: ui.fpOpen })) act((s) => advanceTutorial(s));
+    if (step.done(game, { fpOpen: ui.fpOpen, basket: ui.basket, stall: ui.stall })) act((s) => advanceTutorial(s));
   });
   // Hết ngày mà chưa xong hướng dẫn thì thôi, không bắt làm lại.
   useEffect(() => {
     if (game && !game.tutorial.done && game.phase === 'summary') act((s) => skipTutorial(s));
   }, [game, act]);
+
+  // Trợ giúp ❓: bước có chỗ cụ thể thì viền vàng chỗ đó.
+  const helpTarget = ui.help ? HELP[ui.help.topic].steps[Math.min(helpIndex, HELP[ui.help.topic].steps.length - 1)].target : undefined;
+  useEffect(() => {
+    if (helpTarget) tutorialUi.glow(helpTarget, 6000);
+  }, [helpTarget, ui.help?.at]);
 
   let say: Say | null = null;
   if (ui.help) {

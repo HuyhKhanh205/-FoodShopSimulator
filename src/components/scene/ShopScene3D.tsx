@@ -83,7 +83,7 @@ function lerpAngle(a: number, b: number, t: number) {
   return a + d * t;
 }
 
-export function Player({ walker, carrying, profile }: { walker: React.MutableRefObject<WalkerState>; carrying: string[]; profile: PlayerProfile }) {
+export function Player({ walker, carrying, profile, anim }: { walker: React.MutableRefObject<WalkerState>; carrying: string[]; profile: PlayerProfile; anim?: string }) {
   const look: Look = profileLook(profile);
   const ref = useRef<Group>(null);
   const ring = useRef<Group>(null);
@@ -114,6 +114,7 @@ export function Player({ walker, carrying, profile }: { walker: React.MutableRef
           isMoving={() => walker.current.moving}
           carrying={carrying}
           shadows={SHADOWS}
+          anim={anim}
         />
       )}
     </group>

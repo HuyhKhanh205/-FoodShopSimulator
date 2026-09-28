@@ -1,4 +1,6 @@
 import { INGREDIENTS, RECIPES, STARTERS } from './data';
+import { VENDORS, vendorIntro, vendorOf } from './market';
+import type { VendorId } from './market';
 import { usableQty } from './helpers';
 import { ingredientsOfLevel } from './progression';
 import type { ChefNote, GameState, IngredientId } from './types';
@@ -7,6 +9,9 @@ import type { ChefNote, GameState, IngredientId } from './types';
 export interface TutorialUi {
   /** Đang ở màn bếp góc nhìn thứ nhất. */
   fpOpen: boolean;
+  /** Chợ: giỏ chưa trả tiền + sạp đang mở (hướng dẫn mua tay chỉ đúng nút). */
+  basket?: Record<string, number>;
+  stall?: string | null;
 }
 
 export interface TutorialStep {
@@ -18,7 +23,7 @@ export interface TutorialStep {
   /** Bước chỉ cần bấm ▶ Tiếp. */
   tapToContinue?: boolean;
   /** Các chỗ cần chỉ vào (viền vàng + 👆). */
-  targets: (s: GameState) => string[];
+  targets: (s: GameState, ui?: TutorialUi) => string[];
   /** Xong bước này chưa. */
   done: (s: GameState, ui: TutorialUi) => boolean;
 }
@@ -27,10 +32,29 @@ export interface TutorialStep {
 const firstRecipe = (s: Pick<GameState, 'starter'>) => RECIPES[s.starter] ?? RECIPES.banh_mi_trung;
 const firstIngredients = (s: Pick<GameState, 'starter'>) => Object.keys(firstRecipe(s).ingredients) as IngredientId[];
 const missingFirst = (s: GameState) => firstIngredients(s).filter((i) => usableQty(s, i) < 1);
-const buySay = (s: Pick<GameState, 'starter'>) => {
+/** Đồ của món đầu còn thiếu mà giỏ chưa có. */
+const notInBasket = (s: GameState, ui?: TutorialUi) => missingFirst(s).filter((i) => !((ui?.basket?.[i] ?? 0) > 0));
+/** Mua tay ngày đầu: chỉ chip sạp còn đồ cần mua → nút ＋ của đúng đồ → "Xong sạp này". */
+function buyHandTargets(s: GameState, ui?: TutorialUi): string[] {
+  const left = notInBasket(s, ui);
+  if (ui?.stall) {
+    const here = left.find((i) => vendorOf(i).id === ui.stall);
+    return here ? [`stall.add:${here}`] : ['stall.done'];
+  }
+  return left.length ? [`market.stall:${vendorOf(left[0]).id}`] : [];
+}
+const buyHandSay = (s: Pick<GameState, 'starter'>) => {
   const r = firstRecipe(s);
-  return `Món đầu tiên là ${r.emoji} ${r.name} = ${firstIngredients(s).map((i) => INGREDIENTS[i].emoji).join(' + ')}. Bấm 🧾 Mua theo menu để bỏ đủ đồ vào giỏ, rồi bấm 💳 Trả tiền nhé!`;
+  return `Giờ tự mua nha! Món đầu là ${r.emoji} ${r.name} = ${firstIngredients(s).map((i) => INGREDIENTS[i].emoji).join(' + ')}. Chạm sạp sáng vàng, bấm ＋ bỏ vào giỏ, rồi bấm Xong. Muốn rẻ thì bấm 🤝 Trả giá!`;
 };
+const meetStep = (v: VendorId): TutorialStep => ({
+  id: `meet-${v}`,
+  say: vendorIntro(v),
+  at: 'top',
+  tapToContinue: true,
+  targets: () => [`market.stall:${v}`],
+  done: () => false,
+});
 const prepList = (s: Pick<GameState, 'starter'>) => firstIngredients(s).filter((i) => INGREDIENTS[i].needsPrep);
 const prepSay = (s: Pick<GameState, 'starter'>) => {
   const list = prepList(s);
@@ -64,11 +88,20 @@ export const TUTORIAL: TutorialStep[] = [
     targets: () => [],
     done: () => false,
   },
+  // Buổi chợ đầu: Chú Tư dẫn đi chào 4 người bán, rồi chủ quán tự mua bằng tay.
+  ...VENDORS.map((v) => meetStep(v.id)),
   {
-    id: 'buy',
-    say: buySay,
+    id: 'buy-hand',
+    say: buyHandSay,
     at: 'top',
-    targets: () => ['market.menu', 'market.pay'],
+    targets: buyHandTargets,
+    done: (s, ui) => s.phase !== 'market' || missingFirst(s).length === 0 || (notInBasket(s, ui).length === 0 && !ui.stall),
+  },
+  {
+    id: 'pay',
+    say: 'Đủ đồ trong giỏ rồi! Bấm 💳 Trả tiền cho các cô chú nha.',
+    at: 'top',
+    targets: (s, ui) => (notInBasket(s, ui).length === 0 ? ['market.pay'] : buyHandTargets(s, ui)),
     done: (s) => s.phase !== 'market' || missingFirst(s).length === 0,
   },
   {
@@ -134,8 +167,8 @@ export function currentStep(s: GameState): TutorialStep | null {
 }
 
 /** Chỗ đang được chỉ vào. */
-export function tutorialTargets(s: GameState): string[] {
-  return currentStep(s)?.targets(s) ?? [];
+export function tutorialTargets(s: GameState, ui?: TutorialUi): string[] {
+  return currentStep(s)?.targets(s, ui) ?? [];
 }
 
 /** Sang bước sau (hoặc kết thúc). */

@@ -1,3 +1,4 @@
+import { REPLY_TIP } from './reviews';
 import { INGREDIENTS, LEVEL_XP, RECIPES, RECIPE_IDS } from './data';
 import { HELP } from './help';
 import type { HelpTopic } from './help';
@@ -74,6 +75,6 @@ export function voiceLines(): string[] {
   }
   for (const n of notes) lines.push(noteText(n));
   for (const st of STAGES) lines.push(st.say);
-  lines.push(SUMMARY_FIRST_SAY);
+  lines.push(SUMMARY_FIRST_SAY, REPLY_TIP);
   return [...new Set(lines.map(speechText))].filter(Boolean);
 }

@@ -86,6 +86,7 @@ export default function MarketView() {
   const step = currentStep(game);
   const tutMarket = Boolean(step && (step.id === 'hello' || step.id === 'buy' || step.id === 'buy-hand' || step.id.startsWith('meet-')));
   const units = basketTotal(game, basket).units;
+  const meetId = step?.id.startsWith('meet-') ? (step.id.slice(5) as VendorId) : null;
   const nextBtn = (() => {
     if (tutMarket) return null;
     if (midday && units === 0) return { label: '🏃 Về quán', go: () => act((s) => returnToShop(s)) };
@@ -105,6 +106,14 @@ export default function MarketView() {
     tutorialUi.setTopInset(nextBtn ? 62 : 0);
     return () => tutorialUi.setTopInset(0);
   }, [Boolean(nextBtn)]);
+  // Sáng ngày 2: nút 🧾 Theo menu sáng lên một lần (Chú Tư vừa giới thiệu).
+  useEffect(() => {
+    if (!quick || midday || game.flags?.quickIntro) return;
+    tutorialUi.glow('market.menu', 8000);
+    act((s) => {
+      s.flags = { ...(s.flags ?? {}), quickIntro: s.day };
+    });
+  }, [quick, midday, game.flags?.quickIntro, act]);
   // Hướng dẫn mua tay cần biết giỏ + sạp đang mở.
   useEffect(() => {
     tutorialUi.setMarket(basket, stall);
@@ -141,7 +150,7 @@ export default function MarketView() {
             <StallGrid game={game} onStall={setStall} deals={deals} />
           </ScrollView>
         ) : (
-          area.w > 0 && <MarketScene3D game={game} onStall={setStall} width={area.w} height={area.h} insets={{ top: nextBtn ? (midday ? 128 : 114) : 52, bottom: 70 }} />
+          area.w > 0 && <MarketScene3D game={game} onStall={setStall} width={area.w} height={area.h} insets={{ top: nextBtn ? (midday ? 128 : 114) : 52, bottom: 70 }} meet={meetId} />
         )}
 
         {/* Góc trên: 1 hàng chip nhỏ + nút tròn; đường sông gợi ý việc tiếp theo ngay dưới */}

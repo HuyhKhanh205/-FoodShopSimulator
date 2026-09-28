@@ -41,7 +41,16 @@ function findFree(base: Rect, placed: Rect[], w: number, h: number, preferUp = f
  * `chips`: tâm dưới các chip tên sạp (theo điểm chiếu mái sạp); `call`: tâm dưới bong bóng (đầu người bán) hoặc null.
  * Mỗi nhãn tìm chỗ trống gần vị trí gốc nhất (ưu tiên dời lên / xuống, rồi lệch ngang) — không bao giờ đè nhau.
  */
-export function placeLabels(chips: { x: number; y: number }[], call: { x: number; y: number } | null, w: number, fullH: number, top = 0, bottom = 0) {
+export function placeLabels(
+  chips: { x: number; y: number }[],
+  call: { x: number; y: number } | null,
+  w: number,
+  fullH: number,
+  top = 0,
+  bottom = 0,
+  /** Bong bóng thứ hai (chủ quán chào lại), đặt sau cùng. */
+  owner: { x: number; y: number } | null = null
+) {
   // Chỉ đặt nhãn trong vùng không bị lớp nổi (HUD trên, cụm nút dưới) che.
   const h = fullH - bottom;
   const placed: Rect[] = [];
@@ -54,5 +63,10 @@ export function placeLabels(chips: { x: number; y: number }[], call: { x: number
     const base = clampX({ x: call.x - CALL_W / 2, y: Math.max(top + 2, Math.min(h - CALL_H - 2, call.y - CALL_H - 6)), w: CALL_W, h: CALL_H }, w);
     bubble = findFree(base, placed, w, h, true, top);
   }
-  return { chips: placed, bubble };
+  let second: Rect | null = null;
+  if (owner) {
+    const base = clampX({ x: owner.x - CALL_W / 2, y: Math.max(top + 2, Math.min(h - CALL_H - 2, owner.y - CALL_H - 6)), w: CALL_W, h: CALL_H }, w);
+    second = findFree(base, bubble ? [...placed, bubble] : placed, w, h, true, top);
+  }
+  return { chips: placed, bubble, owner: second };
 }

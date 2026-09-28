@@ -272,7 +272,7 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check(saw, 'khách gọi món vừa sáng tạo');
 }
 
-// Hướng dẫn ngày đầu: đi hết 9 bước bằng thao tác engine
+// Hướng dẫn ngày đầu: đi hết các bước bằng thao tác engine
 {
   const r11 = seededRng(8);
   const g = E.newGame(r11);
@@ -288,8 +288,13 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   };
   check(stepId() === 'hello', 'bắt đầu ở bước chào');
   advanceTutorial(g);
-  check(tutorialTargets(g).includes('market.menu'), 'bước mua chỉ vào Mua theo menu');
-  check(M.checkout(g, M.suggestBasket(g)) === null, 'mua theo menu + trả tiền được');
+  for (const v of ['thit', 'bot', 'rau', 'nuoc']) {
+    check(stepId() === `meet-${v}` && tutorialTargets(g).includes(`market.stall:${v}`), `chào sạp ${v}: chỉ vào sạp`);
+    advanceTutorial(g);
+  }
+  check(stepId() === 'buy-hand' && tutorialTargets(g).some((t) => t.startsWith('market.stall:')), 'bước mua tay chỉ vào sạp (không có Mua theo menu)');
+  check(!U.shows(g, 'quickBuy'), 'ngày 1 đang hướng dẫn: ẩn Mua theo menu');
+  check(M.checkout(g, M.suggestBasket(g)) === null, 'mua đủ + trả tiền được');
   pump();
   check(stepId() === 'open', 'mua đủ → bước mở cửa');
   E.openShop(g, r11);
@@ -703,9 +708,36 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
     check(g.unlockedRecipes.join() === `${st.id},tra_da` && g.starter === st.id && g.profile.shopName === 'Quán Thử', `${st.id}: menu = món khởi đầu + trà đá, đúng tên quán`);
     check(ings.every((i) => unlockedIngredients(g).includes(i)), `${st.id}: mở sẵn đủ nguyên liệu (${st.extra.join(', ') || 'không cần thêm'})`);
     check(g.missions.special === st.id && g.missions.list[0].ingredientId === st.buy, `${st.id}: món đặc biệt + nhiệm vụ mua ngày 1 theo món`);
-    const buyStep = TUTORIAL.find((x) => x.id === 'buy')!;
+    const buyStep = TUTORIAL.find((x) => x.id === 'buy-hand')!;
     const cookStep = TUTORIAL.find((x) => x.id === 'cook')!;
     check(stepSay(buyStep, g).includes(RECIPES[st.id].name) && cookStep.targets(g).includes(`kitchen.recipe:${st.id}`), `${st.id}: hướng dẫn nói và chỉ đúng món`);
+    // Mua tay: chỉ chip sạp → ＋ đúng đồ → Xong; đủ giỏ + đóng sạp thì xong bước.
+    {
+      const need = ings.filter((i) => usableQty(g, i) < 1);
+      const basket: Record<string, number> = {};
+      let guard = 0;
+      let ok = true;
+      while (guard++ < 30) {
+        const ui = { fpOpen: false, basket: { ...basket }, stall: null as string | null };
+        if (buyStep.done(g, ui)) break;
+        const t = buyStep.targets(g, ui);
+        const stall = t[0]?.startsWith('market.stall:') ? t[0].slice(13) : null;
+        if (!stall) {
+          ok = false;
+          break;
+        }
+        ui.stall = stall;
+        let t2 = buyStep.targets(g, ui);
+        while (t2[0]?.startsWith('stall.add:')) {
+          basket[t2[0].slice(10)] = 1;
+          t2 = buyStep.targets(g, { ...ui, basket: { ...basket } });
+        }
+        if (t2[0] !== 'stall.done') ok = false;
+      }
+      check(ok && need.every((i) => basket[i] === 1) && buyStep.done(g, { fpOpen: false, basket, stall: null }), `${st.id}: mua tay theo viền vàng đủ ${need.length} món rồi xong bước`);
+      const payStep = TUTORIAL.find((x) => x.id === 'pay')!;
+      check(payStep.targets(g, { fpOpen: false, basket, stall: null }).join() === 'market.pay', `${st.id}: sau đó chỉ vào 💳`);
+    }
     const sb = M.suggestBasket(g);
     check(ings.every((i) => (sb[i] ?? 0) > 0) && M.checkout(g, sb) === null, `${st.id}: mua theo menu đủ đồ và trả tiền được`);
     // Sơ chế đủ đồ cần thái rồi mới qua bước nấu.

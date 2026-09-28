@@ -9,6 +9,7 @@ import type { Basket, VendorId } from '../../game/market';
 import { unlockedIngredients } from '../../game/progression';
 import type { GameState, IngredientId } from '../../game/types';
 import { GROUP, colors } from '../ui';
+import TutorialGlow, { useTutorialTargets } from '../kid/TutorialGlow';
 
 /** Dãy số ngẫu nhiên cố định: dùng chung cho bản thử (để hiện câu người bán ngay) và bản thật. */
 const seqRng = (seq: number[]) => {
@@ -36,6 +37,7 @@ export default function StallSheet({
   onClose: () => void;
 }) {
   const [say, setSay] = useState<string | null>(null);
+  const targets = useTutorialTargets();
   if (!vendor) return null;
   const v = VENDOR_MAP[vendor];
   const g = GROUP[v.group];
@@ -108,9 +110,11 @@ export default function StallSheet({
                       <Text style={styles.qText}>−</Text>
                     </Pressable>
                     <Text style={styles.qNum}>{q}</Text>
-                    <Pressable onPress={() => setQty(id, q + 1)} disabled={unavailable} style={[styles.qBtn, unavailable && { opacity: 0.3 }]} accessibilityRole="button" accessibilityLabel={`Thêm 1 ${ing.name} vào giỏ`}>
-                      <Text style={styles.qText}>+</Text>
-                    </Pressable>
+                    <TutorialGlow on={targets.includes(`stall.add:${id}`)} radius={10}>
+                      <Pressable onPress={() => setQty(id, q + 1)} disabled={unavailable} style={[styles.qBtn, unavailable && { opacity: 0.3 }]} accessibilityRole="button" accessibilityLabel={`Thêm 1 ${ing.name} vào giỏ`}>
+                        <Text style={styles.qText}>+</Text>
+                      </Pressable>
+                    </TutorialGlow>
                     <Pressable onPress={() => setQty(id, q + 5)} disabled={unavailable} style={[styles.qBtn, styles.q5, unavailable && { opacity: 0.3 }]} accessibilityRole="button" accessibilityLabel={`Thêm 5 ${ing.name} vào giỏ`}>
                       <Text style={[styles.qText, { color: '#fff', fontSize: 14 }]}>+5</Text>
                     </Pressable>
@@ -123,9 +127,11 @@ export default function StallSheet({
             <Pressable onPress={doHaggle} disabled={st.haggles <= 0} style={[styles.haggle, st.haggles <= 0 && { opacity: 0.4 }]} accessibilityRole="button" accessibilityLabel="Trả giá">
               <Text style={styles.haggleText}>🤝 Trả giá · còn {st.haggles} lượt</Text>
             </Pressable>
-            <Pressable onPress={onClose} style={styles.done} accessibilityRole="button" accessibilityLabel="Xong sạp này">
-              <Text style={styles.doneText}>✓ Xong</Text>
-            </Pressable>
+            <TutorialGlow on={targets.includes('stall.done')} radius={14}>
+              <Pressable onPress={onClose} style={styles.done} accessibilityRole="button" accessibilityLabel="Xong sạp này">
+                <Text style={styles.doneText}>✓ Xong</Text>
+              </Pressable>
+            </TutorialGlow>
           </View>
         </Pressable>
       </Pressable>

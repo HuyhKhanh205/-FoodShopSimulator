@@ -23,7 +23,7 @@ export function MProp({ name, position, size, rotation = 0 }: { name: string; po
 const minOf = (name: string, axis: number) => MARKET_BOUNDS[name]?.min[axis] ?? 0;
 
 /** Người bán / khách đi chợ (Kenney Mini Characters) có hoạt ảnh. */
-export function Mini({ model, height = 0.95, walking }: { model: string; height?: number; walking?: () => boolean }) {
+export function Mini({ model, height = 0.95, walking, anim }: { model: string; height?: number; walking?: () => boolean; anim?: () => string | null }) {
   const inst = useMini(model);
   const mixer = useMemo(() => (inst ? new AnimationMixer(inst.scene) : null), [inst]);
   const actions = useRef<Record<string, AnimationAction>>({});
@@ -44,7 +44,8 @@ export function Mini({ model, height = 0.95, walking }: { model: string; height?
   }, [inst, mixer]);
   useFrame((_, dt) => {
     if (!mixer) return;
-    const want = walking?.() ? 'walk' : 'idle';
+    const a = anim?.();
+    const want = a && actions.current[a] ? a : walking?.() ? 'walk' : 'idle';
     if (want !== current.current && actions.current[want]) {
       actions.current[want].reset().fadeIn(0.2).play();
       actions.current[current.current]?.fadeOut(0.2);

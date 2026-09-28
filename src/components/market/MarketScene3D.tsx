@@ -13,7 +13,9 @@ import MarketSurroundings from '../scene/MarketSurroundings';
 import { SKY } from '../scene/SceneryKit';
 import { MAP_COLS, MAP_ROWS, findPath } from '../../game/layout';
 import type { MapLayout, Tile } from '../../game/layout';
-import { VENDORS, activeDeals, fmt, friendLevel, vendorCall, vendorState } from '../../game/market';
+import { VENDORS, VENDOR_GREET, activeDeals, fmt, friendLevel, ownerGreet, vendorCall, vendorState } from '../../game/market';
+import { useTutorialTargets } from '../kid/TutorialGlow';
+import GuideArrow from '../scene/GuideArrow';
 import type { VendorId } from '../../game/market';
 import type { GameState } from '../../game/types';
 import { useWalker } from '../../screens/views/useWalker';
@@ -45,7 +47,7 @@ const ITEMS: Record<VendorId, string[]> = {
 const CRATE_FRUIT: Record<VendorId, string> = { thit: 'f_barrel', bot: 'f_bag', rau: 'f_watermelon', nuoc: 'f_pineapple' };
 
 /** Một sạp: mái che sọc màu nhóm, bàn bày hàng, thùng, người bán đứng sau bàn. */
-function StallMesh({ stall }: { stall: Stall }) {
+function StallMesh({ stall, greet = false }: { stall: Stall; greet?: boolean }) {
   const v = VENDORS.find((x) => x.id === stall.id)!;
   const color = GROUP[v.group].fg;
   const cx = stall.x + 1;
@@ -87,7 +89,7 @@ function StallMesh({ stall }: { stall: Stall }) {
       <MProp name={CRATE_FRUIT[stall.id]} size={0.34} position={[stall.face * 0.35, 0.5, 1.25]} />
       {/* Người bán */}
       <group position={[-stall.face * 0.4, 0, 0]} rotation-y={faceRot}>
-        <Mini model={v.model} height={1.2} />
+        <Mini model={v.model} height={1.2} anim={() => (greet ? 'emote-yes' : null)} />
       </group>
     </group>
   );
@@ -204,6 +206,7 @@ export default function MarketScene3D({
   height,
   demo = false,
   insets = { top: 0, bottom: 0 },
+  meet = null,
 }: {
   game: GameState;
   onStall: (id: VendorId) => void;
@@ -213,6 +216,8 @@ export default function MarketScene3D({
   demo?: boolean;
   /** Phần trên / dưới bị lớp nổi che (px): chợ canh giữa vùng còn lại, nhãn không nằm dưới lớp nổi. */
   insets?: { top: number; bottom: number };
+  /** Buổi chợ đầu: Chú Tư dẫn chủ quán tới chào người bán này (tự đi tới sạp, hai bên chào nhau). */
+  meet?: VendorId | null;
 }) {
   const layout = useMemo(buildMarketLayout, []);
   const walker = useWalker(layout.start);
@@ -243,6 +248,22 @@ export default function MarketScene3D({
       onStall(id);
     });
   };
+  // Đi tới sạp đang được giới thiệu; tới nơi thì hai bên chào nhau.
+  const [arrived, setArrived] = useState<VendorId | null>(null);
+  useEffect(() => {
+    setArrived(null);
+    if (!meet || demo) return;
+    const st = STALLS.find((s) => s.id === meet)!;
+    const path = findPath(layout, walker.origin(), st.access);
+    if (!path) return setArrived(meet);
+    walker.walk(path, () => {
+      walker.face({ x: -st.face, y: 0 });
+      setArrived(meet);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meet]);
+  const targets = useTutorialTargets();
+  const pointAt = STALLS.find((s) => targets.includes(`market.stall:${s.id}`)) ?? null;
   const onClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     const x = Math.floor(e.point.x);
@@ -273,12 +294,13 @@ export default function MarketScene3D({
         <Decor />
         {STALLS.map((s) => (
           <group key={s.id} onClick={demo ? undefined : (e: ThreeEvent<MouseEvent>) => (e.stopPropagation(), goStall(s.id))}>
-            <StallMesh stall={s} />
+            <StallMesh stall={s} greet={arrived === s.id && meet === s.id} />
           </group>
         ))}
         <Shopper model="mini_male_d" lane={5.2} speed={0.08} offset={0} />
         <Shopper model="mini_female_c" lane={6.9} speed={0.07} offset={1} />
-        <Player walker={walker.state} carrying={[]} profile={game.profile} />
+        <Player walker={walker.state} carrying={[]} profile={game.profile} anim={meet && arrived === meet ? 'Interact' : undefined} />
+        {pointAt && !demo && <GuideArrow x={pointAt.x + 1} z={pointAt.y + 1} r={1.3} h={2.6} />}
         {demo && (
           <group position={[5.2, 0, 9.3]} rotation-y={ISO_YAW}>
             <ModelCharacter model="barbarian" fallback={CHEF_LOOK} hat={CHEF_LOOK} anim={tick % 2 ? 'Cheer' : 'Interact'} />
@@ -287,11 +309,18 @@ export default function MarketScene3D({
       </Canvas>
       {/* Tên sạp (trên mái) + người bán rao giá — đặt tránh đè nhau (labels.ts) */}
       {!demo && (() => {
-        const calling = tick % STALLS.length;
+        const meetIdx = meet ? STALLS.findIndex((s) => s.id === meet) : -1;
+        const calling = meetIdx >= 0 ? meetIdx : tick % STALLS.length;
         const chipAt = STALLS.map((s) => p(s.x + 1, 2.3, s.y + 1));
         const cs = STALLS[calling];
         const head = p(cs.x + 1 - cs.face * 0.4, 1.5, cs.y + 1);
-        const lay = placeLabels(chipAt, head, width, height, insets.top, insets.bottom);
+        // Chủ quán chào lại (đứng ở ô trước sạp).
+        const greeting = meet && arrived === meet;
+        const acc = cs.access[0];
+        const ownerHead = greeting ? p(acc.x + 0.5, 1.6, acc.y + 0.5) : null;
+        const lay = placeLabels(chipAt, head, width, height, insets.top, insets.bottom, ownerHead);
+        // Người bán: chào (tới nơi) rồi rao hàng xen kẽ.
+        const callText = meet && meetIdx >= 0 ? (greeting && tick % 2 ? vendorCall(game, cs.id, tick) : VENDOR_GREET[cs.id]) : vendorCall(game, cs.id, tick);
         const cv = VENDORS.find((x) => x.id === cs.id)!;
         return (
           <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
@@ -305,7 +334,7 @@ export default function MarketScene3D({
                 <Pressable
                   key={s.id}
                   onPress={() => goStall(s.id)}
-                  style={[styles.chip, { backgroundColor: g.bg, borderColor: g.fg, left: r.x, top: r.y, width: r.w, height: r.h }]}
+                  style={[styles.chip, { backgroundColor: g.bg, borderColor: g.fg, left: r.x, top: r.y, width: r.w, height: r.h }, pointAt?.id === s.id && styles.chipGlow]}
                   accessibilityRole="button"
                   accessibilityLabel={`${v.stall} ${v.name}`}
                 >
@@ -326,7 +355,17 @@ export default function MarketScene3D({
                 numberOfLines={2}
                 accessibilityLabel={`${cv.name} rao`}
               >
-                💬 {vendorCall(game, cv.id, tick)}
+                💬 {callText}
+              </Text>
+            )}
+            {lay.owner && (
+              <Text
+                pointerEvents="none"
+                style={[styles.call, styles.ownerCall, { left: lay.owner.x, top: lay.owner.y, width: lay.owner.w, height: lay.owner.h }]}
+                numberOfLines={2}
+                accessibilityLabel="Chủ quán chào"
+              >
+                {ownerGreet(cs.id)}
               </Text>
             )}
           </View>
@@ -351,6 +390,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0D0BC',
   },
+  ownerCall: { backgroundColor: '#FFF3C4', borderColor: colors.accent, borderWidth: 2 },
+  chipGlow: { borderColor: '#FFC107', borderWidth: 4, shadowColor: '#FFC107', shadowOpacity: 0.9, shadowRadius: 10 },
   chip: { position: 'absolute', borderRadius: 12, borderWidth: 2, paddingHorizontal: 6, paddingVertical: 1, alignItems: 'center', justifyContent: 'center' },
   chipTitle: { fontSize: 12, fontWeight: '900', color: colors.brown },
   chipSub: { fontSize: 11, fontWeight: '800' },

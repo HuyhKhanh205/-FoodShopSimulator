@@ -7,6 +7,8 @@ export type HelpTopic = 'home' | 'character' | 'market' | 'shop' | 'kitchen' | '
 export interface HelpStep {
   icon: string;
   text: string;
+  /** Chỗ viền vàng khi đọc bước này (cùng khoá với hướng dẫn, vd 'market.pay'). */
+  target?: string;
 }
 
 export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: HelpStep[] }> = {
@@ -37,11 +39,12 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
   market: {
     title: 'Đi chợ',
     steps: [
-      { icon: '🧾', text: 'Bấm Mua theo menu để bỏ sẵn đủ đồ vào giỏ.' },
-      { icon: '🏪', text: 'Chạm vào sạp để chọn thêm: bấm + để bỏ vào giỏ, bấm − để bớt.' },
-      { icon: '💳', text: 'Xong thì bấm Trả tiền.' },
-      { icon: '🔪', text: 'Thịt, rau, hành phải thái trước khi nấu.' },
-      { icon: '🏮', text: 'Mua xong bấm Mở cửa.' },
+      { icon: '🏪', text: 'Chợ có 4 sạp: 🥩 thịt tôm (Cô Bảy), 🥚 trứng bột (Bà Năm), 🥬 rau hành (Dì Sáu), 🧋 đồ uống (Chú Ba).', target: 'market.stall:thit' },
+      { icon: '👆', text: 'Chạm tên sạp: chủ quán đi tới, bảng hàng của sạp mở ra.', target: 'market.stall:bot' },
+      { icon: '➕', text: 'Bấm + để bỏ 1 phần vào giỏ, +5 để bỏ 5 phần, bấm − để bớt. Xong bấm ✓ Xong.' },
+      { icon: '🤝', text: 'Trong sạp có nút 🤝 Trả giá: mỗi sạp trả giá 2 lần mỗi ngày. Người bán vui thì bớt tiền cả sạp hôm đó.' },
+      { icon: '💳', text: 'Bấm 💳 Trả tiền. Nút mờ là kho hết chỗ 📦 hoặc không đủ tiền.', target: 'market.pay' },
+      { icon: '🏮', text: 'Mua xong bấm 🏮 Mở cửa để về quán đón khách. Lười chọn thì bấm 🧾 Theo menu cho giỏ tự đủ đồ.', target: 'market.open' },
     ],
     more: [
       { icon: '🤝', text: 'Mỗi sạp trả giá được 2 lần mỗi ngày — trả được thì cả sạp bớt tiền hôm đó.' },
