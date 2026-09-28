@@ -84,7 +84,7 @@ Tới **thớt** hoặc **bếp** là vào màn **Bếp của tôi**: nhìn qua 
 Trên điện thoại cảnh quán được phóng to 30% và camera đi theo nhân vật.
 
 ### 👨‍🍳 Chú Tư bếp trưởng dẫn đường
-Chơi mới là **Chú Tư bếp trưởng** (nhân vật 3D KayKit có hoạt ảnh vẫy tay, giải thích) trượt lên màn hình và dẫn từng bước ngày đầu: mua 🥖🥚🥫🧅 → 🏮 mở cửa → vào 🔪 thớt → thái hành → bỏ 🥪 vào nồi và nấu → lấy món → mang cho khách. Mỗi bước chỉ vào đúng nút cần bấm (viền vàng nhấp nháy + 👆), làm xong tự sang bước sau; có ⏭️ bỏ qua, chạm vào bếp trưởng để thu nhỏ, 🔊 để nghe đọc (giọng nam, tốc độ 1,4; máy chỉ có giọng nữ như iPhone thì đọc trầm xuống). Sau đó Chú Tư chỉ xuất hiện khi có tin mới (lên cấp, món mới, trend, mở vị trí nhân viên) hoặc khi bấm ❗ ở bất kỳ màn nào.
+Chơi mới là **Chú Tư bếp trưởng** (nhân vật 3D KayKit có hoạt ảnh vẫy tay, giải thích) trượt lên màn hình và dẫn từng bước ngày đầu: mua 🥖🥚🥫🧅 → 🏮 mở cửa → vào 🔪 thớt → thái hành → bỏ 🥪 vào nồi và nấu → lấy món → mang cho khách. Mỗi bước chỉ vào đúng nút cần bấm (viền vàng nhấp nháy + 👆), làm xong tự sang bước sau; có ⏭️ bỏ qua, chạm vào bếp trưởng để thu nhỏ, 🔊 để nghe đọc (giọng nam, tốc độ 1,2; máy chỉ có giọng nữ như iPhone thì đọc trầm xuống; không phát được tiếng thì nhắc tắt chế độ im lặng). Sau đó Chú Tư chỉ xuất hiện khi có tin mới (lên cấp, món mới, trend, mở vị trí nhân viên) hoặc khi bấm ❗ ở bất kỳ màn nào.
 
 ### ⭐ Cấp độ & 📖 Sổ món & Menu
 - Mỗi món mang cho khách được điểm kinh nghiệm; **lên cấp mở khoá nguyên liệu mới**: cấp 1 🥖🥚🥫🧅🍵🧊 · cấp 2 🍚🍗 · cấp 3 🍜🥩🥬 · cấp 4 🫘🥛 · cấp 5 🍝🥓 · cấp 6 🫓🦐.

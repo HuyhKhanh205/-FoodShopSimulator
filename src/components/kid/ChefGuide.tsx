@@ -8,7 +8,7 @@ import { hasWebGL } from '../../three/webgl';
 import ModelCharacter from '../scene/ModelCharacter';
 import type { Look } from '../scene/looks';
 import { colors } from '../ui';
-import { canSpeak, speak } from './HelpButton';
+import { MUTED_HINT, canSpeak, speak } from './HelpButton';
 import { tutorialUi, useTutorialUi } from './tutorialUi';
 
 /** Ngoại hình Chú Tư bếp trưởng: áo trắng, khăn đỏ, mũ đầu bếp. */
@@ -65,6 +65,8 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
   const { width } = useWindowDimensions();
   const [helpIndex, setHelpIndex] = useState(0);
   const [mini, setMini] = useState(false);
+  /** Câu vừa bấm 🔊 mà máy không phát tiếng. */
+  const [mutedKey, setMutedKey] = useState<string | null>(null);
   const slide = useRef(new Animated.Value(0)).current;
 
   const step = game ? currentStep(game) : null;
@@ -173,9 +175,15 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
       <Animated.View style={[styles.bubble, { transform: [{ scale: bounce }] }]} accessibilityLabel={`Chú Tư bếp trưởng: ${say.text}`}>
         <Text style={styles.name}>👨‍🍳 Chú Tư bếp trưởng</Text>
         <Text style={styles.text}>{say.text}</Text>
+        {mutedKey === say.key && <Text style={styles.muted}>{MUTED_HINT}</Text>}
         <View style={styles.row}>
           {canSpeak() && (
-            <Pressable onPress={() => speak(say!.text.replace(/[^\p{L}\p{N}\s.,!?+=]/gu, ' '))} style={[styles.btn, styles.btnSoft]} accessibilityLabel="Đọc to">
+            <Pressable
+              onPress={() => {
+                const key = say!.key;
+                setMutedKey(null);
+                speak(say!.text.replace(/[^\p{L}\p{N}\s.,!?+=]/gu, ' '), () => setMutedKey(key));
+              }} style={[styles.btn, styles.btnSoft]} accessibilityLabel="Đọc to">
               <Text style={styles.btnSoftText}>🔊</Text>
             </Pressable>
           )}
@@ -201,6 +209,7 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
 }
 
 const styles = StyleSheet.create({
+  muted: { fontSize: 12, fontWeight: '700', color: colors.bad, marginTop: 4 },
   wrap: { position: 'absolute', left: 6, right: 6, flexDirection: 'row', alignItems: 'flex-end', gap: 2, zIndex: 50 },
   bubble: {
     flex: 1,

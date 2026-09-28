@@ -50,31 +50,69 @@ if (canSpeak()) {
   }
 }
 
-export function speak(text: string) {
-  if (!canSpeak()) return;
+/** Câu nhắc khi máy không phát ra tiếng (thường do iPhone đang bật chế độ im lặng). */
+export const MUTED_HINT = '🔇 Không nghe thấy? Tắt chế độ im lặng (nút gạt bên hông iPhone) và tăng âm lượng.';
+
+/**
+ * Đọc to một câu. Viết cẩn thận cho Safari iPhone:
+ * - chỉ `cancel()` khi đang đọc (gọi `speak` ngay sau `cancel` thì iOS bỏ luôn câu mới);
+ * - còn lại đọc ngay trong lần chạm, iOS mới cho phát tiếng;
+ * - chỉ gán giọng khi giọng đó còn trong danh sách hiện tại.
+ * `onFail`: sau 2,5 giây vẫn chưa bắt đầu đọc (hoặc lỗi).
+ */
+export function speak(text: string, onFail?: () => void) {
+  if (!canSpeak()) {
+    onFail?.();
+    return;
+  }
   try {
-    window.speechSynthesis.cancel();
-    if (!voice || !voice.v) pickVoice();
+    const synth = window.speechSynthesis;
+    pickVoice();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'vi-VN';
-    u.rate = 1.4;
-    if (voice?.v) u.voice = voice.v;
+    u.rate = 1.2;
+    const list = synth.getVoices();
+    if (voice?.v && list.includes(voice.v)) u.voice = voice.v;
     // Không có giọng nam (vd iPhone chỉ có giọng nữ "Linh"): đọc trầm xuống cho ra giọng nam.
     u.pitch = voice?.male ? 1 : 0.6;
-    window.speechSynthesis.speak(u);
+    let started = false;
+    let failed = false;
+    const fail = () => {
+      if (started || failed) return;
+      failed = true;
+      onFail?.();
+    };
+    u.onstart = () => {
+      started = true;
+    };
+    u.onerror = (e) => {
+      // Bị câu mới cắt ngang thì không tính là lỗi.
+      if ((e as SpeechSynthesisErrorEvent).error !== 'interrupted' && (e as SpeechSynthesisErrorEvent).error !== 'canceled') fail();
+    };
+    setTimeout(fail, 2500);
+    const go = () => {
+      synth.resume();
+      synth.speak(u);
+    };
+    if (synth.speaking || synth.pending) {
+      synth.cancel();
+      setTimeout(go, 120);
+    } else go();
   } catch {
-    // Không đọc được thì thôi.
+    onFail?.();
   }
 }
 
 /** Bảng hướng dẫn bằng hình. */
 export function HelpSheet({ topic, visible, onClose }: { topic: HelpTopic; visible: boolean; onClose: () => void }) {
   const [more, setMore] = useState(false);
+  const [muted, setMuted] = useState(false);
   const h = HELP[topic];
   const steps = more && h.more ? [...h.steps, ...h.more] : h.steps;
   const close = () => {
     if (canSpeak()) window.speechSynthesis.cancel();
     setMore(false);
+    setMuted(false);
     onClose();
   };
   return (
@@ -90,9 +128,13 @@ export function HelpSheet({ topic, visible, onClose }: { topic: HelpTopic; visib
               </View>
             ))}
           </ScrollView>
+          {muted && <Text style={styles.muted}>{MUTED_HINT}</Text>}
           <View style={styles.row}>
             {canSpeak() && (
-              <Pressable style={[styles.btn, styles.btnSoft]} onPress={() => speak(`${h.title}. ${steps.map((s) => s.text).join(' ')}`)} accessibilityRole="button">
+              <Pressable style={[styles.btn, styles.btnSoft]} onPress={() => {
+                  setMuted(false);
+                  speak(`${h.title}. ${steps.map((s) => s.text).join(' ')}`, () => setMuted(true));
+                }} accessibilityRole="button">
                 <Text style={styles.btnSoftText}>🔊 Đọc</Text>
               </Pressable>
             )}
@@ -157,6 +199,7 @@ export default function HelpButton({ topic, autoOpen = true, style }: { topic: H
 }
 
 const styles = StyleSheet.create({
+  muted: { fontSize: 13, fontWeight: '700', color: colors.bad, textAlign: 'center' },
   bang: {
     width: 40,
     height: 40,
