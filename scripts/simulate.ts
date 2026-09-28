@@ -103,6 +103,8 @@ function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: 
     let guard = 0;
     while (s.phase === 'open' && guard++ < 10000) {
       events += decide(s, rng);
+      // Nhân viên mệt thì cho nghỉ giải lao (mỗi người 1 lần / ngày).
+      for (const st of s.staff) if (st.mood < 40) E.staffBreak(s, st.id);
       E.tick(s, 250, rng);
       if (s.phase === 'open') botStep(s, rng, botSkill);
     }

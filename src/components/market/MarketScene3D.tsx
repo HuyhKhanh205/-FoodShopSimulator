@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { maxDpr } from '../../game/settings';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { AnimationMixer, LoopRepeat } from 'three';
-import type { AnimationAction, Group } from 'three';
+import type { Group } from 'three';
 import { Canvas, useFrame } from '../../three/fiber';
 import type { ThreeEvent } from '../../three/fiber';
-import { MARKET_BOUNDS } from '../../assets/models.generated';
-import { marketPropSize, useMarketProp, useMini } from '../../three/models';
+import { MProp, Mini } from '../scene/SceneryProps';
 import { MAP_COLS, MAP_ROWS, findPath } from '../../game/layout';
 import type { MapLayout, Tile } from '../../game/layout';
 import { VENDORS, activeDeals, fmt, friendLevel, vendorCall, vendorState } from '../../game/market';
@@ -68,55 +66,6 @@ export function buildMarketLayout(): MapLayout {
   for (const s of STALLS) for (let dx = 0; dx < 2; dx += 1) for (let dy = 0; dy < 2; dy += 1) blocked.add(key(s.x + dx, s.y + dy));
   for (const [x, y] of PALMS) blocked.add(key(x, y));
   return { stations: [], blocked, restSpot: { x: 6, y: 9 }, start: { x: 6, y: 9 } };
-}
-
-/** Đồ vật Kenney đặt theo kích thước mong muốn (cạnh lớn nhất), tâm ở giữa đáy. */
-function MProp({ name, position, size, rotation = 0 }: { name: string; position: Vec3; size: number; rotation?: number }) {
-  const obj = useMarketProp(name);
-  const dims = marketPropSize(name);
-  const scale = size / Math.max(dims[0], dims[2], 0.01);
-  if (!obj) return null;
-  // Căn tâm đáy (một số mô hình có gốc ở góc, vd đồ nội thất).
-  return (
-    <group position={position} rotation-y={rotation} scale={scale}>
-      <primitive object={obj} position={[-(dims[0] / 2 + minOf(name, 0)), -minOf(name, 1), -(dims[2] / 2 + minOf(name, 2))]} />
-    </group>
-  );
-}
-const minOf = (name: string, axis: number) => MARKET_BOUNDS[name]?.min[axis] ?? 0;
-
-/** Người bán / khách đi chợ (Kenney Mini Characters) có hoạt ảnh. */
-function Mini({ model, height = 0.95, walking }: { model: string; height?: number; walking?: () => boolean }) {
-  const inst = useMini(model);
-  const mixer = useMemo(() => (inst ? new AnimationMixer(inst.scene) : null), [inst]);
-  const actions = useRef<Record<string, AnimationAction>>({});
-  const current = useRef('');
-  useEffect(() => {
-    if (!inst || !mixer) return;
-    for (const clip of inst.clips) {
-      const a = mixer.clipAction(clip);
-      a.setLoop(LoopRepeat, Infinity);
-      actions.current[clip.name] = a;
-    }
-    inst.scene.traverse((o) => {
-      o.castShadow = true;
-    });
-    return () => {
-      mixer.stopAllAction();
-    };
-  }, [inst, mixer]);
-  useFrame((_, dt) => {
-    if (!mixer) return;
-    const want = walking?.() ? 'walk' : 'idle';
-    if (want !== current.current && actions.current[want]) {
-      actions.current[want].reset().fadeIn(0.2).play();
-      actions.current[current.current]?.fadeOut(0.2);
-      current.current = want;
-    }
-    mixer.update(Math.min(dt, 0.1));
-  });
-  if (!inst) return null;
-  return <primitive object={inst.scene} scale={height / inst.height} />;
 }
 
 const ITEMS: Record<VendorId, string[]> = {

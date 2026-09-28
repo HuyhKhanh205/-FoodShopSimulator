@@ -3,7 +3,7 @@ import { MAP_COLS, MAP_ROWS } from '../../game/layout';
 import type { Tile } from '../../game/layout';
 
 /** Góc nhìn xuống (radian) — khoảng 50°, kiểu game nấu ăn nhìn chéo từ trên. */
-const ELEVATION = 0.87;
+export const ELEVATION = 0.87;
 /** Góc xoay ngang của camera: isometric khoá 45° (nhìn từ góc đông nam); người chơi xoay thêm theo nấc 90°. */
 export const ISO_YAW = Math.PI / 4;
 

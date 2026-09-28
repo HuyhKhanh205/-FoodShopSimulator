@@ -6,7 +6,8 @@ import HelpButton from '../components/kid/HelpButton';
 import { ROLE_LEVEL, unlockedRoles } from '../game/progression';
 import { Button, Panel, ProgressBar, colors } from '../components/ui';
 import { ROLE_EMOJI, ROLE_LABEL, TRAITS } from '../game/data';
-import { MAX_STAFF, fire, hire, raiseWage, toggleDayOff } from '../game/engine';
+import { MAX_STAFF, fire, hire, raiseWage, setStudentRole, toggleDayOff } from '../game/engine';
+import { RolePicker } from '../components/staff/StaffSheet';
 import { useGame } from '../game/GameContext';
 import { errorRate, fairWage, formatMoney } from '../game/helpers';
 import type { GameState, Staff } from '../game/types';
@@ -23,13 +24,13 @@ function StaffCard({ st, game, children }: { st: Staff; game: GameState; childre
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.avatar}>{ROLE_EMOJI[st.role]}</Text>
+        <Text style={styles.avatar}>{st.student && !game.staff.includes(st) ? '🎓' : ROLE_EMOJI[st.role]}</Text>
         <View style={styles.flex}>
           <Text style={styles.name}>
             {st.student ? '🎓 ' : ''}
-            {st.name} · {ROLE_LABEL[st.role]}
+            {st.name} · {st.student && !game.staff.includes(st) ? 'Sinh viên' : ROLE_LABEL[st.role]}
           </Text>
-          {st.student && <Text style={styles.student}>Sinh viên làm thêm: rẻ nhưng vụng — dễ nhầm món, đổ đồ ăn, vấp té</Text>}
+          {st.student && <Text style={styles.student}>Sinh viên làm thêm: rẻ nhưng vụng — nhưng tự chọn và đổi vai trò lúc nào cũng được</Text>}
         </View>
       </View>
       <Text style={styles.stat}>🛠️ {st.skill}</Text>
@@ -69,6 +70,11 @@ export default function StaffScreen() {
           <View style={styles.grid}>
             {game.staff.map((st) => (
               <StaffCard key={st.id} st={st} game={game}>
+                {st.student && (
+                  <View style={{ width: '100%' }}>
+                    <RolePicker game={game} current={st.role} pending={st.nextRole} onPick={(r) => act((s) => void setStudentRole(s, st.id, r))} />
+                  </View>
+                )}
                 <Button small label="💰 +10%" onPress={() => act((s) => raiseWage(s, st.id))} />
                 {game.phase === 'market' && (
                   <Button small variant="secondary" label={st.absent ? '🏃 Đi làm' : '😴 Nghỉ'} onPress={() => act((s) => toggleDayOff(s, st.id))} />
@@ -94,7 +100,11 @@ export default function StaffScreen() {
           <View style={styles.grid}>
             {game.candidates.map((st) => (
               <StaffCard key={st.id} st={st} game={game}>
-                <Button small label={full ? '🚫' : '✅ Thuê'} disabled={full} onPress={() => act((s) => void hire(s, st.id))} />
+                {st.student && !full ? (
+                  <RolePicker game={game} prefix="Thuê làm " onPick={(r) => act((s) => void hire(s, st.id, r))} />
+                ) : (
+                  <Button small label={full ? '🚫' : '✅ Thuê'} disabled={full} onPress={() => act((s) => void hire(s, st.id))} />
+                )}
               </StaffCard>
             ))}
           </View>

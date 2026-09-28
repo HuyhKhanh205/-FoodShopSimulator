@@ -20,6 +20,7 @@ import {
   PLAYER_PREP_MS,
   PREP_BATCH,
   RECIPES,
+  ROLE_LABEL,
   RENT_PER_DAY,
   START_DEBT,
   START_MONEY,
@@ -68,11 +69,16 @@ import type {
   RecipeId,
   Rng,
   Staff,
+  StaffRole,
   Station,
   Upgrades,
 } from './types';
 
 export const MAX_STAFF = 6;
+/** Thuê giữa giờ bán: bao lâu sau người mới tới. */
+export const HIRE_ARRIVE_MS = 20_000;
+/** Nghỉ giải lao dài bao lâu. */
+export const BREAK_MS = 40_000;
 export const MAX_CARRY = 2;
 /** Khách có món đang nấu / đã xong: kiên nhẫn giảm chậm lại còn chừng này. */
 export const HANDLED_DECAY = 0.5;
@@ -192,8 +198,9 @@ function beginMarket(s: GameState, rng: Rng) {
     const base = INGREDIENTS[id].basePrice * (0.8 + rng() * 0.4) * (s.mods.priceMult[id] ?? 1);
     s.prices[id] = Math.max(100, Math.round(base / 100) * 100);
   }
-  // Ứng viên chỉ ở vị trí đã mở theo cấp; mỗi vị trí có 1 người thường + 1 sinh viên giá rẻ.
-  s.candidates = unlockedRoles(s).flatMap((role) => [makeStaff(s, rng, role), makeStaff(s, rng, role, true)]);
+  // Ứng viên chỉ ở vị trí đã mở theo cấp: mỗi vị trí 1 người thường + 2 sinh viên giá rẻ (tự chọn vai khi thuê).
+  const roles = unlockedRoles(s);
+  s.candidates = [...roles.map((role) => makeStaff(s, rng, role)), ...(roles.length ? [0, 1].map(() => makeStaff(s, rng, roles[0], true)) : [])];
   // Sổ tay chủ quán: nhiệm vụ + món đặc biệt hôm nay (sau cùng để không đổi dãy ngẫu nhiên phía trên).
   s.today = emptyTally();
   rollMissions(s, rng);
@@ -257,18 +264,62 @@ export function discardExpired(s: GameState) {
   s.stock = s.stock.filter((b) => b.expiresOnDay >= s.day);
 }
 
-export function hire(s: GameState, candidateId: string): boolean {
+/** Thuê ứng viên. Sinh viên thì chọn vai `role`; thuê giữa giờ bán thì 20 giây sau mới tới. */
+export function hire(s: GameState, candidateId: string, role?: StaffRole): boolean {
   const c = s.candidates.find((x) => x.id === candidateId);
-  if (!c || s.staff.length >= MAX_STAFF || !unlockedRoles(s).includes(c.role)) return false;
+  if (!c || s.staff.length >= MAX_STAFF) return false;
+  const r = c.student && role ? role : c.role;
+  if (!unlockedRoles(s).includes(r)) return false;
+  c.role = r;
   s.candidates = s.candidates.filter((x) => x.id !== candidateId);
+  if (s.phase === 'open' && s.run) {
+    c.lateUntil = s.run.elapsed + HIRE_ARRIVE_MS;
+    log(s, `🚶 ${c.name} đang tới quán`, 'info');
+  }
   s.staff.push(c);
   return true;
 }
 
-/** Sa thải phải trả thêm 1 ngày lương. */
+/** Sinh viên đổi vai trò: rảnh thì đổi ngay, đang làm dở thì đổi khi xong việc. Nhân viên chính thức giữ chuyên môn. */
+export function setStudentRole(s: GameState, staffId: string, role: StaffRole): boolean {
+  const st = s.staff.find((x) => x.id === staffId);
+  if (!st || !st.student || !unlockedRoles(s).includes(role)) return false;
+  if (st.task && s.phase === 'open') {
+    st.nextRole = role === st.role ? undefined : role;
+  } else {
+    st.role = role;
+    st.nextRole = undefined;
+  }
+  return true;
+}
+
+/** Cho nghỉ giải lao 40 giây trong giờ bán (mỗi người 1 lần / ngày): tâm trạng +15. */
+export function staffBreak(s: GameState, staffId: string): boolean {
+  const run = s.run;
+  const st = s.staff.find((x) => x.id === staffId);
+  if (!run || s.phase !== 'open' || !st || st.absent || run.elapsed < st.lateUntil || run.breaks?.[st.id]) return false;
+  if (st.task && st.task.kind !== 'clean' && st.task.kind !== 'break') return false;
+  run.breaks = { ...(run.breaks ?? {}), [st.id]: true };
+  st.task = { kind: 'break', endsAt: run.elapsed + BREAK_MS };
+  st.mood = clamp(st.mood + 15, 0, 100);
+  return true;
+}
+
+/** Có thể cho nghỉ giải lao lúc này không (để hiện / làm mờ nút). */
+export function canBreak(s: GameState, st: Staff): boolean {
+  const run = s.run;
+  if (!run || s.phase !== 'open' || st.absent || run.elapsed < st.lateUntil || run.breaks?.[st.id]) return false;
+  return !st.task || st.task.kind === 'clean';
+}
+
+/** Sa thải phải trả thêm 1 ngày lương. Giữa giờ bán: việc dở dang được trả lại (món vẫn ở quầy). */
 export function fire(s: GameState, staffId: string) {
   const st = s.staff.find((x) => x.id === staffId);
   if (!st) return;
+  if (s.run && st.task?.kind === 'prep' && st.task.ingredientId) {
+    s.run.prepped[st.task.ingredientId] = (s.run.prepped[st.task.ingredientId] ?? 0) + (st.task.qty ?? 0);
+  }
+  st.task = null;
   s.money -= st.wage;
   s.report.wages += st.wage;
   s.staff = s.staff.filter((x) => x.id !== staffId);
@@ -630,6 +681,10 @@ function finishStaffTask(s: GameState, st: Staff, rng: Rng) {
   const run = s.run!;
   const task = st.task!;
   st.task = null;
+  if (task.kind === 'break') {
+    log(s, `☕ ${st.name} nghỉ xong, quay lại làm việc`, 'info');
+    return;
+  }
   gainExp(st);
 
   if (task.kind === 'prep' && task.ingredientId) {
@@ -922,9 +977,13 @@ export function tick(s: GameState, dt: number, rng: Rng) {
     if (st.absent || t < st.lateUntil) continue;
     if (st.task) {
       if (t >= st.task.endsAt) finishStaffTask(s, st, rng);
-    } else {
-      startStaffTask(s, st, rng);
     }
+    if (!st.task && st.nextRole) {
+      log(s, `🔄 ${st.name} chuyển sang ${ROLE_LABEL[st.nextRole]}`, 'info');
+      st.role = st.nextRole;
+      st.nextRole = undefined;
+    }
+    if (!st.task) startStaffTask(s, st, rng);
   }
 
   // Khách mất kiên nhẫn (quán bẩn thì nhanh chán hơn)

@@ -19,6 +19,7 @@ import { Decor, HangingLamp, ShopSign } from './KayProps';
 import { STAFF_MODEL, customerLook, customerModel, profileLook, staffLook } from './looks';
 import type { Look } from './looks';
 import { Floor, Highlight, SEATS, StationMesh, Walls } from './Stations3D';
+import Surroundings, { SKY } from './Surroundings';
 
 const SHADOWS = Platform.OS === 'web';
 /** Màn nhỏ (điện thoại): bớt đèn treo và giảm độ phân giải bóng / điểm ảnh cho nhẹ (Safari iPhone dễ đơ). */
@@ -121,8 +122,9 @@ export function Player({ walker, carrying, profile }: { walker: React.MutableRef
 /** Mũ lưỡi trai xanh của sinh viên làm thêm. */
 const STUDENT_HAT: Look = { skin: '#F2C9A0', hair: '#3E2723', shirt: '#1E88E5', pants: '#263238', hat: 'cap', hatColor: '#1E88E5' };
 
-function StaffPerson({ staff, to, carrying, fallen }: { staff: Staff; to: Tile; carrying: string[]; fallen: boolean }) {
+function StaffPerson({ staff, to, carrying, fallen, selected }: { staff: Staff; to: Tile; carrying: string[]; fallen: boolean; selected?: boolean }) {
   const ref = useRef<Group>(null);
+  const ring = useRef<Group>(null);
   const body = useRef<Group>(null);
   const moving = useRef(false);
   const target = useRef(to);
@@ -137,6 +139,7 @@ function StaffPerson({ staff, to, carrying, fallen }: { staff: Staff; to: Tile; 
       b.rotation.x += (want - b.rotation.x) * Math.min(1, dt * (fallen ? 14 : 5));
       b.position.y = fallen ? 0.12 : b.position.y * (1 - Math.min(1, dt * 5));
     }
+    if (ring.current) ring.current.scale.setScalar(1 + Math.sin(Date.now() / 150) * 0.12);
     if (fallen) return;
     const tx = target.current.x + 0.5;
     const tz = target.current.y + 0.5;
@@ -156,6 +159,14 @@ function StaffPerson({ staff, to, carrying, fallen }: { staff: Staff; to: Tile; 
   });
   return (
     <group ref={ref} position={[to.x + 0.5, 0, to.y + 0.5]}>
+      {selected && (
+        <group ref={ring}>
+          <mesh rotation-x={-Math.PI / 2} position={[0, 0.03, 0]}>
+            <ringGeometry args={[0.34, 0.48, 28]} />
+            <meshBasicMaterial color="#FFD600" transparent opacity={0.95} />
+          </mesh>
+        </group>
+      )}
       <group ref={body}>
         <ModelCharacter
           model={STAFF_MODEL[staff.role]}
@@ -207,9 +218,11 @@ export interface SceneProps {
   cutaway?: boolean;
   /** Chế độ Bố trí: hiện chỗ chưa mua (hộp mờ "+"). */
   arrange?: boolean;
+  /** Nhân viên đang chọn trong bảng 👥 (vòng vàng dưới chân). */
+  selectedStaff?: string | null;
 }
 
-export default function ShopScene3D({ game, layout, walker, cam, frame, overlayPan, hereId, walkingTo, wanted, onTapTile, cutaway = false, arrange = false }: SceneProps) {
+export default function ShopScene3D({ game, layout, walker, cam, frame, overlayPan, hereId, walkingTo, wanted, onTapTile, cutaway = false, arrange = false, selectedStaff = null }: SceneProps) {
   const run = game.run!;
   const dishColor = (id: string) => {
     const d = run.pass.find((x) => x.id === id);
@@ -231,8 +244,8 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
     <Canvas shadows={SHADOWS ? 'percentage' : false} dpr={[1, Math.min(LITE ? 1.5 : 2, maxDpr())]} gl={{ antialias: true }} style={{ flex: 1 }}>
       <UseCamera cam={cam} />
       <FollowCam cam={cam} frame={frame} walker={walker} overlayPan={overlayPan} />
-      <color attach="background" args={['#FBE3C6']} />
-      <fog attach="fog" args={['#FBE3C6', 45, 80]} />
+      <color attach="background" args={[SKY]} />
+      <fog attach="fog" args={[SKY, 50, 95]} />
       <hemisphereLight args={['#FFF6E5', '#6D4C41', 0.9]} />
       <ambientLight intensity={LITE ? 0.45 : 0.15} color="#FFE0B2" />
       <Sun />
@@ -243,6 +256,9 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
       {[2, 6, 10].map((x) => (
         <HangingLamp key={`d${x}`} position={[x, 2.5, 7]} light={SHADOWS && !LITE} />
       ))}
+
+      {/* Phong cảnh phố bên sông quanh quán (khối xa tự ẩn) */}
+      <Surroundings />
 
       <group onClick={onClick}>
         <Floor />
@@ -291,7 +307,7 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
         const to = staffTarget(st, game, layout);
         if (!to) return null;
         const holding = st.task?.kind === 'serve' && st.task.dishId ? [dishColor(st.task.dishId)] : [];
-        return <StaffPerson key={st.id} staff={st} to={to} carrying={holding} fallen={st.task?.kind === 'fallen'} />;
+        return <StaffPerson key={st.id} staff={st} to={to} carrying={holding} fallen={st.task?.kind === 'fallen'} selected={st.id === selectedStaff} />;
       })}
 
       {/* Sự cố của phục vụ: vấp té, đổ thức ăn lên khách */}

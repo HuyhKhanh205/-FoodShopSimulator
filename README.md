@@ -190,6 +190,17 @@ Mỗi tình huống có nhiều lựa chọn với hậu quả khác nhau (tiề
   - 13 kiểu: chạm thần tốc, đuổi bắt, nhớ thứ tự, canh đúng lúc, chọn đúng, đập trúng, giữ thăng bằng, lật hình, chém rau, xếp bát, tìm điểm khác, đố vui, theo nhịp.
   - Mỗi lượt đếm ngược 3-2-1, có nút Bỏ qua. Được từ 60 điểm là thắng.
   - Kỷ lục ghi trong 📒 Sổ tay → 👛 Túi.
+- **👥 Quản lý nhân viên ngay trong giờ bán** (đồng hồ vẫn chạy): nút tròn 👥 Người mở bảng thấp.
+  - Mỗi người: đang làm gì, tâm trạng; ☕ nghỉ giải lao 40 giây (tâm trạng +15, 1 lần mỗi ngày), 💰 tăng lương, 👋 cho nghỉ việc.
+  - ➕ Thuê thêm người: 20 giây sau người mới tới. Chạm một người thì vòng vàng hiện dưới chân họ trong cảnh 3D.
+- **🎓 Sinh viên chọn vai trò:** thuê sinh viên thì tự chọn Phụ bếp / Đầu bếp / Phục vụ, đổi lúc nào cũng được (đang làm dở thì đổi khi xong việc). Nhân viên chính thức giữ chuyên môn.
+- **🌆 Phố bên sông quanh quán** thay nền kem:
+  - Vỉa hè có ghế đẩu (chỗ nhân viên nghỉ), đường có xe máy chạy, người đi bộ, dãy nhà hàng xóm có bảng hiệu.
+  - Sông sau bếp có ghe, xuồng, bến.
+- **Tối ưu kiểu Farm Together:**
+  - Nhà cửa và cây cối vẽ theo lô (InstancedMesh), cả phố chỉ thêm khoảng 50–70 lần vẽ.
+  - Vật ngoài tầm nhìn quanh giữa màn hình thì ẩn. Lại gần thì vật "bật" lên từ 60% kích thước.
+  - Chế độ Tiết kiệm: bớt đồ trang trí, không có xe và người chạy, tầm nhìn ngắn hơn.
 - **Cụm nút gọn:** 🛒 Chợ và các nút khác là nút tròn nhỏ ở góc phải dưới, tối đa 3 nút một hàng. Chip 🤲 tay cầm ở góc trái dưới.
 
 ## 👫 Chơi online co-op
@@ -219,6 +230,8 @@ src/game/          Logic thuần (không phụ thuộc React) — dễ kiểm th
 src/screens/       Home, NewGame, Settings, Guide, Game (Chợ / Mở cửa / Tổng kết), Nhân vật, Nhân viên, Nâng cấp
 src/components/    CustomerCard, CookSlotCard, EventModal, Hud, ShopTopBar, ui
   minigame/        13 mini game vẽ bằng emoji (MiniGame.tsx)
+  staff/           StaffSheet: bảng nhân viên trong giờ bán, chọn vai sinh viên
+  scene/Surroundings.tsx  Phố bên sông quanh quán; SceneryProps.tsx (đồ vật theo lô + ẩn xa); cull.ts
   map/             Bản đồ 2D dự phòng + bảng hành động
   scene/           Cảnh 3D: camera, nhân vật low-poly, đồ vật, lớp chữ nổi, HUD
 scripts/simulate.ts  Bot chơi thử 30 ngày để cân bằng số liệu

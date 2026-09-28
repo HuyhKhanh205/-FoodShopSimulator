@@ -24,6 +24,7 @@ import { formatClock } from '../../game/helpers';
 import { MapStation, Tile, buildLayout, findPath, isWalkable, stationAt, stationNextTo } from '../../game/layout';
 import { hasWebGL } from '../../three/webgl';
 import { useWalker } from './useWalker';
+import StaffSheet from '../../components/staff/StaffSheet';
 
 /** Tên + việc sẽ làm khi tương tác (nút cạnh "Tay không"). */
 function stationAction(st: MapStation, carrying: number, has3D: boolean): { icon: string; name: string; verb: string } {
@@ -78,6 +79,8 @@ export default function ShopMapView() {
   const [rot, setRot] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(0);
   const [stockOpen, setStockOpen] = useState(false);
+  const [staffOpen, setStaffOpen] = useState(false);
+  const [staffSel, setStaffSel] = useState<string | null>(null);
   const [sheetStation, setSheetStation] = useState<MapStation | null>(null);
   const targets = useTutorialTargets();
 
@@ -339,7 +342,8 @@ export default function ShopMapView() {
   const HUD_H = 50 + RIVER_H;
   const cleanReady = run.elapsed >= run.cleanReadyAt;
   // Cụm nút tròn nhỏ ở góc phải dưới, tối đa 3 nút một hàng (ngày đầu chỉ có 🛒 Chợ).
-  const barCount = 1 + [shows(game, 'clean'), shows(game, 'stock'), shows(game, 'panel'), shows(game, 'notebook'), !simple && shows(game, 'arrange')].filter(Boolean).length;
+  const staffBtn = shows(game, 'staff') || game.staff.length > 0;
+  const barCount = 1 + [staffBtn, shows(game, 'clean'), shows(game, 'stock'), shows(game, 'panel'), shows(game, 'notebook'), !simple && shows(game, 'arrange')].filter(Boolean).length;
   const barRows = Math.ceil(barCount / BAR_PER_ROW);
   const BAR_H = barRows * BTN + (barRows - 1) * BAR_GAP + 10;
   const barW = Math.min(barCount, BAR_PER_ROW) * BTN + (Math.min(barCount, BAR_PER_ROW) - 1) * BAR_GAP;
@@ -348,6 +352,18 @@ export default function ShopMapView() {
     <View style={[styles.bar, { width: barW }]}>
       {/* Chỉ hiện nút đã mở (src/game/unlocks.ts): ngày đầu gần như chỉ còn 🛒 Chợ. */}
       <GoMarketButton render={(onPress) => <BarButton icon="🛒" label="Chợ" onPress={onPress} />} />
+      {staffBtn && (
+        <BarButton
+          icon="👥"
+          label="Người"
+          active={staffOpen}
+          badge={game.staff.some((st) => st.mood < 30)}
+          onPress={() => {
+            setStaffOpen(!staffOpen);
+            setStaffSel(null);
+          }}
+        />
+      )}
       {shows(game, 'clean') && <BarButton icon="🧽" label={cleanReady ? 'Lau' : 'Lau ⏳'} disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />}
       {shows(game, 'stock') && <BarButton icon="📦" label="Kho" onPress={() => setStockOpen(true)} />}
       {shows(game, 'panel') && <BarButton icon="📋" label="Bảng" onPress={() => setViewMode('panel')} />}
@@ -384,6 +400,7 @@ export default function ShopMapView() {
               onTapTile={arrange ? () => {} : goToTile}
               cutaway={cutaway}
               arrange={arrange}
+              selectedStaff={staffOpen ? staffSel : null}
             />
             <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} onQuestion={setAskId} arrange={arrange} onPlus={openUpgrades} onStation={goToStation} nearId={walkingTo ?? hereId} />
             {/* Xoay theo nấc 90° và zoom 2 mức */}
@@ -402,9 +419,19 @@ export default function ShopMapView() {
           <SimpleView game={game} layout={layout} targets={targets} onStation={tapStation} topInset={HUD_H + 28} bottomInset={Math.max(BAR_H, 56) + 12} />
         ))}
       {!fp && <MapHud canToggle={toggle} below={river ? <RiverPath game={game} compact onGo={flowGo} /> : null} />}
-      {!fp && !paused && actionBar}
+      {!fp && !paused && !staffOpen && actionBar}
+      {!fp && !paused && staffOpen && (
+        <StaffSheet
+          selected={staffSel}
+          onSelect={setStaffSel}
+          onClose={() => {
+            setStaffOpen(false);
+            setStaffSel(null);
+          }}
+        />
+      )}
       {/* Chip tay cầm gộp với tương tác: đứng cạnh đồ vật thì chip thành nút "🤲 … | 🔪 Thớt 👆 Vào bếp" (hoặc chạm lại vào đồ vật). */}
-      {!fp && !paused && (() => {
+      {!fp && !paused && !staffOpen && (() => {
         const hands = `🤲 ${carried.length ? carried.map((d) => RECIPES[d.recipeId].emoji + (d.noGarnish ? '🚫' : '')).join(' ') : 'Tay không'}`;
         const near = !simple && hereStation && hereStation.active && !walkingTo ? hereStation : null;
         if (!near)
@@ -524,7 +551,7 @@ const BAR_GAP = 6;
 const BAR_PER_ROW = 3;
 
 /** Nút tròn nhỏ có nhãn trên cụm hành động (chunky). */
-function BarButton({ icon, label, onPress, disabled, active }: { icon: string; label: string; onPress: () => void; disabled?: boolean; active?: boolean }) {
+function BarButton({ icon, label, onPress, disabled, active, badge }: { icon: string; label: string; onPress: () => void; disabled?: boolean; active?: boolean; badge?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
@@ -537,6 +564,7 @@ function BarButton({ icon, label, onPress, disabled, active }: { icon: string; l
       <Text style={[styles.barLabel, active && { color: colors.cream }]} numberOfLines={1}>
         {label}
       </Text>
+      {badge && <View style={styles.barBadge} />}
     </Pressable>
   );
 }
@@ -572,6 +600,7 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
   },
+  barBadge: { position: 'absolute', top: -2, right: -2, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.bad, borderWidth: 2, borderColor: '#fff' },
   barBtnOn: { backgroundColor: colors.brown, borderColor: colors.brown },
   barIcon: { fontSize: 20, lineHeight: 22 },
   barLabel: { fontSize: 10, fontWeight: '900', color: colors.brown, lineHeight: 12 },

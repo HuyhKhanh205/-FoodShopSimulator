@@ -10,6 +10,8 @@ export function staffTarget(st: Staff, game: GameState, layout: MapLayout): Tile
   const slotId = cookingSlot?.id ?? st.task?.slotId;
   if (slotId) return byId(slotId)?.access[0] ?? layout.restSpot;
   const t = st.task;
+  // Nghỉ giải lao: ra ghế đẩu ngoài vỉa hè trước quán.
+  if (t?.kind === 'break') return { x: 8.2 + (game.staff.indexOf(st) % 3) * 0.8, y: 10.4 };
   if (t?.kind === 'prep') return { x: 10, y: 2 };
   if (t?.kind === 'serve' || t?.kind === 'fallen') {
     const c = run.customers.find((x) => x.id === t.customerId);

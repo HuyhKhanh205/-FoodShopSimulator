@@ -142,7 +142,7 @@ export type StaffRole = 'cook' | 'prep' | 'waiter';
 
 export type StaffTrait = 'fast_sloppy' | 'slow_careful' | 'late' | 'charming' | 'lazy' | 'steady';
 
-export type StaffTaskKind = 'prep' | 'serve' | 'clean' | 'cook_start' | 'fallen';
+export type StaffTaskKind = 'prep' | 'serve' | 'clean' | 'cook_start' | 'fallen' | 'break';
 
 export interface StaffTask {
   kind: StaffTaskKind;
@@ -187,8 +187,10 @@ export interface Staff {
   absent: boolean;
   lateUntil: number;
   task: StaffTask | null;
-  /** Sinh viên làm thêm: lương rẻ, dễ làm sai, vụng về. */
+  /** Sinh viên làm thêm: lương rẻ, dễ làm sai, vụng về — nhưng đổi vai trò tự do. */
   student?: boolean;
+  /** Sinh viên đổi vai khi đang làm dở: đổi lúc xong việc. */
+  nextRole?: StaffRole;
 }
 
 export type CustomerKind =
@@ -377,6 +379,8 @@ export interface DayRuntime {
   elapsed: number;
   /** Sự cố đang diễn ra (hoạt ảnh). */
   incidents?: Incident[];
+  /** Nhân viên đã nghỉ giải lao hôm nay (mỗi người 1 lần). */
+  breaks?: Record<string, true>;
   /** Thời gian kể từ khách gần nhất — tránh quán vắng quá lâu. */
   sinceLastCustomer: number;
   customers: Customer[];

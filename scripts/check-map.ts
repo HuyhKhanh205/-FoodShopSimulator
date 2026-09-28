@@ -21,6 +21,8 @@ import { addXp, experiment, levelOf, unlockedIngredients } from '../src/game/pro
 const usableQty = uq;
 import { START_UPGRADES } from '../src/game/data';
 import * as E from '../src/game/engine';
+import * as CULL from '../src/components/scene/cull';
+import { staffTarget } from '../src/game/staffTarget';
 import * as EV from '../src/game/events';
 import * as KIT from '../src/game/events/kit';
 import { FUN_EVENTS } from '../src/game/events/fun';
@@ -404,7 +406,7 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   g.xp = 540;
   g.phase = 'summary';
   E.nextDay(g, r);
-  check(unlockedRoles(g).includes('waiter') && g.candidates.some((c) => c.role === 'waiter' && c.student), 'cấp 5: thuê được phục vụ, có sinh viên');
+  check(unlockedRoles(g).includes('waiter') && g.candidates.some((c) => c.role === 'waiter' && !c.student) && g.candidates.filter((c) => c.student).length === 2, 'cấp 5: thuê được phục vụ, có 2 sinh viên tự chọn vai');
   // Sinh viên phục vụ vụng về: ép tỉ lệ sai cao, đếm sự cố
   let trips = 0;
   let spills = 0;
@@ -1022,6 +1024,93 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
     const m = MG.migrateSave(old as unknown as ReturnType<typeof E.newGame>);
     check(m.eventResult === null && Array.isArray(m.buffs) && Array.isArray(m.pending) && !!m.flags && !!m.eventSeen && !!m.miniBest, 'bản lưu cũ: có mặc định buffs / pending / flags / eventSeen / miniBest');
   }
+}
+
+// ================= Quản lý nhân viên trong giờ bán + sinh viên chọn vai + ẩn khối xa =================
+{
+  const r = seededRng(41);
+  const g = E.newGame(r);
+  g.activeEvent = null;
+  g.xp = 540;
+  g.phase = 'summary';
+  E.nextDay(g, r);
+  g.activeEvent = null;
+  const roles = unlockedRoles(g);
+  const stu = g.candidates.filter((c) => c.student);
+  check(roles.length === 3 && stu.length === 2, `ứng viên: ${stu.length} sinh viên, vai đã mở ${roles.join('/')}`);
+  check(E.hire(g, stu[0].id, 'cook') && g.staff.at(-1)!.role === 'cook', 'thuê sinh viên làm đầu bếp (tự chọn vai)');
+  const normal = g.candidates.find((c) => !c.student && c.role === 'prep')!;
+  check(E.hire(g, normal.id, 'waiter') && g.staff.at(-1)!.role === 'prep', 'nhân viên chính thức giữ chuyên môn khi thuê');
+  const s1 = g.staff.find((x) => x.student)!;
+  const pro = g.staff.find((x) => !x.student)!;
+  check(!E.setStudentRole(g, pro.id, 'waiter') && pro.role === 'prep', 'nhân viên chính thức không đổi vai được');
+  check(E.setStudentRole(g, s1.id, 'waiter') && s1.role === 'waiter', 'sinh viên rảnh: đổi vai ngay');
+
+  const lowLv = E.newGame(seededRng(3));
+  lowLv.xp = 160;
+  lowLv.phase = 'summary';
+  E.nextDay(lowLv, seededRng(3));
+  const st2 = lowLv.candidates.find((c) => c.student)!;
+  check(!E.hire(lowLv, st2.id, 'waiter') && lowLv.staff.length === 0, 'vai chưa mở thì không thuê được');
+
+  // Trong giờ bán.
+  E.openShop(g, r);
+  g.activeEvent = null;
+  const run = g.run!;
+  // Sinh viên đang bưng món: đổi vai sau khi xong việc, món không mất.
+  run.pass.push({ id: 'dx', recipeId: 'tra_da', quality: 'perfect', noGarnish: false, by: 'Bạn' });
+  run.customers.push({ id: 'cx', name: 'T', emoji: '🙂', kind: 'normal', size: 1, tableIndex: 0, arrivedAt: 0, patience: 90_000, maxPatience: 90_000, items: [{ recipeId: 'tra_da', noGarnish: false, served: false, quality: 0 }] });
+  s1.task = { kind: 'serve', endsAt: run.elapsed + 1500, dishId: 'dx', customerId: 'cx' };
+  s1.skill = 99;
+  E.setStudentRole(g, s1.id, 'prep');
+  check(s1.role === 'waiter' && s1.nextRole === 'prep', 'sinh viên đang bưng món: hẹn đổi vai khi xong');
+  for (let k = 0; k < 12; k += 1) {
+    E.tick(g, 250, r);
+    g.activeEvent = null;
+    g.eventResult = null;
+  }
+  check(s1.role === 'prep' && !s1.nextRole, 'xong việc thì đổi sang phụ bếp');
+  const cx = run.customers.find((c) => c.id === 'cx');
+  check(!run.pass.some((d) => d.id === 'dx') && (!cx || cx.items[0].served || s1.task === null), 'món đang bưng vẫn tới khách (không mất)');
+
+  // Nghỉ giải lao.
+  const b = g.staff.find((x) => x !== s1)!;
+  const bKind = (): string | undefined => b.task?.kind;
+  b.task = null;
+  b.mood = 50;
+  check(E.staffBreak(g, b.id) && bKind() === 'break' && b.mood === 65, '☕ nghỉ giải lao: tâm trạng +15');
+  const t0 = run.elapsed;
+  let stayed = true;
+  while (run.elapsed - t0 < E.BREAK_MS - 500) {
+    E.tick(g, 250, r);
+    g.activeEvent = null;
+    g.eventResult = null;
+    if (bKind() !== 'break') stayed = false;
+  }
+  check(stayed, 'đang nghỉ thì không nhận việc (40 giây)');
+  for (let k = 0; k < 8; k += 1) E.tick(g, 250, r);
+  check(bKind() !== 'break' && !E.staffBreak(g, b.id), 'nghỉ xong quay lại làm; mỗi ngày chỉ nghỉ 1 lần');
+
+  // Thuê giữa giờ bán: 20 giây sau mới tới.
+  const late = g.candidates.find((c) => c.student)!;
+  E.hire(g, late.id, 'waiter');
+  const nw = g.staff.find((x) => x.id === late.id)!;
+  check(nw.lateUntil === run.elapsed + E.HIRE_ARRIVE_MS && staffTarget(nw, g, layout) === null, 'thuê giữa giờ bán: "đang tới" 20 giây');
+
+  // Sa thải lúc đang sơ chế: phần đang làm được trả lại.
+  const prepper = g.staff.find((x) => x.role === 'prep')!;
+  const before = run.prepped.hanh ?? 0;
+  prepper.task = { kind: 'prep', endsAt: run.elapsed + 2000, ingredientId: 'hanh', qty: 3 };
+  E.fire(g, prepper.id);
+  check(!g.staff.includes(prepper) && (run.prepped.hanh ?? 0) === before + 3, 'sa thải giữa giờ: việc dở dang được trả lại');
+
+  // Ẩn khối xa.
+  const chunks = CULL.chunkify([{ x: 1, z: 1 }, { x: 40, z: 1 }, { x: 2, z: 3 }]);
+  const near = chunks.find((c) => c.items.some((it) => it.x === 1))!;
+  const far = chunks.find((c) => c.items.some((it) => it.x === 40))!;
+  const R = CULL.viewRadius(8, 12, 0.87);
+  check(chunks.length === 2 && CULL.chunkVisible({ x: 6, z: 5 }, near.info, R) && !CULL.chunkVisible({ x: 6, z: 5 }, far.info, R), `khối gần hiện, khối xa ẩn (R=${R.toFixed(1)})`);
+  check(CULL.viewRadius(8, 12, 0.87, true) < R, 'chế độ Tiết kiệm: tầm nhìn ngắn hơn');
 }
 
 process.exit(failed ? 1 : 0);
