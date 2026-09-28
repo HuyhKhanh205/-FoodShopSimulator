@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { maxDpr } from '../../game/settings';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { HELP } from '../../game/help';
 import { useGame } from '../../game/GameContext';
-import { advanceTutorial, currentStep, noteText, skipTutorial } from '../../game/tutorial';
+import { advanceTutorial, currentStep, noteText, skipTutorial, stepSay } from '../../game/tutorial';
 import { Canvas } from '../../three/fiber';
 import { hasWebGL } from '../../three/webgl';
 import ModelCharacter from '../scene/ModelCharacter';
@@ -34,7 +35,7 @@ function ChefAvatar({ talkKey, size }: { talkKey: string; size: number }) {
   if (!gl) return <Text style={{ fontSize: size * 0.55 }}>👨‍🍳</Text>;
   return (
     <View style={{ width: size, height: size * 1.15 }} pointerEvents="none">
-      <Canvas camera={{ position: [0, 0.05, 2.9], fov: 32 }} dpr={[1, 1.5]} gl={{ alpha: true }} style={{ flex: 1 }}>
+      <Canvas camera={{ position: [0, 0.05, 2.9], fov: 32 }} dpr={[1, Math.min(1.5, maxDpr())]} gl={{ alpha: true }} style={{ flex: 1 }}>
         <hemisphereLight args={['#FFFFFF', '#8D6E63', 1.3]} />
         <directionalLight position={[1.5, 2.5, 2.5]} intensity={1.4} />
         <group position={[0, -0.72, 0]} rotation-y={0.35}>
@@ -108,7 +109,7 @@ export default function ChefGuide({ route, openLab }: { route: string; openLab: 
   } else if (game && step && inGame && !game.activeEvent) {
     say = {
       key: `tut-${game.tutorial.step}`,
-      text: step.say,
+      text: stepSay(step, game),
       at: step.at,
       primary: step.tapToContinue ? { label: game.tutorial.step === 0 ? '▶ Bắt đầu' : '👍 OK', onPress: () => act((s) => advanceTutorial(s)) } : undefined,
       onSkip: () => act((s) => skipTutorial(s)),

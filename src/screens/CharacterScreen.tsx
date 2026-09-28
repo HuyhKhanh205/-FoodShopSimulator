@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -11,7 +11,9 @@ import { Button, Panel, colors } from '../components/ui';
 import { setProfile } from '../game/engine';
 import { useGame } from '../game/GameContext';
 import { defaultRng } from '../game/helpers';
-import { CLOTH_COLORS, GENDERS, HAIR_COLORS, HAIR_STYLES, HATS, PROFILE_MODELS, SKIN_TONES, randomProfile } from '../game/profile';
+import { CLOTH_COLORS, DEFAULT_PROFILE, GENDERS, HAIR_COLORS, HAIR_STYLES, HATS, PROFILE_MODELS, SKIN_TONES, randomProfile } from '../game/profile';
+import { loadLook, lookOf, saveLook } from '../game/settings';
+import { loadGame, writeSave } from '../game/storage';
 import type { PlayerProfile } from '../game/types';
 import type { RootStackParamList } from '../navigation/types';
 import { hasWebGL } from '../three/webgl';
@@ -59,36 +61,50 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-/** Tạo / sửa nhân vật chủ quán và tên quán. */
+/**
+ * Nhân vật chủ quán. Mở từ màn đầu (`from: 'home'`): chỉ sửa ngoại hình, lưu riêng (và cập nhật bản lưu đang có).
+ * Mở trong game (ô 🧑‍🍳 Chủ quán): sửa cả tên người / tên quán.
+ */
 export default function CharacterScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'Character'>>();
-  const first = Boolean(route.params?.first);
-  const { game, act } = useGame();
+  const fromHome = route.params?.from === 'home';
+  const { game, act, refreshSave } = useGame();
   const { width } = useWindowDimensions();
   const wide = width >= 800;
-  const [draft, setDraft] = useState<PlayerProfile>(() => ({ ...game!.profile }));
+  const [draft, setDraft] = useState<PlayerProfile>(() => ({ ...(game && !fromHome ? game.profile : DEFAULT_PROFILE) }));
   const [showNames, setShowNames] = useState(false);
   const gl = useMemo(hasWebGL, []);
-  if (!game) return null;
+  // Từ màn đầu: nạp ngoại hình đã lưu riêng.
+  useEffect(() => {
+    if (fromHome) loadLook().then((l) => setDraft((d) => ({ ...d, ...l })));
+  }, [fromHome]);
+  if (!game && !fromHome) return null;
 
   const set = <K extends keyof PlayerProfile>(k: K, v: PlayerProfile[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
-  const save = () => {
-    act((s) => setProfile(s, draft));
-    if (first) navigation.navigate('Game');
-    else navigation.goBack();
+  const save = async () => {
+    await saveLook(lookOf(draft));
+    if (fromHome) {
+      // Cập nhật luôn ngoại hình trong bản lưu đang có (giữ tên người / tên quán).
+      const saved = await loadGame();
+      if (saved) {
+        await writeSave({ ...saved, profile: { ...saved.profile, ...lookOf(draft) } });
+        await refreshSave();
+      }
+    } else act((s) => setProfile(s, draft));
+    navigation.goBack();
   };
 
   const preview = (
     <View style={{ gap: 10 }}>
       <CharacterPreview look={profileLook(draft)} model={draft.model === 'custom' ? undefined : draft.model} enabled={gl} />
-      <Text style={styles.nameBig}>{draft.name.trim() || 'Chủ quán'}</Text>
-      <Text style={styles.shopBig}>🏮 {draft.shopName.trim() || 'Quán Ăn Của Tôi'}</Text>
+      {!fromHome && <Text style={styles.nameBig}>{draft.name.trim() || 'Chủ quán'}</Text>}
+      {!fromHome && <Text style={styles.shopBig}>🏮 {draft.shopName.trim() || 'Quán Ăn Của Tôi'}</Text>}
       <View style={styles.previewBtns}>
         <IconTile icon="🎲" label="Đổi" name="Ngẫu nhiên" onPress={() => setDraft((d) => randomProfile(defaultRng, d))} />
-        <IconTile icon="✏️" label="Tên" name="Đặt tên" selected={showNames} onPress={() => setShowNames((v) => !v)} />
-        <IconTile icon="🏮" label={first ? 'Vào quán' : 'Lưu'} name={first ? 'Vào quán' : 'Lưu nhân vật'} tone="primary" onPress={save} />
+        {!fromHome && <IconTile icon="✏️" label="Tên" name="Đặt tên" selected={showNames} onPress={() => setShowNames((v) => !v)} />}
+        <IconTile icon="✅" label="Lưu" name="Lưu nhân vật" tone="primary" onPress={save} />
       </View>
     </View>
   );
@@ -185,15 +201,18 @@ export default function CharacterScreen() {
         )}
       </Panel>
 
-      <Button label={first ? '🏮 Vào quán' : '✅ Lưu'} onPress={save} />
-      {!first && <Button variant="ghost" label="Huỷ" onPress={() => navigation.goBack()} />}
+      <Button label="✅ Lưu" onPress={save} />
+      <Button variant="ghost" label="Huỷ" onPress={() => navigation.goBack()} />
     </View>
   );
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.title}>🧑‍🍳 {first ? 'Chủ quán mới' : 'Chủ quán'}</Text>
+        <Pressable onPress={() => navigation.goBack()} style={styles.back} accessibilityRole="button" accessibilityLabel="Quay lại">
+          <Text style={styles.backText}>←</Text>
+        </Pressable>
+        <Text style={styles.title}>🧑‍🍳 {fromHome ? 'Nhân vật của bạn' : 'Chủ quán'}</Text>
         <HelpButton topic="character" />
       </View>
       <ScrollView contentContainerStyle={[styles.content, wide && styles.contentWide]}>
@@ -208,7 +227,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { padding: 10, paddingHorizontal: 14, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   previewBtns: { flexDirection: 'row', justifyContent: 'center', gap: 10 },
-  title: { fontSize: 18, fontWeight: '900', color: '#fff' },
+  title: { flex: 1, fontSize: 18, fontWeight: '900', color: '#fff' },
+  back: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  backText: { color: '#fff', fontSize: 22, fontWeight: '900' },
   content: { padding: 16, gap: 16, paddingBottom: 40 },
   contentWide: { flexDirection: 'row', alignItems: 'flex-start', maxWidth: 1000, width: '100%', alignSelf: 'center' },
   colPreview: { width: 320 },

@@ -24,6 +24,7 @@ import {
   START_DEBT,
   START_MONEY,
   START_RECIPES,
+  starterOf,
   START_UPGRADES,
   UPGRADES,
   UTILITY_AIRCON,
@@ -106,10 +107,16 @@ function emptyMods(): DayModifiers {
   return { spawnMult: 1, deliveryMult: 1, priceMult: {}, unavailable: [], sellPriceMult: 1, labels: [] };
 }
 
-export function newGame(rng: Rng): GameState {
+export interface NewGameOptions {
+  starter?: RecipeId;
+  profile?: Partial<PlayerProfile>;
+}
+
+export function newGame(rng: Rng, opts: NewGameOptions = {}): GameState {
+  const st = starterOf(opts.starter);
   const s: GameState = {
     version: 1,
-    profile: { ...DEFAULT_PROFILE },
+    profile: { ...DEFAULT_PROFILE, ...(opts.profile ?? {}) },
     phase: 'market',
     day: 1,
     money: START_MONEY,
@@ -123,14 +130,16 @@ export function newGame(rng: Rng): GameState {
     staff: [],
     candidates: [],
     upgrades: { ...START_UPGRADES },
-    unlockedRecipes: [...START_RECIPES],
+    unlockedRecipes: [st.id, 'tra_da'],
     xp: 0,
     chefQueue: [],
     tutorial: { step: 0, done: false },
     labFails: 0,
     labHints: {},
     dishes: {},
-    discovered: [...START_RECIPES],
+    discovered: [...new Set([st.id, 'tra_da', ...START_RECIPES])],
+    starter: st.id,
+    extraIngredients: [...st.extra],
     launched: {},
     trend: null,
     vendors: newVendors(),

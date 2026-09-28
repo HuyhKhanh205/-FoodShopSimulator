@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { maxDpr } from '../../game/settings';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AnimationMixer, LoopRepeat } from 'three';
 import type { AnimationAction, Group } from 'three';
@@ -16,6 +17,18 @@ import { ISO_YAW, fitCamera, makeCamera, project } from '../scene/camera';
 import { Player, Sun, UseCamera } from '../scene/ShopScene3D';
 import { checkerTileTexture } from '../scene/textures';
 import { GROUP, colors } from '../ui';
+import ModelCharacter from '../scene/ModelCharacter';
+import type { CameraCam } from '../scene/camera';
+
+/** Màn đầu: camera đung đưa nhẹ quanh chợ. */
+function DemoOrbit({ cam, width, height, zoom }: { cam: CameraCam; width: number; height: number; zoom: number }) {
+  useFrame(({ clock }) => {
+    fitCamera(cam, Math.max(1, width), Math.max(1, height), ISO_YAW + Math.sin(clock.elapsedTime * 0.12) * 0.45, zoom);
+  });
+  return null;
+}
+
+const CHEF_LOOK = { skin: '#E0AC7E', hair: '#3E2723', shirt: '#FAFAFA', pants: '#263238', apron: '#E53935', hat: 'chef' as const, hatColor: '#FFFFFF' };
 
 type Vec3 = [number, number, number];
 
@@ -267,11 +280,25 @@ function Decor() {
  * Cảnh chợ 3D trên bờ sông (Kenney + KayKit, CC0): sạp mái che, người bán rao giá, khách đi chợ.
  * Chạm sạp (hoặc tên sạp) → chủ quán đi tới rồi mở bảng mua. Chạm chỗ trống → đi tới đó.
  */
-export default function MarketScene3D({ game, onStall, width, height }: { game: GameState; onStall: (id: VendorId) => void; width: number; height: number }) {
+export default function MarketScene3D({
+  game,
+  onStall,
+  width,
+  height,
+  demo = false,
+}: {
+  game: GameState;
+  onStall: (id: VendorId) => void;
+  width: number;
+  height: number;
+  /** Nền màn đầu: không chạm được, không có chip tên sạp; Chú Tư + chủ quán vẫy chào, camera đung đưa. */
+  demo?: boolean;
+}) {
   const layout = useMemo(buildMarketLayout, []);
   const walker = useWalker(layout.start);
   const cam = useMemo(makeCamera, []);
-  useMemo(() => fitCamera(cam, Math.max(1, width), Math.max(1, height), ISO_YAW, width < 600 ? 1.22 : 1.1), [cam, width, height]);
+  const zoom = demo ? (width < 600 ? 1.45 : 1.25) : width < 600 ? 1.22 : 1.1;
+  useMemo(() => fitCamera(cam, Math.max(1, width), Math.max(1, height), ISO_YAW, zoom), [cam, width, height, zoom]);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 3000);
@@ -301,28 +328,34 @@ export default function MarketScene3D({ game, onStall, width, height }: { game: 
   const p = (x: number, y: number, z: number) => project(cam, x, y, z, width, height);
   return (
     <View style={{ width, height }}>
-      <Canvas shadows="percentage" dpr={[1, 1.5]} style={{ flex: 1 }}>
+      <Canvas shadows="percentage" dpr={[1, Math.min(1.5, maxDpr())]} style={{ flex: 1 }}>
         <UseCamera cam={cam} />
+        {demo && <DemoOrbit cam={cam} width={width} height={height} zoom={zoom} />}
         <color attach="background" args={['#BDE3F2']} />
         <hemisphereLight args={['#FFF6E5', '#6D4C41', 0.9]} />
         <ambientLight intensity={0.35} color="#FFE0B2" />
         <Sun />
-        <group onClick={onClick}>
+        <group onClick={demo ? undefined : onClick}>
           <Ground />
         </group>
         <Water />
         <Decor />
         {STALLS.map((s) => (
-          <group key={s.id} onClick={(e: ThreeEvent<MouseEvent>) => (e.stopPropagation(), goStall(s.id))}>
+          <group key={s.id} onClick={demo ? undefined : (e: ThreeEvent<MouseEvent>) => (e.stopPropagation(), goStall(s.id))}>
             <StallMesh stall={s} />
           </group>
         ))}
         <Shopper model="mini_male_d" lane={5.2} speed={0.08} offset={0} />
         <Shopper model="mini_female_c" lane={6.9} speed={0.07} offset={1} />
         <Player walker={walker.state} carrying={[]} profile={game.profile} />
+        {demo && (
+          <group position={[5.2, 0, 9.3]} rotation-y={ISO_YAW}>
+            <ModelCharacter model="barbarian" fallback={CHEF_LOOK} hat={CHEF_LOOK} anim={tick % 2 ? 'Cheer' : 'Interact'} />
+          </group>
+        )}
       </Canvas>
       {/* Tên sạp + người bán rao giá (lớp chữ 2D đè lên cảnh) */}
-      {STALLS.map((s, i) => {
+      {!demo && STALLS.map((s, i) => {
         const v = VENDORS.find((x) => x.id === s.id)!;
         const g = GROUP[v.group];
         // Chip tên sạp nằm trên lối đi trước sạp (không che hình sạp); bong bóng rao trên đầu người bán.

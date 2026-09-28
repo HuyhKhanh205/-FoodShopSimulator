@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { maxDpr } from '../../game/settings';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Group } from 'three';
 import { Canvas, useFrame } from '../../three/fiber';
@@ -35,7 +36,7 @@ export default function CharacterPreview({ look, model, enabled }: { look: Look;
   }
   return (
     <View style={styles.box}>
-      <Canvas camera={{ position: [0, 0.25, 3.0], fov: 38 }} dpr={[1, 2]} style={{ flex: 1 }}>
+      <Canvas camera={{ position: [0, 0.25, 3.0], fov: 38 }} dpr={[1, maxDpr()]} style={{ flex: 1 }}>
         <color attach="background" args={['#FFF3E0']} />
         <hemisphereLight args={['#FFFFFF', '#8D6E63', 1.2]} />
         <directionalLight position={[2, 3, 3]} intensity={1.4} />

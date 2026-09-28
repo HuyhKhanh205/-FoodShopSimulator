@@ -73,3 +73,25 @@ export function randomProfile(rng: Rng, keep: PlayerProfile): PlayerProfile {
     glasses: rng() < 0.3,
   };
 }
+
+/** Gợi ý tên quán / tên chủ quán (nút 🎲 ở màn Chơi mới). */
+export const SHOP_NAME_IDEAS = [
+  'Phở Gánh Bà Tư',
+  'Cơm Nhà Bé Na',
+  'Quán Ăn Bến Sông',
+  'Bánh Mì Cô Út',
+  'Quán Ngon Chợ Nổi',
+  'Tiệm Ăn Ông Tám',
+  'Quán Gió Chiều',
+  'Bếp Nhà Mây',
+  'Quán Cá Kèo Cười',
+  'Tiệm Cơm Đèn Lồng',
+  'Quán Ba Cây Dừa',
+  'Bếp Vui Bé Bi',
+];
+export const OWNER_NAME_IDEAS = ['Bé Na', 'Bi', 'Su', 'Tí', 'Bống', 'Cún', 'Mít', 'Khoai', 'Na', 'Tôm', 'Sóc', 'Bin'];
+
+export function randomIdea(rng: Rng, list: readonly string[], not?: string): string {
+  const pool = list.filter((x) => x !== not);
+  return pick(rng, pool.length ? pool : list);
+}

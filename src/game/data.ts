@@ -126,6 +126,17 @@ export const RECIPES: Record<RecipeId, Recipe> = {
 export const RECIPE_IDS = Object.keys(RECIPES) as RecipeId[];
 export const START_RECIPES: RecipeId[] = ['banh_mi_trung', 'tra_da'];
 
+/**
+ * Món đặc trưng khởi đầu (chọn khi Chơi mới). Món nào cũng nấu trên bếp và có 🧅 cần thái,
+ * nên hướng dẫn ngày đầu giữ nguyên các bước. `extra` = nguyên liệu mở sẵn (dù chưa tới cấp).
+ */
+export const STARTERS: { id: RecipeId; extra: IngredientId[]; buy: IngredientId; tag: string; blurb: string }[] = [
+  { id: 'banh_mi_trung', extra: [], buy: 'trung', tag: 'Dễ nhất', blurb: 'Rẻ, nấu nhanh, khách nào cũng thích' },
+  { id: 'com_chien_trung', extra: ['gao'], buy: 'gao', tag: 'Vừa sức', blurb: 'Giá bán cao hơn bánh mì một chút' },
+  { id: 'com_ga', extra: ['gao', 'ga'], buy: 'ga', tag: 'Lãi cao', blurb: 'Bán đắt nhưng tốn vốn, nấu lâu hơn' },
+];
+export const starterOf = (id: RecipeId | undefined) => STARTERS.find((x) => x.id === id) ?? STARTERS[0];
+
 /** Ngưỡng điểm kinh nghiệm của từng cấp (cấp 1 bắt đầu từ 0). */
 export const LEVEL_XP = [0, 60, 160, 320, 540, 820];
 export const MAX_LEVEL = LEVEL_XP.length;

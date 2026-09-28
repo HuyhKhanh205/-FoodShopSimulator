@@ -144,8 +144,15 @@ Khách ngồi bàn thỉnh thoảng nói chuyện đời sống (thời tiết, 
 Luồng chơi giữ nguyên (chợ → mở cửa → thái → nấu → mang món → tổng kết) nhưng giao diện dùng **ô hình to**: nguyên liệu ở chợ là thẻ có 📦 số trong kho và nút **+1 / +5**; món nấu là ô hình món, thiếu gì thì hiện hình nhỏ của thứ thiếu; thanh chỉ số bằng biểu tượng (📅 💰 💳 ⭐ 🧽); tổng kết chỉ còn ⭐, 💰 lãi/lỗ, 😊/😡 và nút ☀️ Ngày mới (bấm 📊 để xem chi tiết).
 - Nút **❗** tròn màu cam ở mỗi màn mở **hướng dẫn bằng hình** (mỗi bước một hình to + một câu ngắn, có **🔊 Đọc** để máy đọc to trên trình duyệt, **➕ Thêm** cho phần dành cho người lớn). Hướng dẫn chỉ tự mở **một lần** cho mỗi màn (nhớ cả khi tải lại trang), sau đó chỉ mở khi bấm ❗.
 
+### 🏠 Màn đầu
+Nền là **chợ bên sông 3D đang sống** (camera đung đưa, Chú Tư và chủ quán vẫy chào, khách đi chợ; máy không có WebGL thì dùng nền 2D có ghe trôi, đèn lồng lắc lư). Bên dưới là thẻ **▶ Chơi tiếp** (tên quán · ngày · tiền) và 4 ô:
+- **🆕 Chơi mới** — setup quán cơ bản: ① **tên quán + tên chủ** (nút 🎲 gợi ý), ② **món đặc trưng khởi đầu**: 🥪 Bánh mì trứng (dễ nhất) · 🍳 Cơm chiên trứng (mở sẵn gạo) · 🍛 Cơm gà (mở sẵn gạo, gà; lãi cao). Hướng dẫn ngày đầu, nhiệm vụ và món đặc biệt ngày 1 đổi theo món đã chọn. Đã có quán thì hỏi lại, có nút **📤 Sao lưu trước**.
+- **🧑‍🍳 Nhân vật** — chỉnh ngoại hình (lưu riêng, dùng cho mọi quán mới; cập nhật luôn quán đang chơi).
+- **📖 Hướng dẫn** — vòng một ngày (5 bến đường sông) + các thẻ chủ đề bằng hình, có 🔊 đọc.
+- **⚙️ Cài đặt** — 🔊 giọng Chú Tư bật / tắt, âm lượng; 🎮 3D / Đơn giản, chất lượng (tiết kiệm pin / đẹp); 💾 **sao lưu tiến độ**: tải file hoặc 📋 sao chép mã, 📥 nhập lại từ file / mã dán (có mã kiểm tra, xem trước rồi mới ghi đè). Mọi thứ chỉ nằm trên máy.
+
 ### 🧑‍🍳 Tạo nhân vật
-Khi bấm **Chơi mới**, bạn tạo chủ quán (xem trước 3D xoay tròn): tên chủ quán, tên quán, giới tính, kiểu tóc (ngắn, dựng, dài, búi, trọc), màu tóc, màu da, màu áo / tạp dề (khăn – viền áo) / quần — **tô được lên cả 4 nhân vật KayKit**, mũ (mũ đầu bếp, lưỡi trai, nón lá, khăn trùm) và kính; có nút 🎲 Ngẫu nhiên. Sửa lại được mỗi buổi sáng bằng nút **🧑‍🍳 Nhân vật** ở màn chợ.
+Ô **🧑‍🍳 Nhân vật** ở màn đầu (xem trước 3D xoay tròn): giới tính, kiểu tóc (ngắn, dựng, dài, búi, trọc), màu tóc, màu da, màu áo / tạp dề (khăn – viền áo) / quần — **tô được lên cả 4 nhân vật KayKit**, mũ (mũ đầu bếp, lưỡi trai, nón lá, khăn trùm) và kính; có nút 🎲 Ngẫu nhiên. Trong game, ô **🧑‍🍳 Chủ quán** ở màn chợ sửa được cả tên.
 
 ### Nhân viên (có tỉ lệ làm sai)
 - **Mở dần theo cấp**: 🔪 **phụ bếp** từ cấp 3 (tự sơ chế), 👨‍🍳 **đầu bếp** từ cấp 4 (tự nấu), 🍽️ **phục vụ** từ cấp 5 (tự mang món, lau dọn, chặn khách bùng tiền). Vị trí chưa mở hiện 🔒 ⭐N.
@@ -183,9 +190,10 @@ src/game/          Logic thuần (không phụ thuộc React) — dễ kiểm th
   layout.ts        Bố cục bản đồ quán + tìm đường (BFS) cho chế độ góc nhìn nhân vật
   staffTarget.ts   Nhân viên đứng ở đâu trên bản đồ theo việc đang làm
   storage.ts       Lưu/tải bằng AsyncStorage (tự lưu ngoài giờ mở cửa)
-  migrate.ts       Nâng cấp bản lưu cũ (thêm trường mới với giá trị mặc định)
+  migrate.ts       Nâng cấp bản lưu cũ + xuất / nhập mã sao lưu
+  settings.ts      Cài đặt (giọng, âm lượng, chất lượng) + ngoại hình lưu riêng
   GameContext.tsx  Kết nối engine với React (đồng hồ 200ms, tự lưu)
-src/screens/       Home, Game (Chợ / Mở cửa / Tổng kết), Nhân viên, Nâng cấp
+src/screens/       Home, NewGame, Settings, Guide, Game (Chợ / Mở cửa / Tổng kết), Nhân vật, Nhân viên, Nâng cấp
 src/components/    CustomerCard, CookSlotCard, EventModal, Hud, ShopTopBar, ui
   map/             Bản đồ 2D dự phòng + bảng hành động
   scene/           Cảnh 3D: camera, nhân vật low-poly, đồ vật, lớp chữ nổi, HUD

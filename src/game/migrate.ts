@@ -29,6 +29,8 @@ export function migrateSave(data: GameState): GameState {
     launched: data.launched ?? {},
     trend: data.trend ?? null,
     vendors: data.vendors ?? newVendors(),
+    starter: data.starter ?? 'banh_mi_trung',
+    extraIngredients: data.extraIngredients ?? [],
     run: null,
     phase: data.phase === 'open' ? 'market' : data.phase,
     tickets: data.tickets ?? 0,
@@ -44,4 +46,44 @@ export function migrateSave(data: GameState): GameState {
     if (state.day > 1) state.chefQueue.push({ kind: 'notebook' });
   }
   return state;
+}
+
+// ================= Sao lưu tiến độ (xuất / nhập mã) =================
+
+const BACKUP_APP = 'quan-an-cua-toi';
+const BACKUP_V = 1;
+
+/** Mã kiểm tra ngắn (djb2) để phát hiện mã bị cắt / sửa. */
+function checksum(text: string): string {
+  let h = 5381;
+  for (let i = 0; i < text.length; i += 1) h = ((h << 5) + h + text.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+/** Xuất bản lưu thành chuỗi JSON (gồm cả nhật ký, vé, sao). Chỉ nằm trên máy người chơi. */
+export function exportSave(state: GameState): string {
+  const data = JSON.stringify({ ...state, run: null, phase: state.phase === 'open' ? 'market' : state.phase });
+  return JSON.stringify({ app: BACKUP_APP, v: BACKUP_V, sum: checksum(data), data });
+}
+
+export type ImportResult = { ok: true; state: GameState } | { ok: false; error: string };
+
+/** Đọc mã sao lưu: kiểm tra đúng game, đúng phiên bản, không bị hỏng; rồi nâng cấp như bản lưu cũ. */
+export function importSave(text: string): ImportResult {
+  let wrap: { app?: string; v?: number; sum?: string; data?: string };
+  try {
+    wrap = JSON.parse(text.trim());
+  } catch {
+    return { ok: false, error: 'Mã không đọc được (bị thiếu chữ?)' };
+  }
+  if (!wrap || wrap.app !== BACKUP_APP || typeof wrap.data !== 'string') return { ok: false, error: 'Đây không phải mã sao lưu của Quán Ăn Của Tôi' };
+  if (wrap.v !== BACKUP_V) return { ok: false, error: 'Mã sao lưu của phiên bản khác' };
+  if (checksum(wrap.data) !== wrap.sum) return { ok: false, error: 'Mã bị hỏng hoặc bị sửa' };
+  try {
+    const data = JSON.parse(wrap.data) as GameState;
+    if (data.version !== 1 || typeof data.day !== 'number' || !data.profile) return { ok: false, error: 'Bản lưu không hợp lệ' };
+    return { ok: true, state: migrateSave(data) };
+  } catch {
+    return { ok: false, error: 'Bản lưu không hợp lệ' };
+  }
 }

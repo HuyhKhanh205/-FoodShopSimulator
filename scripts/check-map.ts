@@ -8,14 +8,14 @@ import * as U from '../src/game/unlocks';
 type UF = U.UiFeature;
 import { VOICE } from '../src/assets/voice.generated';
 import { speechText, voiceLines } from '../src/game/voice';
-import { DAY_MS, PLAYER_PREP_MS, RECIPES } from '../src/game/data';
+import { DAY_MS, INGREDIENTS, PLAYER_PREP_MS, RECIPES, STARTERS } from '../src/game/data';
 import { dishFromCombo, registerDish, resolveCombo } from '../src/game/dishes';
 import { makeCustomer } from '../src/game/customers';
 import { dishNeeds, errorRate, handledCustomers, makeStaff, usableQty as uq } from '../src/game/helpers';
 import { addToMenu, unlockedRoles } from '../src/game/progression';
 import { orderWeight, startTrend, trendHeat, trendPriceMult, trendRepMult, trendSpawnMult } from '../src/game/trend';
 import type { IngredientId } from '../src/game/types';
-import { TUTORIAL, advanceTutorial, currentStep, tutorialTargets } from '../src/game/tutorial';
+import { TUTORIAL, advanceTutorial, currentStep, stepSay, tutorialTargets } from '../src/game/tutorial';
 import { addXp, experiment, levelOf, unlockedIngredients } from '../src/game/progression';
 const usableQty = uq;
 import { START_UPGRADES } from '../src/game/data';
@@ -677,6 +677,50 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   d1.tutorial.done = true;
   d1.phase = 'summary';
   check(MS.dayFlow(d1).next.target === 'summary.next', 'tổng kết ngày 1 (chưa có sổ tay): gợi ý Ngày mới');
+}
+
+// ================= Chơi mới: món khởi đầu; sao lưu tiến độ =================
+{
+  for (const st of STARTERS) {
+    const g = E.newGame(seededRng(41), { starter: st.id, profile: { shopName: 'Quán Thử', name: 'Bé Na' } });
+    g.activeEvent = null;
+    const ings = Object.keys(RECIPES[st.id].ingredients) as IngredientId[];
+    check(g.unlockedRecipes.join() === `${st.id},tra_da` && g.starter === st.id && g.profile.shopName === 'Quán Thử', `${st.id}: menu = món khởi đầu + trà đá, đúng tên quán`);
+    check(ings.every((i) => unlockedIngredients(g).includes(i)), `${st.id}: mở sẵn đủ nguyên liệu (${st.extra.join(', ') || 'không cần thêm'})`);
+    check(g.missions.special === st.id && g.missions.list[0].ingredientId === st.buy, `${st.id}: món đặc biệt + nhiệm vụ mua ngày 1 theo món`);
+    const buyStep = TUTORIAL.find((x) => x.id === 'buy')!;
+    const cookStep = TUTORIAL.find((x) => x.id === 'cook')!;
+    check(stepSay(buyStep, g).includes(RECIPES[st.id].name) && cookStep.targets(g).includes(`kitchen.recipe:${st.id}`), `${st.id}: hướng dẫn nói và chỉ đúng món`);
+    const sb = M.suggestBasket(g);
+    check(ings.every((i) => (sb[i] ?? 0) > 0) && M.checkout(g, sb) === null, `${st.id}: mua theo menu đủ đồ và trả tiền được`);
+    // Sơ chế đủ đồ cần thái rồi mới qua bước nấu.
+    E.openShop(g, seededRng(2));
+    g.activeEvent = null;
+    g.tutorial.step = TUTORIAL.findIndex((x) => x.id === 'prep');
+    const prepStep = TUTORIAL[g.tutorial.step];
+    const needs = ings.filter((i) => INGREDIENTS[i].needsPrep);
+    for (const i of needs) {
+      check(!prepStep.done(g, { fpOpen: true }), `${st.id}: chưa thái ${i} thì chưa xong bước sơ chế`);
+      check(prepStep.targets(g).includes(`kitchen.prep:${i}`), `${st.id}: chỉ vào ô ${i}`);
+      E.playerPrep(g, i);
+      E.tick(g, PLAYER_PREP_MS + 50, seededRng(3));
+      g.activeEvent = null;
+    }
+    check(prepStep.done(g, { fpOpen: true }) && E.playerCook(g, st.id, false) === null, `${st.id}: thái xong thì nấu được món đầu tiên`);
+  }
+  const ex = E.newGame(seededRng(42), { starter: 'com_ga' });
+  MI.writeDiary(ex, '😄', 'Nhật ký sao lưu');
+  ex.hopeStars = 3;
+  const code = MG.exportSave(ex);
+  const back = MG.importSave(code);
+  check(back.ok && back.state.starter === 'com_ga' && back.state.hopeStars === 3 && back.state.diary[0].text === 'Nhật ký sao lưu' && back.state.tickets === ex.tickets, 'xuất → nhập mã sao lưu giữ nguyên (món, sao, nhật ký, vé)');
+  const broken = code.replace('Nhật ký sao lưu', 'Nhật ký bị sửa');
+  check(!MG.importSave(broken).ok && !MG.importSave('abc').ok && !MG.importSave('{"app":"khac"}').ok, 'mã bị sửa / hỏng / của game khác thì báo lỗi');
+  const oldSave = JSON.parse(JSON.stringify({ ...ex, run: null }));
+  delete oldSave.starter;
+  delete oldSave.extraIngredients;
+  const up = MG.migrateSave(oldSave);
+  check(up.starter === 'banh_mi_trung' && up.extraIngredients.length === 0, 'bản lưu cũ: món khởi đầu mặc định bánh mì trứng');
 }
 
 process.exit(failed ? 1 : 0);

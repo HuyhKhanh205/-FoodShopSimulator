@@ -1,4 +1,4 @@
-import { INGREDIENTS, RECIPES } from './data';
+import { INGREDIENTS, RECIPES, STARTERS } from './data';
 import { usableQty } from './helpers';
 import { ingredientsOfLevel } from './progression';
 import type { ChefNote, GameState, IngredientId } from './types';
@@ -11,8 +11,8 @@ export interface TutorialUi {
 
 export interface TutorialStep {
   id: string;
-  /** Câu đầu bếp nói. */
-  say: string;
+  /** Câu đầu bếp nói (có câu đổi theo món khởi đầu). */
+  say: string | ((s: GameState) => string);
   /** Đầu bếp đứng trên / dưới để không che chỗ cần bấm. */
   at: 'top' | 'bottom';
   /** Bước chỉ cần bấm ▶ Tiếp. */
@@ -23,9 +23,32 @@ export interface TutorialStep {
   done: (s: GameState, ui: TutorialUi) => boolean;
 }
 
-/** Món đầu tiên: bánh mì trứng. */
-const FIRST: IngredientId[] = ['banh_mi', 'trung', 'pate', 'hanh'];
-const missingFirst = (s: GameState) => FIRST.filter((i) => usableQty(s, i) < 1);
+/** Món đầu tiên = món đặc trưng khởi đầu (mặc định bánh mì trứng). */
+const firstRecipe = (s: Pick<GameState, 'starter'>) => RECIPES[s.starter] ?? RECIPES.banh_mi_trung;
+const firstIngredients = (s: Pick<GameState, 'starter'>) => Object.keys(firstRecipe(s).ingredients) as IngredientId[];
+const missingFirst = (s: GameState) => firstIngredients(s).filter((i) => usableQty(s, i) < 1);
+const buySay = (s: Pick<GameState, 'starter'>) => {
+  const r = firstRecipe(s);
+  return `Món đầu tiên là ${r.emoji} ${r.name} = ${firstIngredients(s).map((i) => INGREDIENTS[i].emoji).join(' + ')}. Bấm 🧾 Mua theo menu để bỏ đủ đồ vào giỏ, rồi bấm 💳 Trả tiền nhé!`;
+};
+const prepList = (s: Pick<GameState, 'starter'>) => firstIngredients(s).filter((i) => INGREDIENTS[i].needsPrep);
+const prepSay = (s: Pick<GameState, 'starter'>) => {
+  const list = prepList(s);
+  if (list.length === 1 && list[0] === 'hanh') return 'Hành 🧅 phải thái trước. Chạm ô 🧅 có 🔪 rồi chạm thớt thật nhanh!';
+  return `Đồ có 🔪 phải thái trước: ${list.map((i) => INGREDIENTS[i].emoji).join(' + ')}. Chạm từng ô có 🔪 rồi chạm thớt thật nhanh!`;
+};
+const cookSay = (s: Pick<GameState, 'starter'>) => `Giỏi! Chạm ${firstRecipe(s).emoji} để bỏ nguyên liệu vào nồi, rồi bấm 🔥 Nấu.`;
+const serveSay = (s: Pick<GameState, 'starter'>) => `Bấm 🍽️➡ để ra quán, rồi chạm vào bàn khách đang chờ ${firstRecipe(s).emoji}.`;
+
+/** Câu hiển thị của một bước. */
+export function stepSay(step: TutorialStep, s: GameState): string {
+  return typeof step.say === 'function' ? step.say(s) : step.say;
+}
+
+/** Mọi biến thể câu hướng dẫn (theo từng món khởi đầu) — để sinh giọng thu sẵn. */
+export function tutorialLines(): string[] {
+  return TUTORIAL.flatMap((st) => (typeof st.say === 'function' ? STARTERS.map((x) => (st.say as (s: GameState) => string)({ starter: x.id } as GameState)) : [st.say]));
+}
 const cookingOrHolding = (s: GameState) =>
   Boolean(s.run && (s.run.slots.some((sl) => sl.job?.by === 'player') || s.run.carrying.length > 0));
 const servedSomething = (s: GameState) =>
@@ -43,7 +66,7 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     id: 'buy',
-    say: `Món đầu tiên là 🥪 Bánh mì trứng = ${FIRST.map((i) => INGREDIENTS[i].emoji).join(' + ')}. Bấm 🧾 Mua theo menu để bỏ đủ đồ vào giỏ, rồi bấm 💳 Trả tiền nhé!`,
+    say: buySay,
     at: 'top',
     targets: () => ['market.menu', 'market.pay'],
     done: (s) => s.phase !== 'market' || missingFirst(s).length === 0,
@@ -64,16 +87,21 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     id: 'prep',
-    say: 'Hành 🧅 phải thái trước. Chạm ô 🧅 có 🔪 rồi chạm thớt thật nhanh!',
+    say: prepSay,
     at: 'top',
-    targets: (s) => (s.run?.playerPrep ? ['kitchen.board'] : ['kitchen.prep:hanh']),
-    done: (s) => (s.run?.prepped.hanh ?? 0) > 0 || cookingOrHolding(s) || servedSomething(s),
+    targets: (s) => {
+      if (s.run?.playerPrep) return ['kitchen.board'];
+      const next = prepList(s).find((i) => (s.run?.prepped[i] ?? 0) <= 0);
+      return next ? [`kitchen.prep:${next}`] : [];
+    },
+    // Đã thái đủ mọi thứ của món đầu tiên (bánh mì trứng: hành; cơm gà: hành + gà).
+    done: (s) => prepList(s).every((i) => (s.run?.prepped[i] ?? 0) > 0) || cookingOrHolding(s) || servedSomething(s),
   },
   {
     id: 'cook',
-    say: 'Giỏi! Chạm 🥪 để bỏ nguyên liệu vào nồi, rồi bấm 🔥 Nấu.',
+    say: cookSay,
     at: 'top',
-    targets: () => ['kitchen.recipe:banh_mi_trung', 'kitchen.cook'],
+    targets: (s) => [`kitchen.recipe:${firstRecipe(s).id}`, 'kitchen.cook'],
     done: (s) => cookingOrHolding(s) || servedSomething(s),
   },
   {
@@ -85,7 +113,7 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     id: 'serve',
-    say: 'Bấm 🍽️➡ để ra quán, rồi chạm vào bàn khách đang chờ 🥪.',
+    say: serveSay,
     at: 'bottom',
     targets: () => ['kitchen.exit', 'shop.table'],
     done: (s) => servedSomething(s),

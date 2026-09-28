@@ -422,6 +422,10 @@ export interface GameState {
   launched: Record<RecipeId, number>;
   /** Món đang trend. */
   trend: Trend | null;
+  /** Món đặc trưng khởi đầu (chọn khi Chơi mới). */
+  starter: RecipeId;
+  /** Nguyên liệu mở sẵn nhờ món khởi đầu (dù chưa tới cấp). */
+  extraIngredients: IngredientId[];
   /** Người bán ở chợ: thân thiết, lượt trả giá (lưu cùng bản lưu, trên máy người chơi). */
   vendors: Record<'thit' | 'bot' | 'rau' | 'nuoc', { friendship: number; haggles: number; haggleRate: number }>;
   /** 🎟️ Vé thưởng (sau này mua nội thất). */

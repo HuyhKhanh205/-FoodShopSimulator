@@ -22,7 +22,8 @@ export function levelProgress(xp: number): number {
 
 export function unlockedIngredients(s: GameState): IngredientId[] {
   const lv = levelOf(s.xp);
-  return INGREDIENT_IDS.filter((i) => INGREDIENT_TIER[i] <= lv);
+  const extra = s.extraIngredients ?? [];
+  return INGREDIENT_IDS.filter((i) => INGREDIENT_TIER[i] <= lv || extra.includes(i));
 }
 
 /** Nguyên liệu vừa mở ở đúng cấp này. */

@@ -11,6 +11,9 @@ import StaffScreen from './src/screens/StaffScreen';
 import UpgradeScreen from './src/screens/UpgradeScreen';
 import CharacterScreen from './src/screens/CharacterScreen';
 import LabScreen from './src/screens/LabScreen';
+import NewGameScreen from './src/screens/NewGameScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import GuideScreen from './src/screens/GuideScreen';
 import ChefGuide from './src/components/kid/ChefGuide';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -32,6 +35,9 @@ export default function App() {
             <Stack.Screen name="Upgrades" component={UpgradeScreen} />
             <Stack.Screen name="Character" component={CharacterScreen} />
             <Stack.Screen name="Lab" component={LabScreen} />
+            <Stack.Screen name="NewGame" component={NewGameScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Guide" component={GuideScreen} />
           </Stack.Navigator>
           <ChefGuide route={route} openLab={() => navigationRef.isReady() && navigationRef.navigate('Lab')} />
         </NavigationContainer>

@@ -62,7 +62,7 @@ function botStep(s: GameState, rng: () => number, skill: number) {
 
 function play(label: string, seed: number, staffRoles: StaffRole[], staffSkill: number, days: number, botSkill: number) {
   const rng = seededRng(seed);
-  const s = E.newGame(rng);
+  const s = E.newGame(rng, { starter: process.env.STARTER }); // STARTER=com_ga … để thử món khởi đầu khác
   for (const role of staffRoles) {
     const st = { ...makeStaff(s, rng, role), id: 'x' + role + s.staff.length, role, skill: staffSkill, trait: 'steady' as const, wage: 80_000 + staffSkill * 1600 };
     s.staff.push(st);

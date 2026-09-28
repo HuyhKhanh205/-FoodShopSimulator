@@ -31,7 +31,7 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
       { icon: '👤', text: 'Chọn một bạn nhân vật.' },
       { icon: '🎨', text: 'Chạm vào màu để đổi áo, quần, tóc.' },
       { icon: '🎲', text: 'Bấm xúc xắc để đổi ngẫu nhiên.' },
-      { icon: '🏮', text: 'Xong thì bấm Vào quán.' },
+      { icon: '✅', text: 'Xong thì bấm Lưu.' },
     ],
   },
   market: {

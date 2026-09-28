@@ -1,8 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { newGame, putDownAll, tick } from './engine';
+import type { NewGameOptions } from './engine';
+import { loadSettings } from './settings';
 import { defaultRng } from './helpers';
-import { clearSave, loadGame, saveGame } from './storage';
+import { clearSave, loadGame, saveGame, writeSave } from './storage';
 import type { GameState, Rng } from './types';
 
 /** Hàm thay đổi state (được phép sửa trực tiếp bản sao). Trả về chuỗi = thông báo lỗi cho người chơi. */
@@ -66,9 +68,22 @@ interface GameContextValue {
   sceneMode: SceneMode;
   setSceneMode: (m: SceneMode) => void;
   act: (fn: GameMutation) => void;
-  startNewGame: () => void;
+  startNewGame: (opts?: NewGameOptions) => void;
   continueGame: () => Promise<boolean>;
+  /** Tóm tắt bản lưu cho thẻ "Chơi tiếp" ở màn đầu. */
+  saveInfo: SaveInfo | null;
+  /** Ghi đè bản lưu bằng bản nhập từ mã sao lưu. */
+  importGame: (state: GameState) => Promise<void>;
+  /** Đọc lại bản lưu (sau khi đổi nhân vật từ màn đầu...). */
+  refreshSave: () => Promise<void>;
 }
+
+export interface SaveInfo {
+  shopName: string;
+  day: number;
+  money: number;
+}
+const infoOf = (g: GameState): SaveInfo => ({ shopName: g.profile.shopName, day: g.day, money: g.money });
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
 
@@ -77,6 +92,7 @@ const TICK_MS = 200;
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const [store, dispatch] = useReducer(reducer, { game: null, toast: null });
   const [hasSave, setHasSave] = useState(false);
+  const [saveInfo, setSaveInfo] = useState<SaveInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
   const [viewMode, setViewModeState] = useState<ViewMode>('map');
@@ -94,8 +110,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (v === '3d' || v === 'simple') setSceneModeState(v);
       })
       .catch(() => {});
+    void loadSettings();
     loadGame().then((saved) => {
       setHasSave(Boolean(saved));
+      setSaveInfo(saved ? infoOf(saved) : null);
       setLoading(false);
     });
   }, []);
@@ -120,7 +138,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (!game || game.phase === 'open') return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveGame(game).then(() => setHasSave(true)).catch(() => {});
+      saveGame(game)
+        .then(() => {
+          setHasSave(true);
+          setSaveInfo(infoOf(game));
+        })
+        .catch(() => {});
     }, 300);
   }, [game]);
 
@@ -145,10 +168,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(SCENE_MODE_KEY, m).catch(() => {});
   }, []);
 
-  const startNewGame = useCallback(() => {
+  const startNewGame = useCallback((opts?: NewGameOptions) => {
     clearSave().catch(() => {});
     setPaused(false);
-    dispatch({ type: 'set', game: newGame(defaultRng) });
+    dispatch({ type: 'set', game: newGame(defaultRng, opts) });
+  }, []);
+
+  const importGame = useCallback(async (state: GameState) => {
+    await writeSave(state);
+    setHasSave(true);
+    setSaveInfo(infoOf(state));
+    dispatch({ type: 'set', game: null });
+  }, []);
+
+  const refreshSave = useCallback(async () => {
+    const saved = await loadGame();
+    setHasSave(Boolean(saved));
+    setSaveInfo(saved ? infoOf(saved) : null);
   }, []);
 
   const continueGame = useCallback(async () => {
@@ -160,8 +196,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ game, toast: store.toast, hasSave, loading, paused, setPaused, viewMode, setViewMode, sceneMode, setSceneMode, act, startNewGame, continueGame }),
-    [game, store.toast, hasSave, loading, paused, viewMode, setViewMode, sceneMode, setSceneMode, act, startNewGame, continueGame]
+    () => ({ game, toast: store.toast, hasSave, loading, paused, setPaused, viewMode, setViewMode, sceneMode, setSceneMode, act, startNewGame, continueGame, saveInfo, importGame, refreshSave }),
+    [game, store.toast, hasSave, loading, paused, viewMode, setViewMode, sceneMode, setSceneMode, act, startNewGame, continueGame, saveInfo, importGame, refreshSave]
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

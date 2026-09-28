@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
+import { maxDpr } from '../../game/settings';
 import { Animated, Platform } from 'react-native';
 import type { DirectionalLight, Group } from 'three';
 import { Canvas, useFrame, useThree } from '../../three/fiber';
@@ -227,7 +228,7 @@ export default function ShopScene3D({ game, layout, walker, cam, frame, overlayP
   };
 
   return (
-    <Canvas shadows={SHADOWS ? 'percentage' : false} dpr={LITE ? [1, 1.5] : [1, 2]} gl={{ antialias: true }} style={{ flex: 1 }}>
+    <Canvas shadows={SHADOWS ? 'percentage' : false} dpr={[1, Math.min(LITE ? 1.5 : 2, maxDpr())]} gl={{ antialias: true }} style={{ flex: 1 }}>
       <UseCamera cam={cam} />
       <FollowCam cam={cam} frame={frame} walker={walker} overlayPan={overlayPan} />
       <color attach="background" args={['#FBE3C6']} />

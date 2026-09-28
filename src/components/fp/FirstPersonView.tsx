@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { maxDpr } from '../../game/settings';
 import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { burnGrace, INGREDIENTS, PLAYER_PREP_MS, RECIPES } from '../../game/data';
 import { MAX_CARRY, playerChop, playerStir, playerTakeOut } from '../../game/engine';
@@ -234,7 +235,7 @@ function KitchenView({ stations, game, act, onExit }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.stage}>
-        <Canvas shadows={shadows ? 'percentage' : false} dpr={[1, 1.5]} camera={{ fov: 50, near: 0.05, far: 30 }} style={{ flex: 1 }}>
+        <Canvas shadows={shadows ? 'percentage' : false} dpr={[1, Math.min(1.5, maxDpr())]} camera={{ fov: 50, near: 0.05, far: 30 }} style={{ flex: 1 }}>
           <color attach="background" args={['#FFF3E0']} />
           <EyeRig width={width} depth={1.75} target={[0, TOP_Y, -0.2]} tilt={[0, 1.25, 0.8]} shadows={shadows} />
           <Backdrop from={-width / 2 - 1.5} to={width / 2 + 1.5} z={-0.3} />
@@ -419,7 +420,7 @@ function CounterView({ station, game, act, onExit }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.stage}>
-        <Canvas shadows={shadows ? 'percentage' : false} dpr={[1, 1.5]} camera={{ fov: 50, near: 0.05, far: 30 }} style={{ flex: 1 }}>
+        <Canvas shadows={shadows ? 'percentage' : false} dpr={[1, Math.min(1.5, maxDpr())]} camera={{ fov: 50, near: 0.05, far: 30 }} style={{ flex: 1 }}>
           <color attach="background" args={['#FFF3E0']} />
           <EyeRig width={1.6} shadows={shadows} />
           <Backdrop from={-2} to={2} />

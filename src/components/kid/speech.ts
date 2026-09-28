@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { VOICE } from '../../assets/voice.generated';
 import { speechText } from '../../game/voice';
+import { VOLUME_GAIN, settingsStore } from '../../game/settings';
 
 /**
  * Giọng đọc của Chú Tư.
@@ -26,6 +27,7 @@ function hasSynth() {
 
 /** Máy đọc to được không (chỉ bản web). */
 export function canSpeak() {
+  if (!settingsStore.get().voice) return false;
   return Platform.OS === 'web' && (Boolean(audioCtor()) || hasSynth());
 }
 
@@ -102,6 +104,7 @@ function synthSpeak(text: string, onFail?: () => void) {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'vi-VN';
     u.rate = RATE;
+    u.volume = VOLUME_GAIN[settingsStore.get().volume];
     if (voice?.v && synth.getVoices().includes(voice.v)) u.voice = voice.v;
     // Không có giọng nam (vd iPhone chỉ có giọng nữ "Linh"): đọc trầm xuống.
     u.pitch = voice?.male ? 1 : 0.6;
@@ -152,7 +155,7 @@ export function stopSpeaking() {
  * Đọc to một câu (câu hiển thị, còn emoji cũng được). `onFail`: sau 2,5 giây vẫn chưa phát được tiếng.
  */
 export function speak(text: string, onFail?: () => void) {
-  if (Platform.OS !== 'web') return;
+  if (Platform.OS !== 'web' || !settingsStore.get().voice) return;
   const line = speechText(text);
   if (!line) return;
   const clip = VOICE[line];
@@ -170,7 +173,11 @@ export function speak(text: string, onFail?: () => void) {
     .then((buf) => {
       const s = ac.createBufferSource();
       s.buffer = buf;
-      s.connect(ac.destination);
+      // Âm lượng theo cài đặt.
+      const g = ac.createGain();
+      g.gain.value = VOLUME_GAIN[settingsStore.get().volume];
+      s.connect(g);
+      g.connect(ac.destination);
       s.onended = () => {
         if (current === s) current = null;
       };

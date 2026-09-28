@@ -26,6 +26,11 @@ export async function loadGame(): Promise<GameState | null> {
   }
 }
 
+/** Ghi đè bản lưu bằng một trạng thái (dùng khi nhập mã sao lưu). */
+export async function writeSave(state: GameState): Promise<void> {
+  await AsyncStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, run: null, phase: state.phase === 'open' ? 'market' : state.phase }));
+}
+
 export async function clearSave(): Promise<void> {
   await AsyncStorage.removeItem(SAVE_KEY);
 }

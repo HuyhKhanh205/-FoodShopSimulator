@@ -1,4 +1,4 @@
-import { INGREDIENTS, PREP_BATCH, RECIPES } from './data';
+import { INGREDIENTS, PREP_BATCH, RECIPES, starterOf } from './data';
 import { clamp, formatMoney, pick } from './helpers';
 import { levelOf, unlockedIngredients } from './progression';
 import type { DayReport, DayTally, DiaryEntry, DiaryMood, GameState, IngredientId, Mission, MissionKind, MissionTier, RecipeId, Rng } from './types';
@@ -67,13 +67,14 @@ export function pickSpecial(s: GameState, rng: Rng): RecipeId | null {
  * Ngày 1 cố định theo hướng dẫn: mua trứng, sơ chế hành, phục vụ 3 bàn.
  */
 export function rollMissions(s: GameState, rng: Rng) {
-  const special = s.day === 1 ? 'banh_mi_trung' : pickSpecial(s, rng);
+  const st = starterOf(s.starter);
+  const special = s.day === 1 ? st.id : pickSpecial(s, rng);
   if (s.day === 1) {
     s.missions = {
       day: 1,
       special,
       list: [
-        make(s, 'buy', 'easy', 1, { ingredientId: 'trung' }),
+        make(s, 'buy', 'easy', 1, { ingredientId: st.buy }),
         make(s, 'prep', 'easy', PREP_BATCH, { ingredientId: 'hanh' }),
         make(s, 'serve', 'medium', 3),
       ],

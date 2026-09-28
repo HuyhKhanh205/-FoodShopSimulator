@@ -2,7 +2,7 @@ import { INGREDIENTS, LEVEL_XP, RECIPES, RECIPE_IDS } from './data';
 import { HELP } from './help';
 import type { HelpTopic } from './help';
 import { STAGES, SUMMARY_FIRST_SAY } from './dayflow';
-import { TUTORIAL, noteText } from './tutorial';
+import { noteText, tutorialLines } from './tutorial';
 import type { ChefNote, StaffRole, TrendSource } from './types';
 
 /**
@@ -58,7 +58,7 @@ export function helpSpeech(topic: HelpTopic, more: boolean): string {
 /** Mọi câu cố định Chú Tư có thể đọc — để sinh giọng thu sẵn (`scripts/gen-voice.py`). */
 export function voiceLines(): string[] {
   const lines: string[] = [];
-  for (const st of TUTORIAL) lines.push(st.say);
+  lines.push(...tutorialLines());
   for (const topic of Object.keys(HELP) as HelpTopic[]) {
     const h = HELP[topic];
     for (const s of [...h.steps, ...(h.more ?? [])]) lines.push(`${s.icon} ${s.text}`);
