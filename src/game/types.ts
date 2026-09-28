@@ -384,6 +384,8 @@ export interface GameState {
   launched: Record<RecipeId, number>;
   /** Món đang trend. */
   trend: Trend | null;
+  /** Người bán ở chợ: thân thiết, lượt trả giá (lưu cùng bản lưu, trên máy người chơi). */
+  vendors: Record<'thit' | 'bot' | 'rau' | 'nuoc', { friendship: number; haggles: number; haggleRate: number }>;
   mods: DayModifiers;
   report: DayReport;
   history: DayReport[];

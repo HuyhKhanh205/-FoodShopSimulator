@@ -1,8 +1,9 @@
 /** Kiểm tra nhanh chế độ bản đồ (không cần giao diện): `npx tsx scripts/check-map.ts` */
 import { QUESTIONS } from '../src/game/chat';
+import * as M from '../src/game/market';
 import { VOICE } from '../src/assets/voice.generated';
 import { speechText, voiceLines } from '../src/game/voice';
-import { RECIPES } from '../src/game/data';
+import { DAY_MS, RECIPES } from '../src/game/data';
 import { dishFromCombo, registerDish, resolveCombo } from '../src/game/dishes';
 import { makeCustomer } from '../src/game/customers';
 import { dishNeeds, errorRate, handledCustomers, makeStaff, usableQty as uq } from '../src/game/helpers';
@@ -267,8 +268,8 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   };
   check(stepId() === 'hello', 'bắt đầu ở bước chào');
   advanceTutorial(g);
-  check(tutorialTargets(g).includes('market.buy:banh_mi'), 'bước mua chỉ vào bánh mì');
-  for (const id of ['banh_mi', 'trung', 'pate', 'hanh'] as const) E.buy(g, id, 5);
+  check(tutorialTargets(g).includes('market.menu'), 'bước mua chỉ vào Mua theo menu');
+  check(M.checkout(g, M.suggestBasket(g)) === null, 'mua theo menu + trả tiền được');
   pump();
   check(stepId() === 'open', 'mua đủ → bước mở cửa');
   E.openShop(g, r11);
@@ -477,6 +478,63 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   const missing = lines.filter((l) => !VOICE[l]);
   check(missing.length === 0, `mọi câu cố định có giọng nam thu sẵn (${lines.length} câu)${missing.length ? ' — thiếu: ' + missing.slice(0, 3).join(' | ') + ' → chạy scripts/gen-voice.py' : ''}`);
   check(speechText('Món đầu tiên là 🥪 Bánh mì trứng = 🥖 + 🥚. Bấm +5 nhé!') === 'Món đầu tiên là Bánh mì trứng gồm bánh mì, trứng. Bấm thêm 5 nhé!', 'đọc emoji thành chữ');
+}
+
+// ---------- Chợ: sạp, bớt giá bằng số tiền, trả giá, kho có sức chứa ----------
+{
+  const r = seededRng(33);
+  const g = E.newGame(r);
+  g.activeEvent = null;
+  g.xp = 900;
+  g.money = 5_000_000;
+  const offsOk = (Object.keys(g.prices) as IngredientId[]).every((id) => {
+    const p = M.vendorPrice(g, id);
+    return p.final >= Math.ceil(p.base / 2 / 100) * 100 && p.offs.every((o) => o.amount % 100 === 0 && o.amount > 0) && p.final <= p.base;
+  });
+  check(offsOk, 'mọi khoản bớt là số tiền (bội 100đ), giá không dưới 50%');
+  // Khuyến mãi sáng có, rau chiều chỉ sau 13:00
+  const morning = M.activeDeals(g);
+  check(morning.length === 1 && !['rau', 'hanh'].includes(morning[0].id) && /bớt \d/.test(morning[0].label), `khuyến mãi sáng: ${morning[0]?.label}`);
+  E.openShop(g, r);
+  g.activeEvent = null;
+  g.run!.elapsed = DAY_MS * 0.5;
+  const afternoon = M.activeDeals(g);
+  check(afternoon.some((d) => d.id === 'rau') && afternoon.every((d) => d.label.includes('chiều')), `rau chiều bớt: ${afternoon.map((d) => d.label).join(', ')}`);
+  // Trả giá: đúng 2 lượt / ngày
+  const g2 = E.newGame(seededRng(5));
+  g2.activeEvent = null;
+  let tries = 0;
+  while (M.haggle(g2, 'thit', seededRng(tries + 1))) tries += 1;
+  check(tries === 2, 'trả giá 2 lượt mỗi ngày');
+  // Thân thiết tăng khi mua; trả tiền đúng tổng
+  const g3 = E.newGame(seededRng(6));
+  g3.activeEvent = null;
+  g3.money = 2_000_000;
+  const before = g3.money;
+  const basket = { trung: 10, banh_mi: 10 } as M.Basket;
+  const total = M.basketTotal(g3, basket).cost;
+  check(M.checkout(g3, basket) === null && g3.money === before - total, `trả tiền giỏ đúng tổng (${total}đ)`);
+  check(g3.vendors.bot.friendship > 0, 'thân thiết tăng khi mua');
+  // Bớt đồ mua dư hoàn đúng giá đã trả
+  const unit = total / 20;
+  const m0 = g3.money;
+  E.unbuy(g3, 'trung', 2);
+  check(Math.abs(g3.money - m0 - 2 * M.vendorPrice(g3, 'trung').final) <= 2 * unit, 'bớt đồ mua dư hoàn đúng tiền');
+  // Sức chứa
+  const cap = M.stockCapacity(g3);
+  check(M.checkout(g3, { gao: cap } as M.Basket) !== null, 'vượt sức chứa kho thì không mua được');
+  // Mua theo menu: đủ đồ làm bánh mì trứng
+  const g4 = E.newGame(seededRng(8));
+  g4.activeEvent = null;
+  const sb = M.suggestBasket(g4);
+  check((['banh_mi', 'trung', 'pate', 'hanh'] as IngredientId[]).every((i) => (sb[i] ?? 0) > 0), 'mua theo menu có đủ đồ làm bánh mì trứng');
+  // Lưu rồi tải: còn nguyên dữ liệu người bán
+  const copy = JSON.parse(JSON.stringify(g3));
+  check(copy.vendors.bot.friendship === g3.vendors.bot.friendship, 'dữ liệu người bán nằm trong bản lưu');
+  // Ngày mới hồi lượt trả giá
+  g2.phase = 'summary';
+  E.nextDay(g2, seededRng(9));
+  check(g2.vendors.thit.haggles === M.HAGGLES_PER_DAY && g2.vendors.thit.haggleRate === 0, 'sáng mới hồi lượt trả giá');
 }
 
 process.exit(failed ? 1 : 0);

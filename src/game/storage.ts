@@ -3,6 +3,7 @@ import { RECIPES } from './data';
 import { DEFAULT_PROFILE } from './profile';
 import { syncDishes } from './dishes';
 import { xpForRecipes } from './progression';
+import { newVendors } from './market';
 import type { GameState } from './types';
 
 const SAVE_KEY = 'foodshop.save.v1';
@@ -42,6 +43,7 @@ export async function loadGame(): Promise<GameState | null> {
       discovered: data.discovered ?? [...unlockedRecipes],
       launched: data.launched ?? {},
       trend: data.trend ?? null,
+      vendors: data.vendors ?? newVendors(),
       run: null,
       phase: data.phase === 'open' ? 'market' : data.phase,
     };

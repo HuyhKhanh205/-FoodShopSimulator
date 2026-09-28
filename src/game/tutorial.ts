@@ -43,9 +43,9 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     id: 'buy',
-    say: `Món đầu tiên là 🥪 Bánh mì trứng = ${FIRST.map((i) => INGREDIENTS[i].emoji).join(' + ')}. Bấm +5 ở mỗi thứ nhé!`,
+    say: `Món đầu tiên là 🥪 Bánh mì trứng = ${FIRST.map((i) => INGREDIENTS[i].emoji).join(' + ')}. Bấm 🧾 Mua theo menu để bỏ đủ đồ vào giỏ, rồi bấm 💳 Trả tiền nhé!`,
     at: 'top',
-    targets: (s) => missingFirst(s).map((i) => `market.buy:${i}`),
+    targets: () => ['market.menu', 'market.pay'],
     done: (s) => s.phase !== 'market' || missingFirst(s).length === 0,
   },
   {

@@ -6,6 +6,7 @@ import { DAY_MS, INGREDIENTS, RECIPES } from '../src/game/data';
 import * as E from '../src/game/engine';
 import { addToMenu, experiment, levelOf, mysteryRecipes } from '../src/game/progression';
 import { canMake, makeStaff, seededRng, usableQty } from '../src/game/helpers';
+import { stockCapacity, stockUnits } from '../src/game/market';
 import type { GameState, IngredientId, StaffRole } from '../src/game/types';
 
 function stockUp(s: GameState, portions: number) {
@@ -19,8 +20,13 @@ function stockUp(s: GameState, portions: number) {
   };
   mains.forEach((r) => add(r, portions / mains.length));
   drinks.forEach((r) => add(r, (portions * 0.6) / drinks.length));
-  for (const [ing, q] of Object.entries(need) as [IngredientId, number][]) {
-    const want = Math.ceil(q) - usableQty(s, ing);
+  // Kho có sức chứa: thiếu chỗ thì mua bớt đều mọi thứ.
+  const wants = (Object.entries(need) as [IngredientId, number][]).map(([ing, q]) => [ing, Math.max(0, Math.ceil(q) - usableQty(s, ing))] as const);
+  const total = wants.reduce((n, [, w]) => n + w, 0);
+  const room = stockCapacity(s) - stockUnits(s);
+  const k = total > room ? room / total : 1;
+  for (const [ing, w] of wants) {
+    const want = Math.floor(w * k);
     if (want > 0) E.buy(s, ing, want);
   }
 }

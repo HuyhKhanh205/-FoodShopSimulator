@@ -69,6 +69,17 @@ Nút chuyển nằm giữa HUD, đổi ngay mà giữ nguyên đơn, khách và 
 - **3D**: vẫn là cảnh KayKit, camera **isometric khoá 45°**, nút ⟲ xoay theo nấc 90° (xoay ra sau thì tường sau tự hạ thấp) và + / − zoom 2 mức; sàn bếp gạch bông pastel; đèn treo không dây, chóp trong mờ; quầy ra món rút còn 3 ô để có lối đi hai bên; **chip màu cố định** trên mỗi trạm (Bếp 1–2, Quầy pha, Thớt, Kho, Quầy ra món, Rửa · lau, Rác) kèm trạng thái — chạm chip là đi tới trạm; bong bóng gọi món to hơn với **vòng đếm giờ** (xanh dương = món đang nấu), chạm bong bóng là tới bàn đó. Ô "+" (chỗ chưa mua) chỉ hiện ở chế độ **Bố trí**, chạm để mở màn Nâng cấp.
 - **Đơn giản**: mặt bằng 2D cố định — khu BẾP và PHÒNG ĂN, mỗi trạm là ô màu nhóm (hồng thịt · xanh trời cá · vàng bơ trứng · bạc hà rau) kèm trạng thái; **chạm là làm luôn**, không cần dẫn nhân vật; phiếu đơn ở trên và nút lớn "🍽️ Ra món bàn N" khi đang cầm đúng món. Máy chậm (FPS < 30 vài giây) hoặc pin < 20% thì game gợi ý chuyển sang Đơn giản (hỏi một lần). Máy không có WebGL thì chỉ có chế độ Đơn giản.
 
+### 🏪 Chợ bên sông (sạp, người bán, trả giá)
+Màn chợ là **cảnh 3D chợ trên bờ sông** (mô hình Kenney + KayKit, CC0): 4 sạp mái che sọc màu nhóm, hàng bày trên bàn, ghe xuồng dưới sông, dừa, khách đi chợ qua lại. Chạm sạp (hoặc tên sạp) → chủ quán đi tới và mở **bảng sạp**:
+- **4 sạp**: 🥩 Thịt & tôm (Cô Bảy) · 🥚 Trứng & bột (Bà Năm) · 🥬 Rau (Dì Sáu) · 🧋 Tạp hoá đồ uống (Chú Ba); người bán **rao giá** bằng số tiền cụ thể ("Rau chiều bớt 700đ nè con!").
+- **Giỏ hàng**: chọn − số lượng + (hoặc +5) rồi **💳 Trả tiền** một lần; **🧾 Mua theo menu** bỏ sẵn đủ đồ cho khoảng một ngày bán; nút − khi giỏ trống là trả lại đồ mua dư hôm nay (hoàn đúng tiền đã trả).
+- **Mọi khoản bớt là số tiền (đồng), không dùng phần trăm**: giá gốc gạch ngang, từng dòng "Thân thiết cấp 2: bớt 500đ", "Trả giá: bớt 1.000đ", khuyến mãi trong ngày (một món buổi sáng; **rau và hành buổi chiều** khi đi chợ giữa giờ bán); giá không dưới một nửa giá chợ.
+- **🤝 Trả giá**: mỗi sạp 2 lượt mỗi ngày; được thì cả sạp bớt tiền hôm đó, không được thì người bán kém vui một chút.
+- **♥ Thân thiết**: mua nhiều ở sạp nào thì người bán thân hơn (cấp 1–5) và bớt sẵn mỗi phần.
+- **📦 Kho có sức chứa**: 300 phần, mỗi cấp Tủ lạnh +150 (kèm đồ tươi lâu hơn).
+- Dữ liệu người bán (thân thiết, lượt trả giá) nằm trong bản lưu **trên máy người chơi**, không gửi đi đâu.
+- Chế độ **Đơn giản**: 4 ô sạp lớn tô màu nhóm, chạm là mở sạp ngay.
+
 ### 🛒 Đi chợ giữa giờ bán
 Hết nguyên liệu giữa ngày? Bấm **🛒** trên màn chơi để chạy ra chợ (thời gian vẫn trôi).
 - **Chưa có nhân viên nào đang làm** → quán **treo biển tạm đóng**: không đón khách mới; khách đang ngồi vẫn chờ và có thể bỏ về, món trên bếp vẫn có thể cháy.
@@ -151,6 +162,7 @@ src/game/          Logic thuần (không phụ thuộc React) — dễ kiểm th
   engine.ts        Vòng lặp tick, hành động người chơi, AI nhân viên, đóng/mở ngày
   customers.ts     Sinh khách, phục vụ, thanh toán, đánh giá
   events.ts        Các tình huống ngẫu nhiên và lựa chọn
+  market.ts        Chợ: sạp, người bán, giá bớt bằng số tiền, trả giá, thân thiết, giỏ hàng, sức chứa kho
   dishes.ts        Tổ hợp nguyên liệu → món (chuẩn / lạ / quái dị), tên, giá, hình
   trend.ts         Trend: độ hot giảm dần, hệ số giá / khách / danh tiếng
   progression.ts   Cấp độ, mở khoá nguyên liệu / vị trí nhân viên, thử món, menu

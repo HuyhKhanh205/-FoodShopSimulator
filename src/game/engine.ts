@@ -3,6 +3,7 @@ import { introFactor } from './customers';
 import { registerDish, resolveCombo } from './dishes';
 import { unlockedRoles } from './progression';
 import { expireTrend, trendSpawnMult } from './trend';
+import { newVendors, resetMarketDay, stockCapacity, stockUnits } from './market';
 import {
   BANKRUPT_AT,
   burnAt,
@@ -130,6 +131,7 @@ export function newGame(rng: Rng): GameState {
     discovered: [...START_RECIPES],
     launched: {},
     trend: null,
+    vendors: newVendors(),
     mods: emptyMods(),
     report: emptyReport({ day: 1, reputation: 3 }),
     history: [],
@@ -150,6 +152,7 @@ function beginMarket(s: GameState, rng: Rng) {
   s.report = emptyReport(s);
   s.boughtToday = {};
   expireTrend(s);
+  resetMarketDay(s);
   for (const st of s.staff) {
     st.absent = false;
     st.task = null;
@@ -170,10 +173,12 @@ export function atMarket(s: GameState): boolean {
   return s.phase === 'market' || (s.phase === 'open' && Boolean(s.run?.ownerAway));
 }
 
-export function buy(s: GameState, id: IngredientId, qty: number): boolean {
+/** Mua `qty` phần; `unitPrice` = giá sau khi bớt ở sạp (mặc định giá chợ). Không vượt sức chứa kho. */
+export function buy(s: GameState, id: IngredientId, qty: number, unitPrice = s.prices[id]): boolean {
   if (!atMarket(s) || s.mods.unavailable.includes(id)) return false;
-  const cost = s.prices[id] * qty;
+  const cost = unitPrice * qty;
   if (qty <= 0 || s.money < cost) return false;
+  if (stockUnits(s) + qty > stockCapacity(s)) return false;
   const ing = INGREDIENTS[id];
   const expiresOnDay = s.day + ing.shelfLife - 1 + (ing.perishable ? s.upgrades.fridge : 0);
   const batch = s.stock.find((b) => b.ingredientId === id && b.expiresOnDay === expiresOnDay);

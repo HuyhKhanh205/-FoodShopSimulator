@@ -4,7 +4,7 @@ import type { AnimationClip, Material, Mesh, MeshStandardMaterial, Object3D, Tex
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { MODEL_DATA, PROP_BOUNDS } from '../assets/models.generated';
+import { MARKET_BOUNDS, MODEL_DATA, PROP_BOUNDS } from '../assets/models.generated';
 import { CHAR_PALETTES, PALETTE_COLS, PALETTE_ROWS, PALETTE_SAMPLES, PROP_PALETTES, PROP_PALETTE_H, PROP_PALETTE_W } from '../assets/palettes.generated';
 
 export type CharacterModel = 'rogue' | 'knight' | 'mage' | 'barbarian';
@@ -319,4 +319,38 @@ export function propSize(name: string): [number, number, number] {
   const b = PROP_BOUNDS[name];
   if (!b) return [1, 1, 1];
   return [b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]];
+}
+
+// ---------- Chợ (Kenney, màu đã nướng vào đỉnh) ----------
+
+/** Bản sao một đồ vật trong market.glb (null khi chưa nạp xong / lỗi). */
+export function useMarketProp(name: string): Object3D | null {
+  const g = useGLTFModel('market');
+  const [obj, setObj] = useState<Object3D | null>(null);
+  useEffect(() => {
+    if (!g) return;
+    const src = g.scene.getObjectByName(name);
+    setObj(src ? src.clone(true) : null);
+  }, [g, name]);
+  return obj;
+}
+
+/** Kích thước (x, y, z) đồ vật chợ. */
+export function marketPropSize(name: string): [number, number, number] {
+  const b = MARKET_BOUNDS[name];
+  if (!b) return [1, 1, 1];
+  return [b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]];
+}
+
+/** Nhân vật Kenney Mini (người bán, khách đi chợ): bản sao có xương + các hoạt ảnh idle / walk / emote-yes. */
+export function useMini(model: string): { scene: Object3D; clips: AnimationClip[]; height: number } | null {
+  const g = useGLTFModel(model);
+  const [inst, setInst] = useState<{ scene: Object3D; clips: AnimationClip[]; height: number } | null>(null);
+  useEffect(() => {
+    if (!g) return;
+    const scene = cloneSkinned(g.scene);
+    const size = new Box3().setFromObject(g.scene).getSize(new Vector3());
+    setInst({ scene, clips: g.animations, height: size.y || 1 });
+  }, [g]);
+  return inst;
 }

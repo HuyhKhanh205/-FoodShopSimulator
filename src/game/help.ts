@@ -37,17 +37,19 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
   market: {
     title: 'Đi chợ',
     steps: [
-      { icon: '➕', text: 'Bấm + để mua đồ, bấm − nếu lỡ mua dư.' },
-      { icon: '📦', text: 'Số trong hộp là đồ đang có trong kho.' },
-      { icon: '🍜', text: 'Số trên món là số bát nấu được.' },
+      { icon: '🧾', text: 'Bấm Mua theo menu để bỏ sẵn đủ đồ vào giỏ.' },
+      { icon: '🏪', text: 'Chạm vào sạp để chọn thêm: bấm + để bỏ vào giỏ, bấm − để bớt.' },
+      { icon: '💳', text: 'Xong thì bấm Trả tiền.' },
       { icon: '🔪', text: 'Thịt, rau, hành phải thái trước khi nấu.' },
       { icon: '🏮', text: 'Mua xong bấm Mở cửa.' },
     ],
     more: [
+      { icon: '🤝', text: 'Mỗi sạp trả giá được 2 lần mỗi ngày — trả được thì cả sạp bớt tiền hôm đó.' },
+      { icon: '♥', text: 'Mua quen một sạp thì người bán thân hơn và bớt sẵn cho mỗi phần.' },
+      { icon: '🏷️', text: 'Có món khuyến mãi mỗi ngày; buổi chiều rau và hành bớt giá.' },
+      { icon: '📦', text: 'Kho có hạn chỗ; mua tủ lạnh để chứa thêm và giữ đồ tươi lâu hơn.' },
       { icon: '🦠', text: 'Đồ tươi để lâu sẽ hỏng, phải vứt đi.' },
-      { icon: '↑', text: 'Mũi tên đỏ: hôm nay giá đắt. Mũi tên xanh: giá rẻ.' },
       { icon: '💳', text: 'Bấm thẻ nợ để trả nợ ngân hàng.' },
-      { icon: '👥', text: 'Thuê người giúp · 🔧 mua thêm bếp, bàn, món mới.' },
     ],
   },
   shop: {

@@ -5,18 +5,20 @@
 import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 
 // Bỏ ảnh texture khỏi GLB (giữ UV): game dùng bảng màu trong src/assets/palettes.generated.ts
 // (chạy `node scripts/build-palettes.mjs` trước). Ảnh trong GLB được nạp qua blob: URL — Safari iPhone
 // trong khung Artifact không nạp được nên đồ vật bị mất màu.
-const io = new NodeIO();
+const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 
 const dir = join(process.cwd(), 'assets/models');
 const out = join(process.cwd(), 'src/assets/models.generated.ts');
 mkdirSync(join(process.cwd(), 'src/assets'), { recursive: true });
 const files = readdirSync(dir).filter((f) => f.endsWith('.glb')).sort();
-let src = '/* eslint-disable */\n// Tự sinh bởi scripts/embed-models.mjs — không sửa tay. Mô hình KayKit (CC0) — xem assets/models/LICENSE.md\n\n';
+let src = '/* eslint-disable */\n// Tự sinh bởi scripts/embed-models.mjs — không sửa tay. Mô hình KayKit + Kenney (CC0) — xem assets/models/LICENSE.md\n\n';
 src += `export const PROP_BOUNDS: Record<string, { min: number[]; max: number[] }> = ${readFileSync(join(dir, 'props.json'), 'utf8')};\n\n`;
+src += `export const MARKET_BOUNDS: Record<string, { min: number[]; max: number[] }> = ${readFileSync(join(dir, 'market.json'), 'utf8')};\n\n`;
 src += 'export const MODEL_DATA: Record<string, string> = {\n';
 let total = 0;
 for (const f of files) {

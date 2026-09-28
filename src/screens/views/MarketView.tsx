@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Hud from '../../components/Hud';
@@ -6,10 +6,16 @@ import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
 import { Button, ProgressBar, colors } from '../../components/ui';
-import { levelOf, levelProgress, mysteryRecipes, unlockedIngredients } from '../../game/progression';
+import { levelOf, levelProgress, mysteryRecipes } from '../../game/progression';
 import { trendHeat } from '../../game/trend';
-import { INGREDIENTS, RECIPES, CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
-import { buy, discardExpired, openShop, payDebt, returnToShop, returnableQty, shopClosed, unbuy } from '../../game/engine';
+import { RECIPES, CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
+import { discardExpired, openShop, payDebt, returnToShop, shopClosed } from '../../game/engine';
+import { activeDeals, checkout, suggestBasket } from '../../game/market';
+import type { Basket, VendorId } from '../../game/market';
+import MarketScene3D from '../../components/market/MarketScene3D';
+import StallSheet from '../../components/market/StallSheet';
+import { BasketBar, StallGrid } from '../../components/market/BasketBar';
+import { hasWebGL } from '../../three/webgl';
 import { useGame, useGameState } from '../../game/GameContext';
 import { expiredQty, formatMoney, usableQty, formatClock } from '../../game/helpers';
 import type { GameState, IngredientId } from '../../game/types';
@@ -25,16 +31,30 @@ function portionsFromStock(s: GameState, recipeId: keyof typeof RECIPES) {
 export default function MarketView() {
   const navigation = useNavigation();
   const game = useGameState();
-  const { act } = useGame();
-  const { width } = useWindowDimensions();
+  const { act, sceneMode, setSceneMode } = useGame();
+  const { width, height } = useWindowDimensions();
   const wide = width >= 900;
-
-  // Nguyên liệu dùng cho thực đơn hiện tại lên trước.
-  // Nguyên liệu đã mở khoá theo cấp; thứ dùng cho thực đơn hiện tại lên trước.
-  const used = new Set<IngredientId>();
-  for (const id of game.unlockedRecipes) for (const ing of Object.keys(RECIPES[id].ingredients)) used.add(ing as IngredientId);
   const level = levelOf(game.xp);
-  const ingredientIds = unlockedIngredients(game).sort((a, b) => Number(used.has(b)) - Number(used.has(a)));
+  const has3D = useMemo(hasWebGL, []);
+  const simple = !has3D || sceneMode === 'simple';
+  // Giỏ hàng (chưa trả tiền) và sạp đang mở.
+  const [basket, setBasket] = useState<Basket>({});
+  const [stall, setStall] = useState<VendorId | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
+  const deals = activeDeals(game);
+  const pay = () => {
+    const err = checkout(JSON.parse(JSON.stringify(game)), basket);
+    if (err) {
+      setPayError(err);
+      return;
+    }
+    const b = basket;
+    act((s) => void checkout(s, b));
+    setBasket({});
+    setPayError(null);
+  };
+  const sceneW = wide ? Math.min(width - 24, 900) : width;
+  const sceneH = Math.round(Math.min(420, height * 0.44));
 
   const expired = expiredQty(game);
   // Đi chợ giữa giờ bán: đồng hồ vẫn chạy, quán có thể đang treo biển tạm đóng.
@@ -66,11 +86,28 @@ export default function MarketView() {
   return (
     <View style={styles.flex}>
       <Hud game={game} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.headRow}>
-          <Text style={styles.heading}>{midday ? '🛒 Chợ' : `☀️ Chợ · ngày ${game.day}`}</Text>
-          <HelpButton topic="market" />
+      <View style={styles.headRow}>
+        <Text style={styles.heading}>{midday ? '🛒 Chợ' : `☀️ Chợ · ngày ${game.day}`}</Text>
+        {has3D && (
+          <Pressable
+            onPress={() => setSceneMode(simple ? '3d' : 'simple')}
+            style={styles.modeBtn}
+            accessibilityRole="button"
+            accessibilityLabel={simple ? 'Chợ 3D' : 'Chợ đơn giản'}
+          >
+            <Text style={styles.modeText}>{simple ? '🌴 3D' : '🔲 Đơn giản'}</Text>
+          </Pressable>
+        )}
+        <HelpButton topic="market" />
+      </View>
+      {simple ? (
+        <StallGrid game={game} onStall={setStall} deals={deals} />
+      ) : (
+        <View style={{ height: sceneH, alignSelf: 'center' }}>
+          <MarketScene3D game={game} onStall={setStall} width={sceneW} height={sceneH} />
         </View>
+      )}
+      <ScrollView contentContainerStyle={styles.content}>
         {midday && (
           <View style={[styles.banner, closed ? styles.bannerClosed : styles.bannerOpen]}>
             <Text style={styles.bannerTitle}>
@@ -124,59 +161,6 @@ export default function MarketView() {
         {/* Món hôm nay: số trên hình = số bát nấu được */}
         {menuTiles}
 
-        {/* Thẻ nguyên liệu */}
-        <View style={styles.cards}>
-          {ingredientIds.map((id) => {
-            const ing = INGREDIENTS[id];
-            const price = game.prices[id];
-            const unavailable = game.mods.unavailable.includes(id);
-            const pricey = price > ing.basePrice * 1.15;
-            const cheap = price < ing.basePrice * 0.9;
-            const stock = usableQty(game, id);
-            return (
-              <TutorialGlow key={id} on={targets.includes(`market.buy:${id}`)} style={[styles.card, wide && styles.cardWide]}>
-              <View accessibilityLabel={ing.name} style={{ gap: 6 }}>
-                <View style={styles.cardTop}>
-                  <Text style={styles.cardEmoji}>{ing.emoji}</Text>
-                  {ing.needsPrep && <Text style={styles.prepMark}>🔪</Text>}
-                  {!used.has(id) && <Text style={styles.unusedMark}>🧪</Text>}
-                  <View style={[styles.stock, stock === 0 && styles.stockEmpty]}>
-                    <Text style={styles.stockText}>📦 {stock}</Text>
-                  </View>
-                </View>
-                <Text style={[styles.price, pricey && { color: colors.bad }, cheap && { color: colors.good }]} numberOfLines={1}>
-                  {unavailable ? '🚫' : formatMoney(price)}
-                  {pricey && !unavailable ? ' ↑' : cheap ? ' ↓' : ''}
-                </Text>
-                <View style={styles.buyBtns}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Bớt 1 ${ing.name}`}
-                    disabled={returnableQty(game, id) === 0}
-                    onPress={() => act((s) => void unbuy(s, id, 1))}
-                    style={({ pressed }) => [styles.buy, styles.buyLess, returnableQty(game, id) === 0 && { opacity: 0.3 }, pressed && { transform: [{ scale: 0.94 }] }]}
-                  >
-                    <Text style={styles.buyText}>−</Text>
-                  </Pressable>
-                  {[1, 5].map((q) => (
-                    <Pressable
-                      key={q}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Mua ${q} ${ing.name}`}
-                      disabled={unavailable || game.money < price * q}
-                      onPress={() => act((s) => void buy(s, id, q))}
-                      style={({ pressed }) => [styles.buy, q === 5 && styles.buyMore, (unavailable || game.money < price * q) && { opacity: 0.35 }, pressed && { transform: [{ scale: 0.94 }] }]}
-                    >
-                      <Text style={[styles.buyText, q === 5 && { color: '#fff' }]}>+{q}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-              </TutorialGlow>
-            );
-          })}
-        </View>
-
         {!midday && (
           <View style={styles.tiles}>
             {expired > 0 && (
@@ -222,6 +206,19 @@ export default function MarketView() {
           </TutorialGlow>
         )}
       </ScrollView>
+      <BasketBar
+        game={game}
+        basket={basket}
+        targets={targets}
+        error={payError}
+        onMenu={() => {
+          setPayError(null);
+          setBasket(suggestBasket(game));
+        }}
+        onPay={pay}
+        onClear={() => setBasket({})}
+      />
+      <StallSheet game={game} vendor={stall} basket={basket} setBasket={setBasket} act={act} onClose={() => setStall(null)} />
     </View>
   );
 }
@@ -229,7 +226,9 @@ export default function MarketView() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: 12, paddingBottom: 40, gap: 12 },
-  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 6, gap: 8 },
+  modeBtn: { marginLeft: 'auto', backgroundColor: colors.cream, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 2, borderColor: colors.chunkyShadow },
+  modeText: { fontWeight: '900', color: colors.brown },
   heading: { fontSize: 22, fontWeight: '900', color: colors.text },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tag: { backgroundColor: colors.warnBg, color: colors.primaryDark, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, fontWeight: '700', overflow: 'hidden' },

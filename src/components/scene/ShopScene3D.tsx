@@ -24,7 +24,7 @@ const SHADOWS = Platform.OS === 'web';
 const LITE = Platform.OS !== 'web' || (typeof window !== 'undefined' && Math.min(window.innerWidth, window.innerHeight) < 700);
 
 /** Dùng camera tự quản lý (đã căn khung sẵn) làm camera mặc định của cảnh. */
-function UseCamera({ cam }: { cam: CameraCam }) {
+export function UseCamera({ cam }: { cam: CameraCam }) {
   const set = useThree((s) => s.set);
   useLayoutEffect(() => {
     set({ camera: cam });
@@ -33,7 +33,7 @@ function UseCamera({ cam }: { cam: CameraCam }) {
 }
 
 /** Nắng chiều chiếu chéo, đổ bóng xuống sàn. */
-function Sun() {
+export function Sun() {
   const ref = useRef<DirectionalLight>(null);
   useLayoutEffect(() => {
     const l = ref.current;
@@ -80,7 +80,7 @@ function lerpAngle(a: number, b: number, t: number) {
   return a + d * t;
 }
 
-function Player({ walker, carrying, profile }: { walker: React.MutableRefObject<WalkerState>; carrying: string[]; profile: PlayerProfile }) {
+export function Player({ walker, carrying, profile }: { walker: React.MutableRefObject<WalkerState>; carrying: string[]; profile: PlayerProfile }) {
   const look: Look = profileLook(profile);
   const ref = useRef<Group>(null);
   const ring = useRef<Group>(null);
