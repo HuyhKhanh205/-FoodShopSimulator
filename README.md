@@ -55,9 +55,9 @@ Giờ mở cửa hiển thị quán dạng **3D nhìn chéo từ trên** (three.
 | Thao tác | Điện thoại | Máy tính |
 |---|---|---|
 | Đi tới đồ vật / ô sàn | Chạm vào đó | Nhấp chuột, hoặc **WASD / phím mũi tên** |
-| Thao tác với đồ vật bên cạnh | Tự hiện bảng hành động khi tới nơi | **E / Space / Enter** |
+| Thao tác với đồ vật bên cạnh | Tự làm khi tới nơi (không có bảng nút, cảnh 3D kín màn hình) | **E / Space / Enter** |
 
-- **Thớt** 🔪: sơ chế · **Bếp** 🔥 / **Quầy** 🥤: chọn món để nấu, tới lại khi chín là tự nhấc lên tay · **Quầy ra món** 🛎️: cầm / đặt món · **Bàn** 🪑 / **Cửa** 🚪: tới nơi là tự đưa món đang cầm khớp đơn (không bao giờ tự đưa món có hành cho khách dặn "không hành") · **Thùng rác** 🗑️ · **Lau dọn** 🧽 · **Kho** 🧊: xem tồn kho.
+- **Thớt** 🔪: sơ chế · **Bếp** 🔥 / **Quầy** 🥤: chọn món để nấu, tới lại khi chín là tự nhấc lên tay · **Quầy ra món** 🛎️: tới nơi là tự cầm món (món khách đang chờ lên trước) tới khi đầy tay · **Bàn** 🪑 / **Cửa** 🚪: tới nơi là tự đưa món đang cầm khớp đơn (không bao giờ tự đưa món có hành cho khách dặn "không hành") · **Thùng rác** 🗑️: tự bỏ món hỏng đang cầm (không có món hỏng thì bỏ hết) · **Lau dọn** 🧽: tự lau. Mỗi việc tự làm hiện chữ nổi ngắn (🤲 +🥪, 🗑️, 🧽 ✨). Nhãn 🤲 góc dưới cho biết đang cầm gì. Bản đồ 2D dự phòng (máy không có WebGL) vẫn có bảng nút.
 - Cầm tối đa **2 món**. Bàn có viền xanh = khách đang chờ món bạn cầm.
 - Nhân viên cũng hiện trên bản đồ, mặc đồng phục theo vị trí: đầu bếp áo trắng khăn đỏ đội mũ đầu bếp (đứng bếp), phụ bếp áo xanh lá mũ lưỡi trai (ở thớt), phục vụ áo đỏ tạp dề đen (chạy tới bàn).
 - Khách mỗi người một màu áo, quần, tóc, da khác nhau, nhiều người đội mũ lưỡi trai / nón lá / khăn — mô hình KayKit được tô lại màu theo từng vùng (áo, khăn, quần, tóc, da) bằng texture bảng màu sinh sẵn (`scripts/build-palettes.mjs`). Ảnh texture trong file GLB được bỏ khi nhúng (`scripts/embed-models.mjs`) và thay bằng bảng màu này — Safari iPhone trong khung Artifact không nạp được ảnh qua `blob:` nên trước đây nội thất bị mất màu.
@@ -84,7 +84,7 @@ Tới **thớt** hoặc **bếp** là vào màn **Bếp của tôi**: nhìn qua 
 Trên điện thoại cảnh quán được phóng to 30% và camera đi theo nhân vật.
 
 ### 👨‍🍳 Chú Tư bếp trưởng dẫn đường
-Chơi mới là **Chú Tư bếp trưởng** (nhân vật 3D KayKit có hoạt ảnh vẫy tay, giải thích) trượt lên màn hình và dẫn từng bước ngày đầu: mua 🥖🥚🥫🧅 → 🏮 mở cửa → vào 🔪 thớt → thái hành → bỏ 🥪 vào nồi và nấu → lấy món → mang cho khách. Mỗi bước chỉ vào đúng nút cần bấm (viền vàng nhấp nháy + 👆), làm xong tự sang bước sau; có ⏭️ bỏ qua, chạm vào bếp trưởng để thu nhỏ, 🔊 để nghe đọc. Sau đó Chú Tư chỉ xuất hiện khi có tin mới (lên cấp, món mới, trend, mở vị trí nhân viên) hoặc khi bấm ❗ ở bất kỳ màn nào.
+Chơi mới là **Chú Tư bếp trưởng** (nhân vật 3D KayKit có hoạt ảnh vẫy tay, giải thích) trượt lên màn hình và dẫn từng bước ngày đầu: mua 🥖🥚🥫🧅 → 🏮 mở cửa → vào 🔪 thớt → thái hành → bỏ 🥪 vào nồi và nấu → lấy món → mang cho khách. Mỗi bước chỉ vào đúng nút cần bấm (viền vàng nhấp nháy + 👆), làm xong tự sang bước sau; có ⏭️ bỏ qua, chạm vào bếp trưởng để thu nhỏ, 🔊 để nghe đọc (giọng nam, tốc độ 1,4; máy chỉ có giọng nữ như iPhone thì đọc trầm xuống). Sau đó Chú Tư chỉ xuất hiện khi có tin mới (lên cấp, món mới, trend, mở vị trí nhân viên) hoặc khi bấm ❗ ở bất kỳ màn nào.
 
 ### ⭐ Cấp độ & 📖 Sổ món & Menu
 - Mỗi món mang cho khách được điểm kinh nghiệm; **lên cấp mở khoá nguyên liệu mới**: cấp 1 🥖🥚🥫🧅🍵🧊 · cấp 2 🍚🍗 · cấp 3 🍜🥩🥬 · cấp 4 🫘🥛 · cấp 5 🍝🥓 · cấp 6 🫓🦐.

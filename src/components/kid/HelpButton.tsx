@@ -33,13 +33,34 @@ function rememberSeen(t: HelpTopic) {
 export function canSpeak() {
   return Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
+/** Giọng đọc của Chú Tư: giọng nam tiếng Việt nếu máy có, không thì giọng Việt bất kỳ đọc trầm xuống. */
+let voice: { v: SpeechSynthesisVoice | null; male: boolean } | null = null;
+const MALE = /nam|male|minh|an\b|khang|quang|tuấn|tuan/i;
+function pickVoice() {
+  const vi = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('vi'));
+  const male = vi.find((v) => MALE.test(v.name));
+  voice = { v: male ?? vi[0] ?? null, male: Boolean(male) };
+}
+if (canSpeak()) {
+  try {
+    // Danh sách giọng có thể tải trễ.
+    window.speechSynthesis.addEventListener?.('voiceschanged', pickVoice);
+  } catch {
+    // bỏ qua
+  }
+}
+
 export function speak(text: string) {
   if (!canSpeak()) return;
   try {
     window.speechSynthesis.cancel();
+    if (!voice || !voice.v) pickVoice();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'vi-VN';
-    u.rate = 0.9;
+    u.rate = 1.4;
+    if (voice?.v) u.voice = voice.v;
+    // Không có giọng nam (vd iPhone chỉ có giọng nữ "Linh"): đọc trầm xuống cho ra giọng nam.
+    u.pitch = voice?.male ? 1 : 0.6;
     window.speechSynthesis.speak(u);
   } catch {
     // Không đọc được thì thôi.

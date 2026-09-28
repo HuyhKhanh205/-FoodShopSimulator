@@ -11,7 +11,7 @@ import ShopScene3D from '../../components/scene/ShopScene3D';
 import { LANDSCAPE_YAW, PORTRAIT_YAW, fitCamera, makeCamera, screenDirToTile } from '../../components/scene/camera';
 import { colors } from '../../components/ui';
 import { CLOSE_HOUR, DAY_MS, OPEN_HOUR, RECIPES, ROLE_EMOJI } from '../../game/data';
-import { MAX_CARRY, autoServeCarried, playerTakeOut } from '../../game/engine';
+import { MAX_CARRY, autoServeCarried, discardDish, pickUpDish, playerClean, playerTakeOut } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
 import { formatClock } from '../../game/helpers';
 import { MapStation, Tile, buildLayout, findPath, isWalkable, stationAt, stationNextTo } from '../../game/layout';
@@ -75,6 +75,14 @@ export default function ShopMapView() {
   }, [fp]);
   const gameRef = useRef(game);
   gameRef.current = game;
+  /** Chữ nổi ngắn khi tự làm việc lúc tới nơi (cầm món, bỏ rác, lau). */
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flash = useCallback((text: string) => {
+    setToast(text);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1500);
+  }, []);
 
   const arrive = useCallback(
     (station: MapStation | null) => {
@@ -98,9 +106,37 @@ export default function ShopMapView() {
           .filter((c) => (station.kind === 'table' ? c.tableIndex === station.tableIndex : c.tableIndex === undefined))
           .map((c) => c.id);
         if (ids.length) act((s, rng) => void autoServeCarried(s, ids, rng));
+      } else if (station.kind === 'pass') {
+        // Quầy ra món: tự cầm món (món khách đang chờ, không cháy, lên trước) tới khi đầy tay.
+        const want = new Set(r.customers.flatMap((c) => c.items.filter((i) => !i.served).map((i) => i.recipeId)));
+        const busy = new Set(gameRef.current.staff.map((st) => st.task?.dishId).filter(Boolean));
+        const free = r.pass
+          .filter((d) => !r.carrying.includes(d.id) && !busy.has(d.id))
+          .sort((a, b) => Number(b.quality !== 'burnt') - Number(a.quality !== 'burnt') || Number(want.has(b.recipeId)) - Number(want.has(a.recipeId)));
+        const take = free.slice(0, Math.max(0, MAX_CARRY - r.carrying.length));
+        if (take.length) {
+          act((s) => {
+            for (const d of take) pickUpDish(s, d.id);
+          });
+          flash(`🤲 +${take.map((d) => RECIPES[d.recipeId].emoji).join('')}`);
+        } else flash(r.carrying.length >= MAX_CARRY ? '🤲 đầy tay' : '🛎️ trống');
+      } else if (station.kind === 'trash' && r.carrying.length) {
+        // Thùng rác: bỏ món hỏng đang cầm; không có món hỏng thì bỏ hết.
+        const held = r.carrying.map((id) => r.pass.find((d) => d.id === id)).filter((d): d is NonNullable<typeof d> => Boolean(d));
+        const bad = held.filter((d) => d.quality !== 'perfect');
+        const drop = bad.length ? bad : held;
+        act((s) => {
+          for (const d of drop) discardDish(s, d.id);
+        });
+        flash(`🗑️ ${drop.map((d) => RECIPES[d.recipeId].emoji).join('')}`);
+      } else if (station.kind === 'mop') {
+        if (r.elapsed >= r.cleanReadyAt) {
+          act((s) => playerClean(s));
+          flash('🧽 ✨');
+        } else flash('🧽 ⏳');
       }
     },
-    [act, has3D]
+    [act, has3D, flash]
   );
 
   const goToStation = useCallback(
@@ -235,10 +271,15 @@ export default function ShopMapView() {
         ))}
       {!fp && <MapHud compact={!wide} />}
       {!fp && (
-        <View pointerEvents="none" style={styles.hands}>
+        <View pointerEvents="none" style={[styles.hands, has3D && !wide && styles.handsLow]}>
           <Text style={styles.handsText}>
             🤲 {carried.length ? carried.map((d) => RECIPES[d.recipeId].emoji + (d.noGarnish ? '🚫' : '')).join(' ') : 'Tay không'}
           </Text>
+        </View>
+      )}
+      {!fp && toast && (
+        <View pointerEvents="none" style={[styles.toast, has3D && !wide && styles.toastLow]}>
+          <Text style={styles.toastText}>{toast}</Text>
         </View>
       )}
     </View>
@@ -257,7 +298,7 @@ export default function ShopMapView() {
         {prompt}
         <View style={styles.side}>
           <ScrollView style={styles.flex} contentContainerStyle={styles.sideContent}>
-            <View style={styles.card}>{sheet}</View>
+            {!has3D && <View style={styles.card}>{sheet}</View>}
             {game.staff.length > 0 && (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>👥 Nhân viên</Text>
@@ -287,7 +328,7 @@ export default function ShopMapView() {
     <View style={styles.flex}>
       {scene}
       {prompt}
-      {!fp && (
+      {!fp && !has3D && (
         <View style={styles.sheet}>
           <View style={styles.grabber} />
           <ScrollView contentContainerStyle={styles.sheetContent}>
@@ -315,6 +356,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary,
   },
+  handsLow: { bottom: 14 },
+  toast: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: 80,
+    backgroundColor: 'rgba(62,39,35,0.85)',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  toastLow: { bottom: 64 },
+  toastText: { fontSize: 20, fontWeight: '900', color: '#fff' },
   handsText: { fontSize: 15, fontWeight: '800', color: colors.primaryDark },
   side: { width: 380, flexGrow: 0, flexShrink: 0, borderLeftWidth: 1, borderLeftColor: colors.border, backgroundColor: colors.bg },
   sideContent: { padding: 12, gap: 12 },
