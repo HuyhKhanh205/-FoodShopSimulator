@@ -5,6 +5,7 @@ import { unlockedRoles } from './progression';
 import { expireTrend, trendSpawnMult } from './trend';
 import { newVendors, resetMarketDay, stockCapacity, stockUnits } from './market';
 import { autoClaimAll, emptyTally, rollMissions } from './missions';
+import { queueReplyTip } from './reviews';
 import { UNLOCK_DAY } from './unlocks';
 import {
   BANKRUPT_AT,
@@ -1092,6 +1093,7 @@ export function closeDay(s: GameState) {
   }
 
   s.report.repEnd = s.reputation;
+  queueReplyTip(s);
   s.history.push(s.report);
   if (s.history.length > 30) s.history.shift();
   s.run = null;

@@ -12,7 +12,7 @@ export const TIER_REWARD: Record<MissionTier, Mission['reward']> = {
 /** Nhiệm vụ khó có từ ngày này. */
 export const HARD_FROM_DAY = 3;
 /** Nhiệm vụ chỉ chốt được lúc tổng kết (phải hết ngày mới biết). */
-const END_OF_DAY: MissionKind[] = ['noLost', 'profit'];
+const END_OF_DAY: MissionKind[] = ['noLost', 'profit', 'reply'];
 export const DIARY_MAX = 60;
 export const DIARY_TEXT_MAX = 300;
 export const MOODS: DiaryMood[] = ['😄', '🙂', '😐', '😢', '😡'];
@@ -93,6 +93,7 @@ export function rollMissions(s: GameState, rng: Rng) {
   const medium: Mission[] = [make(s, 'serve', 'medium', clamp(Math.round(served * 0.9), 4, 40))];
   if (special) medium.push(make(s, 'special', 'medium', clamp(Math.round(served / 5), 2, 6), { recipeId: special }));
   if (levelOf(s.xp) >= 2) medium.push(make(s, 'newDish', 'medium', 1));
+  if (served >= 4) medium.push(make(s, 'reply', 'medium', served >= 8 ? 3 : 2));
 
   const takeOne = (arr: Mission[]) => arr.splice(Math.floor(rng() * arr.length), 1)[0];
   const list = [takeOne(easy), takeOne(medium)];
@@ -142,6 +143,8 @@ export function missionProgress(s: GameState, m: Mission): MissionProgress {
         return profitOf(r);
       case 'stars':
         return t.fiveStars;
+      case 'reply':
+        return r.reviews.filter((x) => x.reply).length;
     }
   })();
   const failed = m.kind === 'noLost' && r.lost > 0;
@@ -202,6 +205,8 @@ export function missionText(m: Mission): { icon: string; text: string } {
       return { icon: '💰', text: `Lãi ít nhất ${formatMoney(m.target)} hôm nay` };
     case 'stars':
       return { icon: '⭐', text: `Nhận ${m.target} đánh giá 5★` };
+    case 'reply':
+      return { icon: '💬', text: `Trả lời ${m.target} đánh giá của khách (lúc tổng kết)` };
   }
 }
 

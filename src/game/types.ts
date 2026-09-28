@@ -86,7 +86,7 @@ export type ChefNote =
   | { kind: 'unlock'; key: 'day2' | 'day3' }
   | { kind: 'autoClaim' };
 
-export type MissionKind = 'buy' | 'prep' | 'cook' | 'serve' | 'special' | 'newDish' | 'noLost' | 'profit' | 'stars';
+export type MissionKind = 'buy' | 'prep' | 'cook' | 'serve' | 'special' | 'newDish' | 'noLost' | 'profit' | 'stars' | 'reply';
 export type MissionTier = 'easy' | 'medium' | 'hard';
 
 /** Nhiệm vụ trong ngày (sổ tay chủ quán). Tiến độ tính từ báo cáo / bộ đếm, không lưu riêng. */
@@ -275,10 +275,15 @@ export interface LogEntry {
   tone: 'good' | 'bad' | 'info';
 }
 
+/** Giọng câu trả lời đánh giá (game tự đọc từ câu người chơi gõ). */
+export type ReplyTone = 'thanks' | 'sorry' | 'invite' | 'meh' | 'short' | 'rude';
+
 export interface Review {
   name: string;
   stars: number;
   text: string;
+  /** Chủ quán trả lời (mỗi đánh giá 1 lần): câu gõ, giọng, khách đáp lại, danh tiếng +/−, mai khách quay lại. */
+  reply?: { text: string; tone: ReplyTone; reaction: string; rep: number; back: boolean };
 }
 
 export interface DayReport {

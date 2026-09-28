@@ -5,6 +5,7 @@ import Hud from '../../components/Hud';
 import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
 import RiverPath from '../../components/kid/RiverPath';
+import ReviewReplies from '../../components/ReviewReplies';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
 import { tutorialUi } from '../../components/kid/tutorialUi';
 import { shows } from '../../game/unlocks';
@@ -143,6 +144,10 @@ export default function SummaryView() {
           <IconTile icon="🏠" label="Menu" name="Về menu" size="sm" onPress={() => navigation.navigate('Home')} />
         </View>
 
+        <TutorialGlow on={targets.includes('summary.reviews')}>
+          <ReviewReplies report={r} />
+        </TutorialGlow>
+
         {details && (
         <View style={[styles.columns, width >= 900 && styles.columnsWide]}>
           <View style={styles.flex}>
@@ -189,21 +194,6 @@ export default function SummaryView() {
           </View>
 
           <View style={styles.flex}>
-            <Panel title="⭐ Đánh giá của khách" right={r.reviews.length ? <Stars value={avgStars} /> : undefined}>
-              {r.reviews.length === 0 && <Text style={styles.muted}>Chưa có đánh giá.</Text>}
-              {r.reviews
-                .slice(-10)
-                .reverse()
-                .map((rv, i) => (
-                  <View key={i} style={styles.review}>
-                    <Stars value={rv.stars} size={12} />
-                    <Text style={styles.p}>
-                      <Text style={styles.bold}>{rv.name}: </Text>
-                      {rv.text}
-                    </Text>
-                  </View>
-                ))}
-            </Panel>
 
           </View>
         </View>
@@ -240,5 +230,4 @@ const styles = StyleSheet.create({
   claimAll: { backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 4, borderColor: colors.primaryDark },
   claimAllText: { color: '#fff', fontWeight: '900' },
   wallet: { marginTop: 4, fontSize: 13, fontWeight: '900', color: colors.primaryDark },
-  review: { borderBottomWidth: 1, borderBottomColor: '#F7EDE2', paddingVertical: 5 },
 });
