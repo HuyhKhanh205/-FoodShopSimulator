@@ -1,14 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Hud from '../../components/Hud';
 import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
+import { tutorialUi } from '../../components/kid/tutorialUi';
 import RiverPath from '../../components/kid/RiverPath';
 import { dayFlow } from '../../game/dayflow';
 import { shows } from '../../game/unlocks';
 import { NotebookButton } from '../../components/notebook/NotebookSheet';
+import { HudChip, RoundButton, hud } from '../../components/HudBits';
 import { Button, ProgressBar, colors } from '../../components/ui';
 import { levelOf, levelProgress, mysteryRecipes } from '../../game/progression';
 import { trendHeat } from '../../game/trend';
@@ -58,8 +60,14 @@ export default function MarketView() {
     setBasket({});
     setPayError(null);
   };
-  const sceneW = wide ? Math.min(width - 24, 900) : width;
-  const sceneH = Math.round(Math.min(400, height * 0.4));
+  // Cảnh chợ lấp toàn bộ vùng giữa (đo bằng onLayout); mọi thứ khác là lớp nổi nhỏ.
+  const [area, setArea] = useState({ w: 0, h: 0 });
+  const [more, setMore] = useState(false);
+  // Bong bóng Chú Tư (tin, trợ giúp) đứng trên thanh giỏ + cụm nút 🏮 để không che nút.
+  useEffect(() => {
+    tutorialUi.setBottomInset(118);
+    return () => tutorialUi.setBottomInset(0);
+  }, []);
 
   const expired = expiredQty(game);
   // Đi chợ giữa giờ bán: đồng hồ vẫn chạy, quán có thể đang treo biển tạm đóng.
@@ -90,83 +98,100 @@ export default function MarketView() {
     </View>
   );
 
+  const clock = midday ? formatClock(game.run!.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR) : '';
+  const moreDot = expired > 0 || mysteryRecipes(game).length > 0;
+
   return (
     <View style={styles.flex}>
-      <Hud game={game} />
-      <View style={styles.headRow}>
-        <Text style={styles.heading} numberOfLines={1}>
-          {midday ? '🛒 Chợ' : `☀️ Ngày ${game.day}`}
-        </Text>
-        {!midday && game.day === 1 && (
-          <Text style={styles.introChip} accessibilityLabel={`Ngày làm quen ${game.day} trên 3: khách ít, không có sự cố`}>
-            🐣 {game.day}/3
-          </Text>
+      <View style={styles.flex} onLayout={(e) => setArea({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+        {simple ? (
+          <ScrollView contentContainerStyle={styles.gridPad}>
+            <StallGrid game={game} onStall={setStall} deals={deals} />
+          </ScrollView>
+        ) : (
+          area.w > 0 && <MarketScene3D game={game} onStall={setStall} width={area.w} height={area.h} insets={{ top: game.tutorial.done ? (midday ? 118 : 104) : 52, bottom: 70 }} />
         )}
-        <View style={{ flex: 1 }} />
-        {has3D && shows(game, 'modeToggle') && (
-          <Pressable
-            onPress={() => setSceneMode(simple ? '3d' : 'simple')}
-            style={styles.modeBtn}
-            accessibilityRole="button"
-            accessibilityLabel={simple ? 'Chợ 3D' : 'Chợ đơn giản'}
-          >
-            <Text style={styles.modeText}>{simple ? '🌴 3D' : '🔲 Đơn giản'}</Text>
-          </Pressable>
-        )}
-        {shows(game, 'notebook') && <NotebookButton game={game} style={styles.nbBtn} />}
-        <HelpButton topic="market" />
-      </View>
-      {game.tutorial.done && (
-      <RiverPath
-        game={game}
-        compact
-        style={styles.river}
-        onGo={(next) => {
-          // "Mua theo menu" trên đường sông: điền sẵn giỏ luôn (rồi chỉ vào 💳 Trả tiền).
-          if (next.target === 'market.pay') {
-            setPayError(null);
-            setBasket(suggestBasket(game));
-          }
-        }}
-      />
-      )}
-      {simple ? (
-        <StallGrid game={game} onStall={setStall} deals={deals} />
-      ) : (
-        <View style={{ height: sceneH, alignSelf: 'center' }}>
-          <MarketScene3D game={game} onStall={setStall} width={sceneW} height={sceneH} />
-        </View>
-      )}
-      <ScrollView contentContainerStyle={styles.content}>
-        {midday && (
-          <View style={[styles.banner, closed ? styles.bannerClosed : styles.bannerOpen]}>
-            <Text style={styles.bannerTitle}>
-              🕐 {formatClock(game.run!.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)} · {closed ? '🚪 Quán đóng tạm' : '👥 Có người trông quán'}
-              {waiting ? ` · 🪑 ${waiting}` : ''}
-            </Text>
-            <View style={styles.inline}>
-              <TutorialGlow on={targets.includes('market.back')} style={{ alignSelf: 'flex-start' }}>
-                <IconTile icon="🏃" label="Về quán" tone="primary" onPress={() => act((s) => returnToShop(s))} />
-              </TutorialGlow>
-              {game.tutorial.done && <IconTile icon="🚶" label="Ra phố" name="Ra khu phố" onPress={() => act((s) => goStreet(s, 'market'))} />}
+
+        {/* Góc trên: 1 hàng chip nhỏ + nút tròn; đường sông gợi ý việc tiếp theo ngay dưới */}
+        <View pointerEvents="box-none" style={styles.top}>
+          <View pointerEvents="box-none" style={styles.topRow}>
+            <View pointerEvents="none" style={styles.chips}>
+              <HudChip label={`Ngày ${game.day}${shows(game, 'debt') ? `, hạn trả nợ ngày ${game.debtDueDay}` : ''}`}>
+                <Text style={hud.chipText}>📅 {shows(game, 'debt') ? `${game.day}/${game.debtDueDay}` : game.day}</Text>
+              </HudChip>
+              {!midday && game.day <= 3 && (
+                <HudChip tone="warn" label={`Ngày làm quen ${game.day} trên 3: khách ít, không có sự cố`}>
+                  <Text style={hud.chipText}>🐣 {game.day}/3</Text>
+                </HudChip>
+              )}
+              <HudChip tone={game.money < 0 ? 'bad' : 'plain'} label={`Tiền ${formatMoney(game.money)}`}>
+                <Text style={hud.chipText}>💰 {formatMoney(game.money)}</Text>
+              </HudChip>
+              {midday && (
+                <HudChip tone={closed ? 'bad' : 'good'} label={closed ? 'Quán đóng tạm' : 'Có người trông quán'}>
+                  <Text style={hud.chipText}>
+                    🕐 {clock} · {closed ? '🚪' : '👥'}
+                    {waiting ? ` 🪑${waiting}` : ''}
+                  </Text>
+                </HudChip>
+              )}
+            </View>
+            <View style={styles.buttons}>
+              {has3D && shows(game, 'modeToggle') && (
+                <RoundButton label={simple ? '🌴' : '🔲'} name={simple ? 'Chợ 3D' : 'Chợ đơn giản'} onPress={() => setSceneMode(simple ? '3d' : 'simple')} />
+              )}
+              {shows(game, 'notebook') && <NotebookButton game={game} style={[hud.round, styles.nb]} label="" />}
+              <HelpButton topic="market" />
             </View>
           </View>
-        )}
-        {/* 🏮 Mở cửa ở đầu: nổi bật khi đã đủ đồ, còn không thì là nút nhỏ (vẫn bấm được). */}
-        {!midday && (
-          <TutorialGlow on={targets.includes('market.open')} style={ready ? { alignSelf: 'stretch' } : { alignSelf: 'flex-start' }}>
-            <IconTile
-              icon="🏮"
-              label="Mở cửa"
-              name="Mở cửa bán hàng"
-              size={ready ? 'lg' : 'sm'}
-              tone={ready ? 'primary' : 'plain'}
-              onPress={() => act((s, rng) => openShop(s, rng))}
-              disabled={Boolean(game.activeEvent || game.eventResult)}
-              style={ready ? styles.openBtn : undefined}
+          {game.tutorial.done && (
+            <RiverPath
+              game={game}
+              compact
+              onGo={(next) => {
+                // "Mua theo menu" trên đường sông: điền sẵn giỏ luôn (rồi chỉ vào 💳 Trả tiền).
+                if (next.target === 'market.pay') {
+                  setPayError(null);
+                  setBasket(suggestBasket(game));
+                }
+              }}
             />
-          </TutorialGlow>
-        )}
+          )}
+        </View>
+
+        {/* Góc phải dưới: 🏮 Mở cửa (to khi đã đủ đồ) / 🏃 Về quán, 🚶 Ra phố, 📋 Thêm */}
+        <View pointerEvents="box-none" style={styles.cluster}>
+          <RoundButton label="📋" name="Thêm: cấp, món, nhân viên, nâng cấp, nợ" onPress={() => setMore(!more)} active={more} dot={moreDot} />
+          {game.tutorial.done && <RoundButton label="🚶" name="Ra khu phố" onPress={() => act((s) => goStreet(s, 'market'))} />}
+          {midday ? (
+            <TutorialGlow on={targets.includes('market.back')} radius={24}>
+              <Pressable onPress={() => act((s) => returnToShop(s))} style={[styles.big, styles.bigOn]} accessibilityRole="button" accessibilityLabel="Về quán">
+                <Text style={styles.bigText}>🏃 Về quán</Text>
+              </Pressable>
+            </TutorialGlow>
+          ) : (
+            <TutorialGlow on={targets.includes('market.open')} radius={24}>
+              <Pressable
+                onPress={() => act((s, rng) => openShop(s, rng))}
+                disabled={Boolean(game.activeEvent || game.eventResult)}
+                style={[styles.big, ready && styles.bigOn]}
+                accessibilityRole="button"
+                accessibilityLabel="Mở cửa bán hàng"
+              >
+                <Text style={[styles.bigText, !ready && { color: colors.brown }]}>🏮 {ready ? 'Mở cửa!' : 'Mở cửa'}</Text>
+              </Pressable>
+            </TutorialGlow>
+          )}
+        </View>
+
+        {/* 📋 Ngăn kéo: mọi thứ phụ (trước đây nằm dưới cảnh chợ) */}
+        {more && (
+          <View style={[styles.drawer, wide && styles.drawerWide]} accessibilityLabel="Ngăn thêm">
+            <View style={styles.drawerHead}>
+              <Text style={styles.drawerTitle}>📋 {midday ? 'Chợ' : `Ngày ${game.day}`}</Text>
+              <RoundButton label="✕" name="Đóng ngăn thêm" onPress={() => setMore(false)} />
+            </View>
+            <ScrollView contentContainerStyle={styles.content}>
         {game.trend && trendHeat(game) > 0 && RECIPES[game.trend.recipeId] && (
           <View style={styles.trend} accessibilityLabel={`Món đang trend: ${RECIPES[game.trend.recipeId].name}`}>
             <Text style={styles.trendText}>
@@ -210,7 +235,6 @@ export default function MarketView() {
 
         {!midday && (
           <View style={styles.tiles}>
-            {game.tutorial.done && <IconTile icon="🚶" label="Ra phố" name="Ra khu phố" onPress={() => act((s) => goStreet(s, 'market'))} />}
             {expired > 0 && (
               <IconTile icon="🗑️" label="Đồ hỏng" name="Vứt đồ hỏng" badge={expired} tone="danger" onPress={() => act((s) => discardExpired(s))} />
             )}
@@ -233,7 +257,10 @@ export default function MarketView() {
           </View>
         )}
         {!midday && showDebt && <DebtPanel />}
-      </ScrollView>
+            </ScrollView>
+          </View>
+        )}
+      </View>
       <BasketBar
         game={game}
         basket={basket}
@@ -254,6 +281,20 @@ export default function MarketView() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: 12, paddingBottom: 40, gap: 12 },
+  gridPad: { paddingTop: 110, paddingBottom: 90 },
+  top: { position: 'absolute', left: 8, right: 8, top: 6, gap: 6 },
+  topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  chips: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  buttons: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  nb: { paddingHorizontal: 0, paddingVertical: 0 },
+  cluster: { position: 'absolute', right: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  big: { minHeight: 48, borderRadius: 24, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,246,233,0.95)', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
+  bigOn: { backgroundColor: colors.primary, borderColor: colors.primaryDark, minHeight: 56, paddingHorizontal: 22 },
+  bigText: { fontSize: 17, fontWeight: '900', color: '#fff' },
+  drawer: { position: 'absolute', left: 6, right: 6, bottom: 6, maxHeight: '64%', backgroundColor: colors.bg, borderRadius: 20, borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 5, overflow: 'hidden' },
+  drawerWide: { left: undefined, width: 380, top: 6, maxHeight: undefined },
+  drawerHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 8 },
+  drawerTitle: { fontSize: 17, fontWeight: '900', color: colors.brown },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 6, gap: 8 },
   introChip: { fontSize: 13, fontWeight: '900', color: colors.primaryDark, backgroundColor: '#FFF8E1', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: colors.accent, overflow: 'hidden' },
   modeBtn: { backgroundColor: colors.cream, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 2, borderColor: colors.chunkyShadow },

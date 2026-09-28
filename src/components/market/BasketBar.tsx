@@ -32,29 +32,34 @@ export function BasketBar({
   const room = cap - used;
   const over = units > room;
   const lines = (Object.entries(basket) as [IngredientId, number][]).filter(([, q]) => q > 0);
+  // Một hàng gọn: [🧺 hàng trong giỏ / 📦 kho] [✕] [🧾 Theo menu] [💳 Trả].
   return (
     <View style={styles.bar}>
-      <View style={styles.top}>
-        <Text style={styles.items} numberOfLines={1} accessibilityLabel={`Giỏ ${units} phần`}>
-          🧺 {units ? lines.map(([id, q]) => `${INGREDIENTS[id].emoji}${q}`).join(' ') : 'Giỏ trống'}
+      {error && (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          ⚠️ {error}
         </Text>
+      )}
+      <View style={styles.row}>
+        <View style={styles.info}>
+          <Text style={styles.items} numberOfLines={1} accessibilityLabel={`Giỏ ${units} phần`}>
+            🧺 {units ? lines.map(([id, q]) => `${INGREDIENTS[id].emoji}${q}`).join(' ') : 'Giỏ trống'}
+          </Text>
+          <Text style={[styles.room, over && { color: colors.bad }]} accessibilityLabel={`Kho ${used} trên ${cap} chỗ`}>
+            📦 {used + units}/{cap}
+          </Text>
+        </View>
         {units > 0 && (
           <Pressable onPress={onClear} accessibilityRole="button" accessibilityLabel="Bỏ hết giỏ" style={styles.clear}>
             <Text style={styles.clearText}>✕</Text>
           </Pressable>
         )}
-        <Text style={[styles.room, over && { color: colors.bad }]} accessibilityLabel={`Kho ${used} trên ${cap} chỗ`}>
-          📦 {used + units}/{cap}
-        </Text>
-      </View>
-      {error && <Text style={styles.error}>⚠️ {error}</Text>}
-      <View style={styles.row}>
-        <TutorialGlow on={targets.includes('market.menu') && units === 0} radius={16} style={{ flex: 1 }}>
+        <TutorialGlow on={targets.includes('market.menu') && units === 0} radius={14}>
           <Pressable onPress={onMenu} style={styles.menu} accessibilityRole="button" accessibilityLabel="Mua theo menu">
-            <Text style={styles.menuText}>🧾 Mua theo menu</Text>
+            <Text style={styles.menuText}>🧾 Theo menu</Text>
           </Pressable>
         </TutorialGlow>
-        <TutorialGlow on={targets.includes('market.pay') && units > 0} radius={16} style={{ flex: 1 }}>
+        <TutorialGlow on={targets.includes('market.pay') && units > 0} radius={14}>
           <Pressable
             onPress={onPay}
             disabled={units === 0}
@@ -62,7 +67,9 @@ export function BasketBar({
             accessibilityRole="button"
             accessibilityLabel={`Trả tiền ${fmt(cost)}`}
           >
-            <Text style={styles.payText}>💳 Trả {fmt(cost)}</Text>
+            <Text style={styles.payText} numberOfLines={1}>
+              💳 {fmt(cost)}
+            </Text>
           </Pressable>
         </TutorialGlow>
       </View>
@@ -94,18 +101,18 @@ export function StallGrid({ game, onStall, deals }: { game: GameState; onStall: 
 }
 
 const styles = StyleSheet.create({
-  bar: { backgroundColor: colors.cream, borderTopWidth: 2, borderColor: colors.chunkyShadow, padding: 8, gap: 6 },
-  top: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  items: { flex: 1, fontSize: 15, fontWeight: '900', color: colors.brown },
+  bar: { backgroundColor: colors.cream, borderTopWidth: 2, borderColor: colors.chunkyShadow, paddingHorizontal: 8, paddingVertical: 6, gap: 4 },
+  info: { flex: 1, minWidth: 0 },
+  items: { fontSize: 14, fontWeight: '900', color: colors.brown },
   clear: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E0D0BC' },
   clearText: { fontWeight: '900', color: colors.muted },
-  room: { fontSize: 14, fontWeight: '900', color: colors.brown },
-  error: { color: colors.bad, fontWeight: '800' },
-  row: { flexDirection: 'row', gap: 8 },
-  menu: { backgroundColor: '#fff', borderRadius: 18, paddingVertical: 12, alignItems: 'center', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 5 },
-  menuText: { fontSize: 15, fontWeight: '900', color: colors.brown },
-  pay: { backgroundColor: colors.good, borderRadius: 18, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 5, borderColor: '#1B5E20' },
-  payText: { fontSize: 16, fontWeight: '900', color: '#fff' },
+  room: { fontSize: 11, fontWeight: '800', color: colors.muted },
+  error: { color: colors.bad, fontWeight: '800', fontSize: 13 },
+  row: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  menu: { backgroundColor: '#fff', borderRadius: 14, paddingVertical: 9, paddingHorizontal: 10, alignItems: 'center', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
+  menuText: { fontSize: 14, fontWeight: '900', color: colors.brown },
+  pay: { backgroundColor: colors.good, borderRadius: 14, paddingVertical: 9, paddingHorizontal: 12, alignItems: 'center', borderBottomWidth: 4, borderColor: '#1B5E20', minWidth: 84 },
+  payText: { fontSize: 15, fontWeight: '900', color: '#fff' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: 10, justifyContent: 'center' },
   stall: { width: '46%', minHeight: 120, borderRadius: 20, borderWidth: 2, borderBottomWidth: 5, alignItems: 'center', justifyContent: 'center', padding: 8, gap: 2 },
   stallEmoji: { fontSize: 34 },

@@ -20,13 +20,14 @@ function buildSpots(): Spot[] {
   for (let x = -16; x <= 30; x += 3.2) s.push({ name: ['n_tree_palm', 'n_tree_palmbend', 'n_tree_palmshort'][Math.abs(Math.round(x)) % 3], x, z: -3.6, size: 1.3, rot: x });
   // Hai bên chợ: nhà quay mặt vào chợ.
   for (const [i, z] of [4.5, 9].entries()) {
-    s.push({ ...house(n++, -3.2, z, 1, 4), rot: Math.PI / 2 });
-    s.push({ ...house(n++, 15.2, z, 1, 4), rot: -Math.PI / 2 });
-    s.push({ ...house(n++, -8, z, 1, 4), rot: Math.PI / 2, detail: i > 0 });
-    s.push({ ...house(n++, 20, z, 1, 4), rot: -Math.PI / 2, detail: i > 0 });
+    // Chừa 3–4 ô giữa sạp và nhà để nhà không che sạp ở góc nhìn chéo.
+    s.push({ ...house(n++, -5, z, 1, 4), rot: Math.PI / 2 });
+    s.push({ ...house(n++, 17.5, z, 1, 4), rot: -Math.PI / 2 });
+    s.push({ ...house(n++, -9.8, z, 1, 4), rot: Math.PI / 2, detail: i > 0 });
+    s.push({ ...house(n++, 22.3, z, 1, 4), rot: -Math.PI / 2, detail: i > 0 });
   }
   for (const z of [3.6, 6.8, 10.2]) {
-    s.push({ name: 's_tree_large', x: -0.9, z, size: 1 }, { name: 's_tree_large', x: 12.9, z, size: 1 });
+    s.push({ name: 's_tree_large', x: -1.6, z, size: 1 }, { name: 's_tree_large', x: 13.8, z, size: 1 });
   }
   // Phía nam: vỉa hè có đèn, bên kia đường là dãy nhà.
   for (const x of [-4, 3, 9, 16]) s.push({ name: 'r_light_square', x, z: 11.9, size: 1.05, rot: Math.PI });

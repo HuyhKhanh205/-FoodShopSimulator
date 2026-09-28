@@ -5,6 +5,10 @@ import type { Group } from 'three';
 import { Canvas, useFrame } from '../../three/fiber';
 import type { ThreeEvent } from '../../three/fiber';
 import { MProp, Mini } from '../scene/SceneryProps';
+import { placeLabels } from './labels';
+import { PALMS, RIVER_ROWS, STALLS, buildMarketLayout, shortName } from './marketLayout';
+import type { Stall } from './marketLayout';
+export { STALLS, buildMarketLayout };
 import MarketSurroundings from '../scene/MarketSurroundings';
 import { SKY } from '../scene/SceneryKit';
 import { MAP_COLS, MAP_ROWS, findPath } from '../../game/layout';
@@ -31,44 +35,6 @@ function DemoOrbit({ cam, width, height, zoom }: { cam: CameraCam; width: number
 const CHEF_LOOK = { skin: '#E0AC7E', hair: '#3E2723', shirt: '#FAFAFA', pants: '#263238', apron: '#E53935', hat: 'chef' as const, hatColor: '#FFFFFF' };
 
 type Vec3 = [number, number, number];
-
-/** Sạp trên bản đồ chợ (12 × 10 ô): sông ở trên, lối đi lát gạch ở giữa, 2 sạp mỗi bên. */
-export interface Stall {
-  id: VendorId;
-  x: number;
-  y: number;
-  /** Hướng quay mặt ra lối đi: +1 (sang phải) hoặc −1 (sang trái). */
-  face: 1 | -1;
-  access: Tile[];
-}
-export const STALLS: Stall[] = [
-  { id: 'thit', x: 1, y: 4, face: 1, access: [{ x: 3, y: 4 }, { x: 3, y: 5 }] },
-  { id: 'bot', x: 1, y: 7, face: 1, access: [{ x: 3, y: 7 }, { x: 3, y: 8 }] },
-  { id: 'rau', x: 9, y: 4, face: -1, access: [{ x: 8, y: 4 }, { x: 8, y: 5 }] },
-  { id: 'nuoc', x: 9, y: 7, face: -1, access: [{ x: 8, y: 7 }, { x: 8, y: 8 }] },
-];
-const RIVER_ROWS = 3;
-const PALMS: [number, number, string][] = [
-  [0, 3, 'n_tree_palm'],
-  [11, 3, 'n_tree_palmbend'],
-  [0, 9, 'n_tree_palmshort'],
-  [11, 9, 'n_tree_palm'],
-  [5, 3, 'n_tree_palmshort'],
-];
-const key = (x: number, y: number) => `${x},${y}`;
-/** Tên sạp ngắn cho chip: "Sạp thịt & tôm" → "Thịt & tôm", "Tạp hoá đồ uống" → "Đồ uống". */
-const shortName = (stall: string) => {
-  const s = stall.replace(/^Sạp /, '').replace(/^Tạp hoá /, '');
-  return s.charAt(0).toUpperCase() + s.slice(1);
-};
-
-export function buildMarketLayout(): MapLayout {
-  const blocked = new Set<string>();
-  for (let y = 0; y < RIVER_ROWS; y += 1) for (let x = 0; x < MAP_COLS; x += 1) blocked.add(key(x, y));
-  for (const s of STALLS) for (let dx = 0; dx < 2; dx += 1) for (let dy = 0; dy < 2; dy += 1) blocked.add(key(s.x + dx, s.y + dy));
-  for (const [x, y] of PALMS) blocked.add(key(x, y));
-  return { stations: [], blocked, restSpot: { x: 6, y: 9 }, start: { x: 6, y: 9 } };
-}
 
 const ITEMS: Record<VendorId, string[]> = {
   thit: ['f_meat_raw', 'f_meat_ribs', 'f_whole_ham', 'f_fish', 'f_bacon_raw', 'f_sausage'],
@@ -237,6 +203,7 @@ export default function MarketScene3D({
   width,
   height,
   demo = false,
+  insets = { top: 0, bottom: 0 },
 }: {
   game: GameState;
   onStall: (id: VendorId) => void;
@@ -244,12 +211,23 @@ export default function MarketScene3D({
   height: number;
   /** Nền màn đầu: không chạm được, không có chip tên sạp; Chú Tư + chủ quán vẫy chào, camera đung đưa. */
   demo?: boolean;
+  /** Phần trên / dưới bị lớp nổi che (px): chợ canh giữa vùng còn lại, nhãn không nằm dưới lớp nổi. */
+  insets?: { top: number; bottom: number };
 }) {
   const layout = useMemo(buildMarketLayout, []);
   const walker = useWalker(layout.start);
   const cam = useMemo(makeCamera, []);
-  const zoom = demo ? (width < 600 ? 1.45 : 1.25) : width < 600 ? 1.22 : 1.1;
-  useMemo(() => fitCamera(cam, Math.max(1, width), Math.max(1, height), ISO_YAW, zoom), [cam, width, height, zoom]);
+  const zoom = demo ? (width < 600 ? 1.45 : 1.25) : width < 600 ? 0.95 : 1.05;
+  useMemo(() => {
+    // Màn ngang: khung bị giới hạn theo chiều cao → thu nhỏ theo phần không bị lớp nổi che.
+    const free = Math.max(0.5, (height - insets.top - insets.bottom) / Math.max(1, height));
+    const fr = fitCamera(cam, Math.max(1, width), Math.max(1, height), ISO_YAW, width > height ? zoom * free : zoom);
+    // Dời khung nhìn cho chợ nằm giữa khoảng trống giữa HUD trên và cụm nút dưới.
+    const d = ((insets.top - insets.bottom) / 2) * fr.scale;
+    cam.top += d;
+    cam.bottom += d;
+    cam.updateProjectionMatrix();
+  }, [cam, width, height, zoom, insets.top, insets.bottom]);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 3000);
@@ -307,39 +285,53 @@ export default function MarketScene3D({
           </group>
         )}
       </Canvas>
-      {/* Tên sạp + người bán rao giá (lớp chữ 2D đè lên cảnh) */}
-      {!demo && STALLS.map((s, i) => {
-        const v = VENDORS.find((x) => x.id === s.id)!;
-        const g = GROUP[v.group];
-        // Chip tên sạp nằm trên lối đi trước sạp (không che hình sạp); bong bóng rao trên đầu người bán.
-        const chip = p(s.face === 1 ? s.x + 2.55 : s.x - 0.55, 0.1, s.y + 1);
-        const head = p(s.x + 1 - s.face * 0.4, 1.5, s.y + 1);
-        const deal = deals.find((d) => v.items.includes(d.id));
-        const lv = friendLevel(vendorState(game, v.id).friendship);
+      {/* Tên sạp (trên mái) + người bán rao giá — đặt tránh đè nhau (labels.ts) */}
+      {!demo && (() => {
+        const calling = tick % STALLS.length;
+        const chipAt = STALLS.map((s) => p(s.x + 1, 2.3, s.y + 1));
+        const cs = STALLS[calling];
+        const head = p(cs.x + 1 - cs.face * 0.4, 1.5, cs.y + 1);
+        const lay = placeLabels(chipAt, head, width, height, insets.top, insets.bottom);
+        const cv = VENDORS.find((x) => x.id === cs.id)!;
         return (
-          <View key={s.id} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-            {tick % STALLS.length === i && (
-              <Text pointerEvents="none" style={[styles.call, { left: head.x - 75, top: head.y - 44 }]} numberOfLines={2}>
-                💬 {vendorCall(game, v.id, tick)}
+          <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+            {STALLS.map((s, i) => {
+              const v = VENDORS.find((x) => x.id === s.id)!;
+              const g = GROUP[v.group];
+              const deal = deals.find((d) => v.items.includes(d.id));
+              const lv = friendLevel(vendorState(game, v.id).friendship);
+              const r = lay.chips[i];
+              return (
+                <Pressable
+                  key={s.id}
+                  onPress={() => goStall(s.id)}
+                  style={[styles.chip, { backgroundColor: g.bg, borderColor: g.fg, left: r.x, top: r.y, width: r.w, height: r.h }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${v.stall} ${v.name}`}
+                >
+                  <Text style={styles.chipTitle} numberOfLines={1}>
+                    {v.emoji} {shortName(v.stall)}
+                  </Text>
+                  <Text style={[styles.chipSub, { color: g.fg }]} numberOfLines={1}>
+                    {v.name} {'♥'.repeat(lv)}
+                    {deal ? ` · 🏷️${fmt(deal.off)}` : ''}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            {lay.bubble && (
+              <Text
+                pointerEvents="none"
+                style={[styles.call, { left: lay.bubble.x, top: lay.bubble.y, width: lay.bubble.w, height: lay.bubble.h }]}
+                numberOfLines={2}
+                accessibilityLabel={`${cv.name} rao`}
+              >
+                💬 {vendorCall(game, cv.id, tick)}
               </Text>
             )}
-            <Pressable
-              onPress={() => goStall(s.id)}
-              style={[styles.chip, { backgroundColor: g.bg, borderColor: g.fg, left: chip.x - 60, top: chip.y - 18 }]}
-              accessibilityRole="button"
-              accessibilityLabel={`${v.stall} ${v.name}`}
-            >
-              <Text style={styles.chipTitle} numberOfLines={1}>
-                {v.emoji} {shortName(v.stall)}
-              </Text>
-              <Text style={[styles.chipSub, { color: g.fg }]} numberOfLines={1}>
-                {v.name} {'♥'.repeat(lv)}
-                {deal ? ` · 🏷️${fmt(deal.off)}` : ''}
-              </Text>
-            </Pressable>
           </View>
         );
-      })}
+      })()}
     </View>
   );
 }
@@ -347,7 +339,6 @@ export default function MarketScene3D({
 const styles = StyleSheet.create({
   call: {
     position: 'absolute',
-    width: 150,
     backgroundColor: '#fff',
     borderRadius: 12,
     paddingHorizontal: 8,
@@ -360,7 +351,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0D0BC',
   },
-  chip: { position: 'absolute', width: 120, borderRadius: 12, borderWidth: 2, paddingHorizontal: 6, paddingVertical: 1, alignItems: 'center' },
+  chip: { position: 'absolute', borderRadius: 12, borderWidth: 2, paddingHorizontal: 6, paddingVertical: 1, alignItems: 'center', justifyContent: 'center' },
   chipTitle: { fontSize: 12, fontWeight: '900', color: colors.brown },
   chipSub: { fontSize: 11, fontWeight: '800' },
 });

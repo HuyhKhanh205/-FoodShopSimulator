@@ -23,6 +23,8 @@ import { START_UPGRADES } from '../src/game/data';
 import * as E from '../src/game/engine';
 import * as CULL from '../src/components/scene/cull';
 import * as STREET from '../src/game/street';
+import * as MARKETL from '../src/components/market/marketLayout';
+import * as LABELS from '../src/components/market/labels';
 /** Chỉ dùng để đọc mã nguồn khi kiểm tra tên mô hình (chạy bằng tsx, có require). */
 declare function require(m: 'fs'): { readFileSync(p: string, e: 'utf8'): string };
 import { MARKET_BOUNDS } from '../src/assets/models.generated';
@@ -1166,6 +1168,32 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   for (const f of files) for (const m of fs.readFileSync(f, 'utf8').matchAll(/'([cfnprsuva]_[a-z0-9_]+)'/g)) names.add(m[1]);
   const missing = [...names].filter((n) => !MARKET_BOUNDS[n]);
   check(names.size > 30 && missing.length === 0, `mô hình phong cảnh có đủ trong market.glb (${names.size} tên) ${missing.join(', ')}`);
+}
+
+// ================= Chợ: sạp giãn cách, chữ không đè nhau =================
+{
+  const ML = MARKETL;
+  const mk = ML.buildMarketLayout();
+  const reach = ML.STALLS.every((st) => findPath(mk, mk.start, st.access) !== null);
+  check(reach, 'chợ: đi tới được cả 4 sạp');
+  const left = ML.STALLS.filter((st) => st.face === 1);
+  const right = ML.STALLS.filter((st) => st.face === -1);
+  check(Math.abs(left[0].y - left[1].y) >= 4 && Math.abs(right[0].y - right[1].y) >= 4 && Math.abs(right[0].x - left[0].x) >= 8, 'chợ: sạp cùng bên cách ≥ 4 hàng, hai dãy cách ≥ 8 cột');
+  check(ML.PALMS.every(([x, y]) => !ML.STALLS.some((st) => x >= st.x && x < st.x + 2 && y >= st.y && y < st.y + 2)), 'chợ: cây dừa không đè lên sạp');
+  // placeLabels: thử nhiều vị trí chip gần nhau + bong bóng ở từng sạp.
+  let bad = 0;
+  const r = seededRng(8);
+  for (const [w, h] of [[390, 790], [1280, 740]]) {
+    for (let k = 0; k < 200; k += 1) {
+      const chips = Array.from({ length: 4 }, () => ({ x: 40 + r() * (w - 80), y: 60 + r() * (h * 0.6) }));
+      const call = { x: chips[k % 4].x + (r() - 0.5) * 60, y: chips[k % 4].y + 40 };
+      const lay = LABELS.placeLabels(chips, call, w, h);
+      const rects = [...lay.chips, ...(lay.bubble ? [lay.bubble] : [])];
+      for (let i = 0; i < rects.length; i += 1) for (let j = i + 1; j < rects.length; j += 1) if (LABELS.overlaps(rects[i], rects[j], 0)) bad += 1;
+      if (!lay.bubble) bad += 1;
+    }
+  }
+  check(bad === 0, `chữ tên sạp + câu rao không đè nhau (400 bố cục ngẫu nhiên, ${bad} lỗi)`);
 }
 
 process.exit(failed ? 1 : 0);

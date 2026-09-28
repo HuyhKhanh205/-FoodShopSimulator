@@ -194,6 +194,10 @@ Mỗi tình huống có nhiều lựa chọn với hậu quả khác nhau (tiề
   - Mỗi người: đang làm gì, tâm trạng; ☕ nghỉ giải lao 40 giây (tâm trạng +15, 1 lần mỗi ngày), 💰 tăng lương, 👋 cho nghỉ việc.
   - ➕ Thuê thêm người: 20 giây sau người mới tới. Chạm một người thì vòng vàng hiện dưới chân họ trong cảnh 3D.
 - **🎓 Sinh viên chọn vai trò:** thuê sinh viên thì tự chọn Phụ bếp / Đầu bếp / Phục vụ, đổi lúc nào cũng được (đang làm dở thì đổi khi xong việc). Nhân viên chính thức giữ chuyên môn.
+- **🛒 Màn chợ tối giản:** cảnh chợ chiếm khoảng 94% màn hình.
+  - Trên: 1 hàng chip nhỏ (📅 💰, 🕐 khi đi chợ giữa giờ) + nút tròn, rồi đường sông gợi ý việc tiếp theo.
+  - Dưới: thanh giỏ 1 hàng; góc phải có 📋 Thêm (cấp, món, nhân viên, nâng cấp, nợ, về menu), 🚶 Ra phố, 🏮 Mở cửa (to khi đã đủ đồ).
+  - Sạp giãn cách: sát hai mép, cùng bên cách nhau 4 hàng. Chip tên sạp và câu rao tự tìm chỗ trống, không bao giờ đè nhau.
 - **🏘️ Khu phố 5 nơi, đi bộ được:** chạm 🚪 cửa quán (tay không) hoặc ô 🚶 Ra phố ở chợ để ra phố.
   - 5 nơi: 🍜 Quán mình, 🛒 Chợ (cổng chợ), 🏠 Nhà Chú Tư (mở Bếp thử món), 🏪 Tiệm đồ quán (Nâng cấp), 🏦 Ngân hàng (trả nợ).
   - Chạm mặt đất để đi, chạm nhà / chip tên nhà / hàng nút trên cùng để đi tới cửa rồi vào. Máy tính: WASD / mũi tên, E để vào.

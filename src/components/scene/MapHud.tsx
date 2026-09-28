@@ -9,28 +9,9 @@ import { settingsStore, useSettings } from '../../game/settings';
 import { shows } from '../../game/unlocks';
 import { tutorialUi } from '../kid/tutorialUi';
 import { colors } from '../ui';
+import { HudChip, RoundButton } from '../HudBits';
 
-/** Nhãn nhỏ nổi trên cảnh (không tạo thành khối che màn hình). */
-function Chip({ children, tone = 'plain', label }: { children: React.ReactNode; tone?: 'plain' | 'warn' | 'bad'; label?: string }) {
-  return (
-    <View style={[styles.chip, tone === 'warn' && styles.chipWarn, tone === 'bad' && styles.chipBad]} accessibilityLabel={label}>
-      {children}
-    </View>
-  );
-}
-
-function RoundButton({ label, name, onPress, active }: { label: string; name: string; onPress: () => void; active?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.round, active && styles.roundActive, pressed && { transform: [{ scale: 0.92 }] }]}
-      accessibilityRole="button"
-      accessibilityLabel={name}
-    >
-      <Text style={styles.roundText}>{label}</Text>
-    </Pressable>
-  );
-}
+const Chip = HudChip;
 
 /**
  * HUD màn quán (3D và Đơn giản): chỉ vài nhãn nhỏ ở góc — 🕐 giờ, 💰 tiền, ★ sao (🧽 khi đã mở) — và 2 nút tròn ⏸ / ❗.

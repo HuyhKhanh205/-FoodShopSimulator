@@ -14,9 +14,11 @@ interface UiState {
   notebook: NotebookTab | null;
   /** Đường sông: chỗ đang được chỉ vào sau khi bấm "▶ Tiếp tục" (hết hạn lúc `until`). */
   flowGlow: { target: string; until: number } | null;
+  /** Phần đáy màn hình đang có nút quan trọng (vd thanh giỏ + 🏮 Mở cửa ở chợ): bong bóng Chú Tư đứng trên phần này. */
+  bottomInset: number;
 }
 
-let state: UiState = { fpOpen: false, help: null, notebook: null, flowGlow: null };
+let state: UiState = { fpOpen: false, help: null, notebook: null, flowGlow: null, bottomInset: 0 };
 const listeners = new Set<() => void>();
 
 function set(patch: Partial<UiState>) {
@@ -35,6 +37,9 @@ export const tutorialUi = {
   },
   requestHelp: (topic: HelpTopic) => set({ help: { topic, at: Date.now() } }),
   clearHelp: () => set({ help: null }),
+  setBottomInset: (v: number) => {
+    if (state.bottomInset !== v) set({ bottomInset: v });
+  },
   openNotebook: (tab: NotebookTab = 'tasks') => set({ notebook: tab }),
   closeNotebook: () => set({ notebook: null }),
   glow: (target: string, ms = 4000) => {
