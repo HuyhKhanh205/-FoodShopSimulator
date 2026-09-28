@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { AnimationMixer, LoopRepeat, Matrix4, Quaternion, Vector3 } from 'three';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { AnimationMixer, Color, LoopRepeat, Matrix4, Quaternion, Vector3 } from 'three';
 import type { AnimationAction, BufferGeometry, InstancedMesh, Material, Mesh } from 'three';
 import { MARKET_BOUNDS } from '../../assets/models.generated';
 import { useFrame } from '../../three/fiber';
@@ -65,6 +65,10 @@ export interface PropSpot {
   z: number;
   size: number;
   rot?: number;
+  /** Nhuộm màu (nhân với màu gốc) — vd nhà Kenney trắng thành hồng, vàng, xanh pastel. */
+  tint?: string;
+  /** Kê cao (vd trên bến). */
+  y?: number;
 }
 
 /** Tâm nhìn + bán kính nhìn hiện tại (cập nhật ~4 lần / giây bởi cảnh). `valid` = false thì hiện hết. */
@@ -88,7 +92,7 @@ export function PropInstances({ spots, focus }: { spots: PropSpot[]; focus: Reac
     if (!gltf) return [];
     const byName = new Map<string, PropSpot[]>();
     for (const s of spots) byName.set(s.name, [...(byName.get(s.name) ?? []), s]);
-    const out: { geometry: BufferGeometry; material: Material | Material[]; local: Matrix4; spots: { base: Matrix4; x: number; z: number }[] }[] = [];
+    const out: { geometry: BufferGeometry; material: Material | Material[]; local: Matrix4; spots: { base: Matrix4; x: number; z: number; tint?: string }[] }[] = [];
     for (const [name, list] of byName) {
       const src = gltf.scene.getObjectByName(name);
       if (!src) continue;
@@ -101,8 +105,8 @@ export function PropInstances({ spots, focus }: { spots: PropSpot[]; focus: Reac
       const offset = new Matrix4().makeTranslation(-(dims[0] / 2 + minOf(name, 0)), -minOf(name, 1), -(dims[2] / 2 + minOf(name, 2)));
       const bases = list.map((sp) => {
         const scale = sp.size / Math.max(dims[0], dims[2], 0.01);
-        const m = new Matrix4().compose(new Vector3(sp.x, 0, sp.z), new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), sp.rot ?? 0), new Vector3(scale, scale, scale));
-        return { base: m.multiply(offset), x: sp.x, z: sp.z };
+        const m = new Matrix4().compose(new Vector3(sp.x, sp.y ?? 0, sp.z), new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), sp.rot ?? 0), new Vector3(scale, scale, scale));
+        return { base: m.multiply(offset), x: sp.x, z: sp.z, tint: sp.tint };
       });
       node.traverse((o) => {
         const mesh = o as Mesh;
@@ -112,6 +116,17 @@ export function PropInstances({ spots, focus }: { spots: PropSpot[]; focus: Reac
     }
     return out;
   }, [gltf, spots]);
+
+  // Màu nhuộm từng chỗ đặt (chỉ khi có ít nhất một chỗ nhuộm, để khỏi đổi shader của đồ vật thường).
+  useLayoutEffect(() => {
+    const white = new Color('#FFFFFF');
+    built.forEach((b, i) => {
+      const m = meshes.current[i];
+      if (!m || !b.spots.some((sp) => sp.tint)) return;
+      b.spots.forEach((sp, j) => m.setColorAt(j, sp.tint ? new Color(sp.tint) : white));
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    });
+  }, [built]);
 
   // Trạng thái hiện / phóng to của từng chỗ đặt (dùng chung cho mọi lưới con cùng mô hình).
   const state = useRef<Map<string, { shown: boolean; s: number }>>(new Map());

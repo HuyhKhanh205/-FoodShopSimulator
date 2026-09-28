@@ -498,6 +498,10 @@ export interface GameState {
   eventSeen: Record<string, number>;
   /** Kỷ lục mini game (điểm 0..1 cao nhất theo kiểu). */
   miniBest: Record<string, number>;
+  /** Đang đứng ngoài khu phố (ra từ cửa quán hoặc từ chợ). */
+  street?: boolean;
+  /** Ra phố từ đâu (để đứng trước đúng cửa). */
+  streetFrom?: 'shop' | 'market';
   gameOver: GameOver;
   idSeq: number;
   run: DayRuntime | null;

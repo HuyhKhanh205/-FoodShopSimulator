@@ -13,7 +13,8 @@ import { Button, ProgressBar, colors } from '../../components/ui';
 import { levelOf, levelProgress, mysteryRecipes } from '../../game/progression';
 import { trendHeat } from '../../game/trend';
 import { RECIPES, CLOSE_HOUR, DAY_MS, OPEN_HOUR } from '../../game/data';
-import { discardExpired, openShop, payDebt, returnToShop, shopClosed } from '../../game/engine';
+import { discardExpired, goStreet, openShop, returnToShop, shopClosed } from '../../game/engine';
+import DebtPanel from '../../components/DebtPanel';
 import { activeDeals, checkout, suggestBasket } from '../../game/market';
 import type { Basket, VendorId } from '../../game/market';
 import MarketScene3D from '../../components/market/MarketScene3D';
@@ -143,9 +144,12 @@ export default function MarketView() {
               🕐 {formatClock(game.run!.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)} · {closed ? '🚪 Quán đóng tạm' : '👥 Có người trông quán'}
               {waiting ? ` · 🪑 ${waiting}` : ''}
             </Text>
-            <TutorialGlow on={targets.includes('market.back')} style={{ alignSelf: 'flex-start' }}>
-              <IconTile icon="🏃" label="Về quán" tone="primary" onPress={() => act((s) => returnToShop(s))} />
-            </TutorialGlow>
+            <View style={styles.inline}>
+              <TutorialGlow on={targets.includes('market.back')} style={{ alignSelf: 'flex-start' }}>
+                <IconTile icon="🏃" label="Về quán" tone="primary" onPress={() => act((s) => returnToShop(s))} />
+              </TutorialGlow>
+              {game.tutorial.done && <IconTile icon="🚶" label="Ra phố" name="Ra khu phố" onPress={() => act((s) => goStreet(s, 'market'))} />}
+            </View>
           </View>
         )}
         {/* 🏮 Mở cửa ở đầu: nổi bật khi đã đủ đồ, còn không thì là nút nhỏ (vẫn bấm được). */}
@@ -206,6 +210,7 @@ export default function MarketView() {
 
         {!midday && (
           <View style={styles.tiles}>
+            {game.tutorial.done && <IconTile icon="🚶" label="Ra phố" name="Ra khu phố" onPress={() => act((s) => goStreet(s, 'market'))} />}
             {expired > 0 && (
               <IconTile icon="🗑️" label="Đồ hỏng" name="Vứt đồ hỏng" badge={expired} tone="danger" onPress={() => act((s) => discardExpired(s))} />
             )}
@@ -227,17 +232,7 @@ export default function MarketView() {
             <IconTile icon="🏠" label="Menu" name="Về menu" onPress={() => navigation.navigate('Home')} />
           </View>
         )}
-        {!midday && showDebt && (
-          <View style={styles.debtBox}>
-            <Text style={styles.debtText}>
-              💳 {formatMoney(game.debt)} · 📅 {game.debtDueDay}
-            </Text>
-            <View style={styles.inline}>
-              <Button small label="Trả 500.000đ" disabled={game.debt <= 0 || game.money < 500_000} onPress={() => act((s) => payDebt(s, 500_000))} />
-              <Button small variant="secondary" label="Trả hết có thể" disabled={game.debt <= 0 || game.money <= 0} onPress={() => act((s) => payDebt(s, s.money))} />
-            </View>
-          </View>
-        )}
+        {!midday && showDebt && <DebtPanel />}
       </ScrollView>
       <BasketBar
         game={game}

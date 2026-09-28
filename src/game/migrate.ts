@@ -36,6 +36,7 @@ export function migrateSave(data: GameState): GameState {
     flags: data.flags ?? {},
     eventSeen: data.eventSeen ?? {},
     miniBest: data.miniBest ?? {},
+    street: data.street ?? false,
     extraIngredients: data.extraIngredients ?? [],
     run: null,
     phase: data.phase === 'open' ? 'market' : data.phase,

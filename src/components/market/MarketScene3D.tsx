@@ -5,6 +5,8 @@ import type { Group } from 'three';
 import { Canvas, useFrame } from '../../three/fiber';
 import type { ThreeEvent } from '../../three/fiber';
 import { MProp, Mini } from '../scene/SceneryProps';
+import MarketSurroundings from '../scene/MarketSurroundings';
+import { SKY } from '../scene/SceneryKit';
 import { MAP_COLS, MAP_ROWS, findPath } from '../../game/layout';
 import type { MapLayout, Tile } from '../../game/layout';
 import { VENDORS, activeDeals, fmt, friendLevel, vendorCall, vendorState } from '../../game/market';
@@ -280,7 +282,9 @@ export default function MarketScene3D({
       <Canvas shadows="percentage" dpr={[1, Math.min(1.5, maxDpr())]} style={{ flex: 1 }}>
         <UseCamera cam={cam} />
         {demo && <DemoOrbit cam={cam} width={width} height={height} zoom={zoom} />}
-        <color attach="background" args={['#BDE3F2']} />
+        <color attach="background" args={[SKY]} />
+        <fog attach="fog" args={[SKY, 50, 95]} />
+        <MarketSurroundings demo={demo} />
         <hemisphereLight args={['#FFF6E5', '#6D4C41', 0.9]} />
         <ambientLight intensity={0.35} color="#FFE0B2" />
         <Sun />

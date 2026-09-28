@@ -167,6 +167,7 @@ export function newGame(rng: Rng, opts: NewGameOptions = {}): GameState {
     flags: {},
     eventSeen: {},
     miniBest: {},
+    street: false,
     gameOver: null,
     idSeq: 0,
     run: null,
@@ -179,6 +180,7 @@ export function newGame(rng: Rng, opts: NewGameOptions = {}): GameState {
 function beginMarket(s: GameState, rng: Rng) {
   s.phase = 'market';
   s.run = null;
+  s.street = false;
   s.mods = emptyMods();
   s.report = emptyReport(s);
   s.boughtToday = {};
@@ -838,10 +840,36 @@ export function leaveForMarket(s: GameState) {
 }
 
 export function returnToShop(s: GameState) {
+  s.street = false;
   const run = s.run;
   if (!run || !run.ownerAway) return;
   run.ownerAway = false;
   log(s, '🏃 Chủ quán đã về quán', 'info');
+}
+
+/**
+ * Ra khu phố. Giờ bán: như đi chợ giữa giờ (nhân viên trông quán, không có ai thì quán tạm đóng).
+ * Buổi sáng: chỉ là đi dạo, quay lại vẫn ở bước chuẩn bị.
+ */
+export function goStreet(s: GameState, from: 'shop' | 'market' = 'shop') {
+  if (s.phase === 'summary') return;
+  if (s.phase === 'open' && s.run && !s.run.ownerAway) {
+    leaveForMarket(s);
+    s.run.carrying = [];
+  }
+  s.street = true;
+  s.streetFrom = from;
+}
+
+/** Từ khu phố vào một nơi: 'shop' về quán, 'market' vào chợ (các nơi khác mở màn riêng, vẫn đứng ngoài phố). */
+export function streetGo(s: GameState, place: 'shop' | 'market') {
+  if (!s.street) return;
+  if (place === 'shop') {
+    if (s.phase === 'open') returnToShop(s);
+    s.street = false;
+    return;
+  }
+  s.street = false;
 }
 
 function spawnCustomers(s: GameState, dt: number, rng: Rng) {
@@ -1069,6 +1097,7 @@ export function closeDay(s: GameState) {
   s.run = null;
   s.activeEvent = null;
   s.phase = 'summary';
+  s.street = false;
 
   if (s.money < BANKRUPT_AT) s.gameOver = 'bankrupt';
   else if (s.day >= s.debtDueDay && s.debt > 0) s.gameOver = 'debt';

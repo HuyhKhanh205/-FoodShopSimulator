@@ -6,7 +6,7 @@ Các mô hình trong thư mục này được tối ưu (bỏ vũ khí, bớt ho
 - **KayKit – Restaurant Bits 1.0** — https://github.com/KayKit-Game-Assets/KayKit-Restaurant-Bits-1.0
 - **KayKit – Furniture Bits 1.0** — https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0
 
-- **Kenney** — Food Kit, Nature Kit, City Kit (Commercial), Furniture Kit, Pirate Kit, Mini Characters — https://kenney.nl (lấy qua bản sao GitHub https://github.com/Hidencod/tge-assets); màu texture được nướng thành màu đỉnh (`scripts/build-market-models.mjs`).
+- **Kenney** — Food Kit, Nature Kit, City Kit (Commercial, Suburban, Roads), Car Kit, Cube Pets, Furniture Kit, Pirate Kit, Mini Characters — https://kenney.nl (lấy qua bản sao GitHub https://github.com/Hidencod/tge-assets); màu texture được nướng thành màu đỉnh (`scripts/build-market-models.mjs`).
 
 Tác giả KayKit: Kay Lousberg (https://kaylousberg.com). Giấy phép **CC0 1.0** (dùng tự do, kể cả thương mại, không bắt buộc ghi công).
 

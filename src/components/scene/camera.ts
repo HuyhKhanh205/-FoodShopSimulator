@@ -48,8 +48,8 @@ function applyPan(cam: CameraCam, fr: CameraFrame) {
  * `yaw` = 0: camera ở phía nam nhìn lên bếp; π/2: ở phía đông (dùng cho màn dọc để chiều dài 12 ô nằm dọc).
  * `zoom` > 1: phóng to (không thấy hết quán, dùng `followCamera` để đi theo nhân vật).
  */
-export function fitCamera(cam: CameraCam, w: number, h: number, yaw: number, zoom = 1): CameraFrame {
-  const center = new THREE.Vector3(MAP_COLS / 2, 0, MAP_ROWS / 2);
+export function fitCamera(cam: CameraCam, w: number, h: number, yaw: number, zoom = 1, bounds: { cols: number; rows: number } = { cols: MAP_COLS, rows: MAP_ROWS }): CameraFrame {
+  const center = new THREE.Vector3(bounds.cols / 2, 0, bounds.rows / 2);
   const flat = Math.cos(ELEVATION);
   const dir = new THREE.Vector3(Math.sin(yaw) * flat, Math.sin(ELEVATION), Math.cos(yaw) * flat);
   cam.position.copy(center).addScaledVector(dir, 40);
@@ -63,9 +63,9 @@ export function fitCamera(cam: CameraCam, w: number, h: number, yaw: number, zoo
   let maxR = -Infinity;
   let minU = Infinity;
   let maxU = -Infinity;
-  for (const x of [0, MAP_COLS]) {
+  for (const x of [0, bounds.cols]) {
     for (const y of [0, 2.2]) {
-      for (const z of [0, MAP_ROWS]) {
+      for (const z of [0, bounds.rows]) {
         const p = new THREE.Vector3(x, y, z).sub(center);
         const r = p.dot(right);
         const u = p.dot(up);

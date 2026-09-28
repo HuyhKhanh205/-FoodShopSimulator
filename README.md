@@ -194,7 +194,16 @@ Mỗi tình huống có nhiều lựa chọn với hậu quả khác nhau (tiề
   - Mỗi người: đang làm gì, tâm trạng; ☕ nghỉ giải lao 40 giây (tâm trạng +15, 1 lần mỗi ngày), 💰 tăng lương, 👋 cho nghỉ việc.
   - ➕ Thuê thêm người: 20 giây sau người mới tới. Chạm một người thì vòng vàng hiện dưới chân họ trong cảnh 3D.
 - **🎓 Sinh viên chọn vai trò:** thuê sinh viên thì tự chọn Phụ bếp / Đầu bếp / Phục vụ, đổi lúc nào cũng được (đang làm dở thì đổi khi xong việc). Nhân viên chính thức giữ chuyên môn.
-- **🌆 Phố bên sông quanh quán** thay nền kem:
+- **🏘️ Khu phố 5 nơi, đi bộ được:** chạm 🚪 cửa quán (tay không) hoặc ô 🚶 Ra phố ở chợ để ra phố.
+  - 5 nơi: 🍜 Quán mình, 🛒 Chợ (cổng chợ), 🏠 Nhà Chú Tư (mở Bếp thử món), 🏪 Tiệm đồ quán (Nâng cấp), 🏦 Ngân hàng (trả nợ).
+  - Chạm mặt đất để đi, chạm nhà / chip tên nhà / hàng nút trên cùng để đi tới cửa rồi vào. Máy tính: WASD / mũi tên, E để vào.
+  - Giờ bán như đi chợ giữa giờ: đồng hồ vẫn chạy; không có nhân viên thì quán tạm đóng (có hỏi lại trước).
+  - Chế độ Đơn giản / máy không có 3D: khu phố là 5 ô lớn để chạm.
+- **📦 Thư viện phong cảnh:** mô hình Kenney (CC0) lấy qua pipeline sẵn có `scripts/build-market-models.mjs`.
+  - Gói: City Kit Suburban (nhà, cây, hàng rào), City Kit Commercial (nhà phố), City Kit Roads (đèn đường, cột điện, thùng rác), Car Kit (xe), Cube Pets (chó, mèo, gà).
+  - Màu nướng vào đỉnh, không cần ảnh (tránh lỗi mất màu trên Safari iPhone). Nhà trắng được nhuộm màu pastel theo từng căn.
+  - Cả gói phong cảnh thêm khoảng 850 KB vào `market.glb`.
+- **🌆 Phố bên sông quanh quán và quanh chợ** thay nền kem:
   - Vỉa hè có ghế đẩu (chỗ nhân viên nghỉ), đường có xe máy chạy, người đi bộ, dãy nhà hàng xóm có bảng hiệu.
   - Sông sau bếp có ghe, xuồng, bến.
 - **Tối ưu kiểu Farm Together:**
@@ -231,7 +240,9 @@ src/screens/       Home, NewGame, Settings, Guide, Game (Chợ / Mở cửa / T�
 src/components/    CustomerCard, CookSlotCard, EventModal, Hud, ShopTopBar, ui
   minigame/        13 mini game vẽ bằng emoji (MiniGame.tsx)
   staff/           StaffSheet: bảng nhân viên trong giờ bán, chọn vai sinh viên
-  scene/Surroundings.tsx  Phố bên sông quanh quán; SceneryProps.tsx (đồ vật theo lô + ẩn xa); cull.ts
+  scene/Surroundings.tsx  Phố bên sông quanh quán; MarketSurroundings.tsx quanh chợ; SceneryKit.tsx (đường, sông, xe, thú, nhà);
+                   SceneryProps.tsx (đồ vật theo lô + ẩn xa); cull.ts
+  street/          StreetScene3D: khu phố 5 nơi (src/game/street.ts: bản đồ + các nơi)
   map/             Bản đồ 2D dự phòng + bảng hành động
   scene/           Cảnh 3D: camera, nhân vật low-poly, đồ vật, lớp chữ nổi, HUD
 scripts/simulate.ts  Bot chơi thử 30 ngày để cân bằng số liệu

@@ -50,6 +50,9 @@ export interface MapLayout {
   /** Chỗ đứng của nhân viên khi rảnh. */
   restSpot: Tile;
   start: Tile;
+  /** Kích thước lưới (mặc định quán 12 × 10; khu phố dài hơn). */
+  cols?: number;
+  rows?: number;
 }
 
 const key = (x: number, y: number) => `${x},${y}`;
@@ -109,7 +112,7 @@ export function buildLayout(upgrades: Upgrades): MapLayout {
 }
 
 export function isWalkable(layout: MapLayout, x: number, y: number) {
-  return x >= 0 && y >= 0 && x < MAP_COLS && y < MAP_ROWS && !layout.blocked.has(key(x, y));
+  return x >= 0 && y >= 0 && x < (layout.cols ?? MAP_COLS) && y < (layout.rows ?? MAP_ROWS) && !layout.blocked.has(key(x, y));
 }
 
 /** Tìm đường ngắn nhất (BFS, 4 hướng) tới một trong các ô đích. Trả về các ô đi qua (không gồm ô xuất phát), null nếu không tới được. */

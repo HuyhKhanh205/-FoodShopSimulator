@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, LayoutChangeEvent, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import FirstPersonView from '../../components/fp/FirstPersonView';
@@ -45,7 +45,7 @@ function stationAction(st: MapStation, carrying: number, has3D: boolean): { icon
     case 'mop':
       return { icon: '🧽', name: 'Rửa · lau', verb: 'Lau' };
     case 'door':
-      return { icon: '🚪', name: 'Cửa', verb: carrying ? 'Đưa món' : 'Xem' };
+      return { icon: '🚪', name: 'Cửa', verb: carrying ? 'Đưa món' : 'Ra phố' };
     default:
       return { icon: '🪑', name: `Bàn ${n}`, verb: carrying ? 'Đưa món' : 'Xem' };
   }
@@ -80,6 +80,8 @@ export default function ShopMapView() {
   const [zoomLevel, setZoomLevel] = useState(0);
   const [stockOpen, setStockOpen] = useState(false);
   const [staffOpen, setStaffOpen] = useState(false);
+  /** Hành động "ra phố" (kèm hộp xác nhận khi không có nhân viên) — gán bởi GoMarketButton ẩn bên dưới. */
+  const streetGo = useRef<(() => void) | null>(null);
   const [staffSel, setStaffSel] = useState<string | null>(null);
   const [sheetStation, setSheetStation] = useState<MapStation | null>(null);
   const targets = useTutorialTargets();
@@ -148,6 +150,9 @@ export default function ShopMapView() {
         }
       } else if (station.kind === 'board' && has3D) {
         setFp(station);
+      } else if (station.kind === 'door' && !r.carrying.length && gameRef.current.tutorial.done) {
+        // Cửa quán tay không: ra khu phố (không có ai trông quán thì hỏi lại trước).
+        streetGo.current?.();
       } else if ((station.kind === 'table' || station.kind === 'door') && r.carrying.length) {
         const ids = r.customers
           .filter((c) => (station.kind === 'table' ? c.tableIndex === station.tableIndex : c.tableIndex === undefined))
@@ -485,7 +490,15 @@ export default function ShopMapView() {
   const prompt = <ChatPrompt customer={asking} act={act} onClose={() => setAskId(null)} />;
   const fridge = layout.stations.find((s) => s.kind === 'fridge') ?? null;
   const modals = (
-    <>
+    <React.Fragment>
+      {/* Hành động "ra phố" kèm hộp xác nhận khi không có ai trông quán (gọi từ cửa quán). */}
+      <GoMarketButton
+        to="street"
+        render={(onPress) => {
+          streetGo.current = onPress;
+          return null;
+        }}
+      />
       {prompt}
       {(stockOpen || sheetStation) && (
         <Modal transparent animationType="none" visible onRequestClose={() => { setStockOpen(false); setSheetStation(null); }}>
@@ -501,7 +514,7 @@ export default function ShopMapView() {
           </Pressable>
         </Modal>
       )}
-    </>
+    </React.Fragment>
   );
   if (wide) {
     return (

@@ -36,12 +36,27 @@ const pruneAll = () =>
 const PICK = {
   food: ['fish', 'meat-raw', 'meat-ribs', 'whole-ham', 'bacon-raw', 'sausage', 'egg', 'bread', 'loaf-baguette', 'loaf-round', 'cabbage', 'leek', 'onion', 'carrot', 'tomato', 'eggplant', 'paprika', 'corn', 'broccoli', 'watermelon', 'banana', 'pineapple', 'coconut', 'mussel', 'rice-ball', 'cup-coffee', 'soda-bottle', 'carton', 'bag', 'barrel', 'can', 'pumpkin', 'lemon', 'orange', 'grapes', 'apple', 'mushroom'],
   nature: ['tree-palm', 'tree-palmbend', 'tree-palmshort', 'tree-default', 'plant-bush', 'plant-bushlarge', 'grass-large', 'flower-reda', 'flower-yellowa', 'flower-purplea', 'rock-smalla', 'lily-large', 'lily-small', 'canoe', 'log', 'path-stone', 'pot-large'],
-  'city-kit-commercial': ['detail-awning-wide', 'detail-awning', 'detail-parasol-a', 'detail-parasol-b', 'detail-overhang-wide'],
+  'city-kit-commercial': ['detail-awning-wide', 'detail-awning', 'detail-parasol-a', 'detail-parasol-b', 'detail-overhang-wide', 'building-c', 'building-e', 'building-i'],
   furniture: ['bench', 'stoolbar', 'table', 'cardboardboxopen', 'lampsquarefloor'],
   pirate: ['boat-row-small', 'boat-row-large', 'crate', 'structure-platform-dock-small', 'flag-pennant'],
+  // Phong cảnh phố (khu phố 5 nơi, quanh quán, quanh chợ).
+  suburban: ['building-type-a', 'building-type-d', 'building-type-h', 'building-type-k', 'building-type-n', 'building-type-t', 'tree-large', 'tree-small', 'fence-low', 'planter'],
+  roads: ['road-straight', 'road-crossing', 'light-square', 'electricity-pole', 'construction-cone', 'dumpster'],
+  cars: ['sedan', 'taxi', 'van', 'delivery'],
+  pets: ['animal-dog', 'animal-cat', 'animal-chick'],
 };
-const DIR = { food: 'food-kit', nature: 'nature-kit', 'city-kit-commercial': 'city-kit-commercial', furniture: 'furniture-kit', pirate: 'pirate-kit' };
-const PREFIX = { food: 'f_', nature: 'n_', 'city-kit-commercial': 'c_', furniture: 'u_', pirate: 'p_' };
+const DIR = {
+  food: 'food-kit',
+  nature: 'nature-kit',
+  'city-kit-commercial': 'city-kit-commercial',
+  furniture: 'furniture-kit',
+  pirate: 'pirate-kit',
+  suburban: 'city-kit-suburban',
+  roads: 'city-kit-roads',
+  cars: 'car-kit',
+  pets: 'cube-pets',
+};
+const PREFIX = { food: 'f_', nature: 'n_', 'city-kit-commercial': 'c_', furniture: 'u_', pirate: 'p_', suburban: 's_', roads: 'r_', cars: 'v_', pets: 'a_' };
 const MINIS = ['character-female-a', 'character-female-c', 'character-male-b', 'character-male-d'];
 
 const toLinear = (c) => {
@@ -112,6 +127,13 @@ for (const [pack, names] of Object.entries(PICK)) {
     }
     scene.addChild(group);
     for (const a of src.getRoot().listAnimations()) a.dispose();
+    if (process.env.SIZES) {
+      // Đo dung lượng từng mô hình sau khi nén (để giữ ngân sách).
+      const probe = new Document();
+      mergeDocuments(probe, src);
+      await probe.transform(unpartition(), weld(), dedup(), pruneAll(), quantize({ quantizeColor: 8 }));
+      console.log('  ', name, Math.round((await io.writeBinary(probe)).byteLength / 1024), 'KB');
+    }
     mergeDocuments(market, src);
   }
 }

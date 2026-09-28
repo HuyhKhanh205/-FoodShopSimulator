@@ -1,21 +1,21 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { leaveForMarket, staffOnDuty } from '../game/engine';
+import { goStreet, leaveForMarket, staffOnDuty } from '../game/engine';
 import { useGame, useGameState } from '../game/GameContext';
 import { Button, colors } from './ui';
 
 /**
- * Nút đi chợ giữa giờ bán. Chưa có nhân viên nào đang làm thì hỏi lại trước,
+ * Nút đi chợ (hoặc ra phố) giữa giờ bán. Chưa có nhân viên nào đang làm thì hỏi lại trước,
  * vì quán sẽ treo biển tạm đóng trong lúc chủ vắng mặt.
  */
-export default function GoMarketButton({ render }: { render: (onPress: () => void) => React.ReactNode }) {
+export default function GoMarketButton({ render, to = 'market' }: { render: (onPress: () => void) => React.ReactNode; to?: 'market' | 'street' }) {
   const game = useGameState();
   const { act } = useGame();
   const [confirm, setConfirm] = useState(false);
   const noStaff = staffOnDuty(game).length === 0;
   const go = () => {
     setConfirm(false);
-    act((s) => leaveForMarket(s));
+    act((s) => (to === 'street' ? goStreet(s, 'shop') : leaveForMarket(s)));
   };
   return (
     <>
@@ -26,11 +26,11 @@ export default function GoMarketButton({ render }: { render: (onPress: () => voi
             <Pressable style={styles.card} onPress={() => {}}>
               <Text style={styles.emoji}>🚪</Text>
               <Text style={styles.title}>Quán đóng tạm</Text>
-              <Text style={styles.body} accessibilityLabel="Chưa có nhân viên: trong lúc đi chợ quán không đón khách mới, món trên bếp vẫn có thể cháy.">
+              <Text style={styles.body} accessibilityLabel="Chưa có nhân viên: trong lúc vắng mặt quán không đón khách mới, món trên bếp vẫn có thể cháy.">
                 👥 ❌ → 🚪🔒 · 🔥⚠️
               </Text>
               <View style={styles.row}>
-                <Button label="🛒 Vẫn đi chợ" onPress={go} style={{ flex: 1 }} />
+                <Button label={to === 'street' ? '🚶 Vẫn ra phố' : '🛒 Vẫn đi chợ'} onPress={go} style={{ flex: 1 }} />
                 <Button label="🏠 Ở lại" variant="secondary" onPress={() => setConfirm(false)} style={{ flex: 1 }} />
               </View>
             </Pressable>

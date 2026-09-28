@@ -22,6 +22,11 @@ const usableQty = uq;
 import { START_UPGRADES } from '../src/game/data';
 import * as E from '../src/game/engine';
 import * as CULL from '../src/components/scene/cull';
+import * as STREET from '../src/game/street';
+/** Chỉ dùng để đọc mã nguồn khi kiểm tra tên mô hình (chạy bằng tsx, có require). */
+declare function require(m: 'fs'): { readFileSync(p: string, e: 'utf8'): string };
+import { MARKET_BOUNDS } from '../src/assets/models.generated';
+import { isWalkable as isWalkableTile } from '../src/game/layout';
 import { staffTarget } from '../src/game/staffTarget';
 import * as EV from '../src/game/events';
 import * as KIT from '../src/game/events/kit';
@@ -1111,6 +1116,56 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   const R = CULL.viewRadius(8, 12, 0.87);
   check(chunks.length === 2 && CULL.chunkVisible({ x: 6, z: 5 }, near.info, R) && !CULL.chunkVisible({ x: 6, z: 5 }, far.info, R), `khối gần hiện, khối xa ẩn (R=${R.toFixed(1)})`);
   check(CULL.viewRadius(8, 12, 0.87, true) < R, 'chế độ Tiết kiệm: tầm nhìn ngắn hơn');
+}
+
+// ================= Khu phố 5 nơi + mô hình phong cảnh =================
+{
+  const ST = STREET;
+  const L = ST.buildStreetLayout('shop');
+  const all5 = ST.STREET_PLACES.every((pl) => findPath(L, L.start, [ST.doorTile(pl.id)]) !== null);
+  check(ST.STREET_PLACES.length === 5 && all5, 'khu phố: từ cửa quán đi bộ tới được cửa cả 5 nơi');
+  check(!isWalkableTile(L, 5, 1) && !isWalkableTile(L, 3, ST.STREET_ROWS) && isWalkableTile(L, 20, 5), 'khu phố: không đi vào trong nhà / xuống lòng đường, vỉa hè đi được');
+  check(ST.buildStreetLayout('market').start.x === ST.doorTile('market').x, 'ra phố từ chợ: đứng trước cổng chợ');
+  check(isWalkableTile(layout, 11, 9) === !layout.blocked.has('11,9') && !isWalkableTile(layout, 12, 5), 'bản đồ quán giữ nguyên kích thước 12 × 10');
+
+  // Buổi sáng: ra phố rồi về vẫn ở bước chuẩn bị.
+  const r = seededRng(51);
+  const g = E.newGame(r);
+  g.activeEvent = null;
+  E.goStreet(g, 'market');
+  check(g.street === true && g.phase === 'market', 'buổi sáng: ra phố');
+  E.streetGo(g, 'shop');
+  check(!g.street && g.phase === 'market', 'buổi sáng: về quán = quay lại bước chuẩn bị (chưa mở cửa)');
+
+  // Giờ bán: như đi chợ giữa giờ.
+  E.openShop(g, r);
+  g.activeEvent = null;
+  E.goStreet(g, 'shop');
+  check(g.street === true && g.run!.ownerAway && E.shopClosed(g), 'giờ bán, chưa có nhân viên: ra phố → quán tạm đóng');
+  E.streetGo(g, 'market');
+  check(!g.street && g.run!.ownerAway, 'từ phố vào chợ: vẫn vắng quán (chợ giữa giờ)');
+  E.goStreet(g, 'market');
+  E.streetGo(g, 'shop');
+  check(!g.street && !g.run!.ownerAway, 'từ phố về quán: chủ quán có mặt');
+  E.goStreet(g, 'shop');
+  for (let i = 0; i < 4000 && g.phase === 'open'; i += 1) {
+    E.tick(g, 250, r);
+    g.activeEvent = null;
+    g.eventResult = null;
+  }
+  check(g.phase === 'summary' && !g.street, 'hết giờ lúc đang ở phố: sang tổng kết, thôi ở phố');
+
+  const old = JSON.parse(JSON.stringify(E.newGame(seededRng(5)))) as Record<string, unknown>;
+  delete old.street;
+  check(MG.migrateSave(old as unknown as ReturnType<typeof E.newGame>).street === false, 'bản lưu cũ: street = false');
+
+  // Mọi mô hình dùng trong cảnh phong cảnh đều có trong gói (tránh lỗi thiếu mô hình).
+  const fs = require('fs');
+  const files = ['src/components/scene/Surroundings.tsx', 'src/components/scene/MarketSurroundings.tsx', 'src/components/scene/SceneryKit.tsx', 'src/components/street/StreetScene3D.tsx', 'src/components/market/MarketScene3D.tsx'];
+  const names = new Set<string>();
+  for (const f of files) for (const m of fs.readFileSync(f, 'utf8').matchAll(/'([cfnprsuva]_[a-z0-9_]+)'/g)) names.add(m[1]);
+  const missing = [...names].filter((n) => !MARKET_BOUNDS[n]);
+  check(names.size > 30 && missing.length === 0, `mô hình phong cảnh có đủ trong market.glb (${names.size} tên) ${missing.join(', ')}`);
 }
 
 process.exit(failed ? 1 : 0);

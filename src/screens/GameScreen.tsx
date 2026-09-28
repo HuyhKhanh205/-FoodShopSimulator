@@ -10,6 +10,7 @@ import { useGame } from '../game/GameContext';
 import MarketView from './views/MarketView';
 import ShopMapView from './views/ShopMapView';
 import ShopView from './views/ShopView';
+import StreetView from './views/StreetView';
 import SummaryView from './views/SummaryView';
 
 /** Màn chơi chính: hiển thị theo giai đoạn trong ngày (chợ → mở cửa → tổng kết). */
@@ -26,9 +27,15 @@ export default function GameScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.body}>
-        {(game.phase === 'market' || (game.phase === 'open' && game.run?.ownerAway)) && <MarketView />}
-        {game.phase === 'open' && !game.run?.ownerAway && (viewMode === 'map' ? <ShopMapView /> : <ShopView />)}
-        {game.phase === 'summary' && <SummaryView />}
+        {game.phase === 'summary' ? (
+          <SummaryView />
+        ) : game.street ? (
+          <StreetView />
+        ) : game.phase === 'market' || (game.phase === 'open' && game.run?.ownerAway) ? (
+          <MarketView />
+        ) : (
+          game.phase === 'open' && (viewMode === 'map' ? <ShopMapView /> : <ShopView />)
+        )}
       </View>
       <NotebookSheet />
       <EventModal />
