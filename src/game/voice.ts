@@ -1,7 +1,7 @@
 import { INGREDIENTS, LEVEL_XP, RECIPES, RECIPE_IDS } from './data';
 import { HELP } from './help';
 import type { HelpTopic } from './help';
-import { STAGES } from './dayflow';
+import { STAGES, SUMMARY_FIRST_SAY } from './dayflow';
 import { TUTORIAL, noteText } from './tutorial';
 import type { ChefNote, StaffRole, TrendSource } from './types';
 
@@ -65,7 +65,7 @@ export function voiceLines(): string[] {
     lines.push(helpSpeech(topic, false));
     if (h.more) lines.push(helpSpeech(topic, true));
   }
-  const notes: ChefNote[] = [{ kind: 'lab' }, { kind: 'notebook' }, { kind: 'autoClaim' }];
+  const notes: ChefNote[] = [{ kind: 'lab' }, { kind: 'notebook' }, { kind: 'autoClaim' }, { kind: 'unlock', key: 'day2' }, { kind: 'unlock', key: 'day3' }];
   for (let lv = 2; lv <= LEVEL_XP.length; lv += 1) notes.push({ kind: 'levelUp', level: lv });
   for (const role of ['prep', 'cook', 'waiter'] as StaffRole[]) notes.push({ kind: 'role', role });
   for (const id of RECIPE_IDS) {
@@ -74,5 +74,6 @@ export function voiceLines(): string[] {
   }
   for (const n of notes) lines.push(noteText(n));
   for (const st of STAGES) lines.push(st.say);
+  lines.push(SUMMARY_FIRST_SAY);
   return [...new Set(lines.map(speechText))].filter(Boolean);
 }

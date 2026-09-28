@@ -7,6 +7,7 @@ import IconTile from '../../components/kid/IconTile';
 import RiverPath from '../../components/kid/RiverPath';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
 import { tutorialUi } from '../../components/kid/tutorialUi';
+import { shows } from '../../game/unlocks';
 import { claimMission, claimableCount, missionProgress, missionText, rewardText, todayMissions } from '../../game/missions';
 import { Panel, Stars, colors } from '../../components/ui';
 import { nextDay } from '../../game/engine';
@@ -33,6 +34,7 @@ export default function SummaryView() {
   const targets = useTutorialTargets();
   const missions = todayMissions(game);
   const claimable = claimableCount(game);
+  const notebook = shows(game, 'notebook');
   const wroteDiary = game.diary.some((d) => d.day === game.day);
   const r = game.history[game.history.length - 1];
   if (!r) return null;
@@ -89,7 +91,7 @@ export default function SummaryView() {
             </Text>
           </View>
         </View>
-        {missions.length > 0 && (
+        {missions.length > 0 && notebook && (
           <TutorialGlow on={targets.includes('summary.missions')} style={{ marginBottom: 12 }}>
             <View style={styles.missions}>
               <View style={styles.missionHead}>
@@ -131,10 +133,12 @@ export default function SummaryView() {
           </TutorialGlow>
         )}
         <View style={styles.smallRow}>
+          {notebook && (
           <TutorialGlow on={targets.includes('summary.diary')}>
             <IconTile icon="✍️" label={wroteDiary ? 'Nhật ký ✓' : 'Nhật ký'} name="Viết nhật ký" size="sm" badge={wroteDiary ? undefined : '+🎟️'} onPress={() => tutorialUi.openNotebook('diary')} />
           </TutorialGlow>
-          <IconTile icon="📒" label="Sổ tay" name="Mở sổ tay" size="sm" badge={claimable || undefined} onPress={() => tutorialUi.openNotebook('tasks')} />
+          )}
+          {notebook && <IconTile icon="📒" label="Sổ tay" name="Mở sổ tay" size="sm" badge={claimable || undefined} onPress={() => tutorialUi.openNotebook('tasks')} />}
           <IconTile icon="📊" label="Chi tiết" name="Xem chi tiết" size="sm" selected={details} onPress={() => setDetails((v) => !v)} />
           <IconTile icon="🏠" label="Menu" name="Về menu" size="sm" onPress={() => navigation.navigate('Home')} />
         </View>

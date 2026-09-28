@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { formatMoney } from '../game/helpers';
 import type { GameState } from '../game/types';
 import { levelOf } from '../game/progression';
+import { shows } from '../game/unlocks';
 import { Stars, colors } from './ui';
 
 /** Thanh chỉ số trên cùng (bằng biểu tượng): 📅 ngày / hạn nợ, 💰 tiền, 💳 nợ, ⭐ danh tiếng, 🧽 vệ sinh. */
@@ -10,14 +11,14 @@ export default function Hud({ game, extra }: { game: GameState; extra?: React.Re
   const clean = Math.round(game.cleanliness);
   return (
     <View style={styles.hud}>
-      <Item icon="📅" value={`${game.day}/${game.debtDueDay}`} />
+      <Item icon="📅" value={shows(game, 'debt') ? `${game.day}/${game.debtDueDay}` : `${game.day}`} />
       <Item icon="💰" value={formatMoney(game.money)} valueColor={game.money < 0 ? '#FFCDD2' : '#fff'} />
-      <Item icon="💳" value={game.debt > 0 ? formatMoney(game.debt) : '🎉'} />
+      {shows(game, 'debt') && <Item icon="💳" value={game.debt > 0 ? formatMoney(game.debt) : '🎉'} />}
       <View style={styles.item}>
         <Stars value={game.reputation} size={16} />
       </View>
-      <Item icon="🎖️" value={`${levelOf(game.xp)}`} />
-      <Item icon="🧽" value={`${clean}%`} valueColor={clean < 40 ? '#FFCDD2' : '#fff'} />
+      {shows(game, 'lab') && <Item icon="🎖️" value={`${levelOf(game.xp)}`} />}
+      {shows(game, 'clean') && <Item icon="🧽" value={`${clean}%`} valueColor={clean < 40 ? '#FFCDD2' : '#fff'} />}
       {extra}
     </View>
   );

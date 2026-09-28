@@ -1,6 +1,7 @@
 import { INGREDIENTS, RECIPES } from './data';
 import { usableQty } from './helpers';
 import { claimableCount } from './missions';
+import { shows } from './unlocks';
 import type { GameState, IngredientId } from './types';
 
 /**
@@ -17,6 +18,15 @@ export const STAGES: { id: StageId; icon: string; label: string; say: string }[]
   { id: 'serve', icon: '🍽️', label: 'Phục vụ', say: '🍽️ Món chín rồi! Cầm món mang ra đúng bàn khách nha.' },
   { id: 'summary', icon: '🌙', label: 'Tổng kết', say: '🌙 Hết ngày rồi! Nhận thưởng nhiệm vụ, viết nhật ký rồi sang ngày mới.' },
 ];
+
+/** Câu gợi ý tổng kết khi chưa có sổ tay (ngày 1). */
+export const SUMMARY_FIRST_SAY = '🌙 Hết ngày rồi! Xem quán lời bao nhiêu, rồi bấm ☀️ Ngày mới nha.';
+
+/** Câu Chú Tư đọc cho một bến (tổng kết ngày 1 không nhắc tới sổ tay chưa mở). */
+export function stageSay(s: GameState, id: StageId): string {
+  if (id === 'summary' && !shows(s, 'notebook')) return SUMMARY_FIRST_SAY;
+  return STAGES.find((x) => x.id === id)?.say ?? '';
+}
 
 export interface FlowNext {
   label: string;
@@ -51,6 +61,8 @@ function menuStocked(s: GameState, n: number): boolean {
 
 function currentStage(s: GameState): { current: StageId; next: FlowNext } {
   if (s.phase === 'summary') {
+    // Sổ tay chưa mở (ngày 1): chỉ gợi ý sang ngày mới; thưởng hôm nay tự nhận sáng mai.
+    if (!shows(s, 'notebook')) return { current: 'summary', next: { label: '☀️ Ngày mới', target: 'summary.next' } };
     if (claimableCount(s) > 0) return { current: 'summary', next: { label: '🎁 Nhận thưởng', target: 'summary.missions' } };
     if (!s.diary.some((d) => d.day === s.day)) return { current: 'summary', next: { label: '✍️ Viết nhật ký', target: 'summary.diary' } };
     return { current: 'summary', next: { label: '☀️ Ngày mới', target: 'summary.next' } };

@@ -4,6 +4,8 @@ import * as M from '../src/game/market';
 import * as MI from '../src/game/missions';
 import * as MS from '../src/game/dayflow';
 import * as MG from '../src/game/migrate';
+import * as U from '../src/game/unlocks';
+type UF = U.UiFeature;
 import { VOICE } from '../src/assets/voice.generated';
 import { speechText, voiceLines } from '../src/game/voice';
 import { DAY_MS, PLAYER_PREP_MS, RECIPES } from '../src/game/data';
@@ -604,6 +606,7 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
 
   // Nhiệm vụ chốt cuối ngày chỉ xong lúc tổng kết
   const g5 = toDay(E.newGame(seededRng(24)), 3, 200);
+  g5.tutorial.done = true;
   const nl: import('../src/game/types').Mission = { id: 'm_test', kind: 'noLost', tier: 'hard', target: 2, reward: { money: 30_000, tickets: 3, stars: 1 }, claimed: false };
   g5.missions.list.push(nl);
   E.openShop(g5, seededRng(1));
@@ -643,6 +646,37 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   delete old.diary;
   const up = MG.migrateSave(old);
   check(up.tickets === 0 && up.hopeStars === 0 && up.diary.length === 0 && up.missions.day === up.day && up.missions.list.length >= 3, 'bản lưu cũ: 0 vé, 0 sao, sinh nhiệm vụ hôm nay');
+}
+
+// ================= Giao diện gọn cho người mới: lịch mở tính năng =================
+{
+  const g = E.newGame(seededRng(31));
+  const all: UF[] = ['notebook', 'lab', 'staff', 'manage', 'debt', 'stock', 'clean', 'panel', 'arrange', 'modeToggle', 'perfHint'];
+  check(all.every((f) => !U.shows(g, f)), 'ngày 1 đang hướng dẫn: ẩn hết nút phụ');
+  g.tutorial.done = true;
+  check(U.shows(g, 'modeToggle') && U.shows(g, 'perfHint') && !U.shows(g, 'notebook') && !U.shows(g, 'stock'), 'xong hướng dẫn ngày 1: chỉ thêm nút 3D / Đơn giản');
+  g.cleanliness = 50;
+  check(U.shows(g, 'clean'), 'quán bẩn thì hiện nút Lau ngay ngày 1');
+  g.cleanliness = 100;
+  g.activeEvent = null;
+  g.phase = 'summary';
+  E.nextDay(g, seededRng(1));
+  check(U.shows(g, 'notebook') && U.shows(g, 'stock') && U.shows(g, 'manage') && U.shows(g, 'lab') && !U.shows(g, 'panel'), 'ngày 2: mở sổ tay, kho, nâng cấp, sổ món');
+  check(g.chefQueue.filter((n) => n.kind === 'unlock').length === 1 && g.chefQueue.some((n) => n.kind === 'notebook') && !g.chefQueue.some((n) => n.kind === 'autoClaim'), 'sáng ngày 2 Chú Tư báo mở tính năng + sổ tay (không báo tự nhận)');
+  g.chefQueue = [];
+  g.activeEvent = null;
+  g.phase = 'summary';
+  E.nextDay(g, seededRng(2));
+  check(U.shows(g, 'panel') && U.shows(g, 'arrange') && g.chefQueue.filter((n) => n.kind === 'unlock').length === 1, 'ngày 3: mở Bảng + Bố trí, báo 1 lần');
+  check(!U.shows(g, 'staff'), 'chưa tới cấp 3 thì chưa hiện Người giúp');
+  addXp(g, 400);
+  check(U.shows(g, 'staff'), 'cấp 3 hiện Người giúp');
+  const old = MG.migrateSave(JSON.parse(JSON.stringify({ ...g, day: 10, run: null })));
+  check(all.every((f) => U.shows(old, f)), 'bản lưu cũ ngày 10: thấy đủ mọi nút');
+  const d1 = E.newGame(seededRng(32));
+  d1.tutorial.done = true;
+  d1.phase = 'summary';
+  check(MS.dayFlow(d1).next.target === 'summary.next', 'tổng kết ngày 1 (chưa có sổ tay): gợi ý Ngày mới');
 }
 
 process.exit(failed ? 1 : 0);

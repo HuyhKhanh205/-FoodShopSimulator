@@ -13,6 +13,7 @@ import { tutorialUi } from '../../components/kid/tutorialUi';
 import RiverPath from '../../components/kid/RiverPath';
 import { NotebookButton } from '../../components/notebook/NotebookSheet';
 import type { FlowNext } from '../../game/dayflow';
+import { shows } from '../../game/unlocks';
 import ShopScene3D from '../../components/scene/ShopScene3D';
 import { ISO_YAW, fitCamera, makeCamera, screenDirToTile } from '../../components/scene/camera';
 import { colors } from '../../components/ui';
@@ -246,8 +247,10 @@ export default function ShopMapView() {
 
   // Gợi ý chuyển sang Đơn giản khi máy chậm (FPS < 30 kéo dài) hoặc pin yếu (< 20%) — hỏi một lần.
   const [suggest, setSuggest] = useState(false);
+  const perfHint = shows(game, 'perfHint');
   useEffect(() => {
-    if (simple || suggestAsked || Platform.OS !== 'web' || typeof requestAnimationFrame === 'undefined') return;
+    // Không hỏi lúc đang hướng dẫn ngày đầu (chỉ đo khi đã xong).
+    if (simple || !perfHint || suggestAsked || Platform.OS !== 'web' || typeof requestAnimationFrame === 'undefined') return;
     let raf = 0;
     let frames = 0;
     let slow = 0;
@@ -278,7 +281,7 @@ export default function ShopMapView() {
       })
       .catch(() => {});
     return () => cancelAnimationFrame(raf);
-  }, [simple]);
+  }, [simple, perfHint]);
 
   /** Chế độ Đơn giản: chạm trạm là làm luôn (không cần WebGL thì mở bảng thao tác). */
   const tapStation = useCallback(
@@ -304,19 +307,22 @@ export default function ShopMapView() {
     [layout, wanted, simple, tapStation, goToStation]
   );
   // Dải Đường sông thu gọn nằm ngay dưới HUD.
-  const RIVER_H = 50;
-  const HUD_H = 124 + RIVER_H;
+  const river = game.tutorial.done;
+  const toggle = has3D && shows(game, 'modeToggle');
+  const RIVER_H = river ? 50 : 0;
+  const HUD_H = (toggle ? 124 : 76) + RIVER_H;
   const BAR_H = 74;
   const cleanReady = run.elapsed >= run.cleanReadyAt;
 
   const actionBar = (
     <View style={styles.bar}>
+      {/* Chỉ hiện nút đã mở (src/game/unlocks.ts): ngày đầu gần như chỉ còn 🛒 Chợ. */}
       <GoMarketButton render={(onPress) => <BarButton icon="🛒" label="Chợ" onPress={onPress} />} />
-      <BarButton icon="🧽" label={cleanReady ? 'Lau' : 'Lau ⏳'} disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />
-      <BarButton icon="📦" label="Kho" onPress={() => setStockOpen(true)} />
-      <BarButton icon="📋" label="Bảng" onPress={() => setViewMode('panel')} />
-      <NotebookButton game={game} style={styles.barBtn} />
-      {!simple && <BarButton icon="🧱" label="Bố trí" active={arrange} onPress={() => setArrange(!arrange)} />}
+      {shows(game, 'clean') && <BarButton icon="🧽" label={cleanReady ? 'Lau' : 'Lau ⏳'} disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />}
+      {shows(game, 'stock') && <BarButton icon="📦" label="Kho" onPress={() => setStockOpen(true)} />}
+      {shows(game, 'panel') && <BarButton icon="📋" label="Bảng" onPress={() => setViewMode('panel')} />}
+      {shows(game, 'notebook') && <NotebookButton game={game} style={styles.barBtn} />}
+      {!simple && shows(game, 'arrange') && <BarButton icon="🧱" label="Bố trí" active={arrange} onPress={() => setArrange(!arrange)} />}
     </View>
   );
 
@@ -365,7 +371,7 @@ export default function ShopMapView() {
         ) : (
           <SimpleView game={game} layout={layout} targets={targets} onStation={tapStation} topInset={HUD_H + 28} bottomInset={BAR_H + 44} />
         ))}
-      {!fp && <MapHud canToggle={has3D} below={<RiverPath game={game} compact onGo={flowGo} />} />}
+      {!fp && <MapHud canToggle={toggle} below={river ? <RiverPath game={game} compact onGo={flowGo} /> : null} />}
       {!fp && actionBar}
       {!fp && (
         <View pointerEvents="none" style={[styles.hands, { bottom: BAR_H + 10 }]}>
@@ -379,7 +385,7 @@ export default function ShopMapView() {
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       )}
-      {!fp && suggest && !simple && (
+      {!fp && suggest && !simple && shows(game, 'perfHint') && (
         <View style={[styles.suggest, { top: HUD_H + 6 }]}>
           <Text style={styles.suggestText}>🐢 Máy đang hơi chậm. Chuyển sang chế độ Đơn giản cho mượt?</Text>
           <View style={styles.suggestRow}>

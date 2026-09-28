@@ -82,6 +82,7 @@ export type ChefNote =
   | { kind: 'trend'; recipeId: RecipeId; source: TrendSource }
   | { kind: 'role'; role: StaffRole }
   | { kind: 'notebook' }
+  | { kind: 'unlock'; key: 'day2' | 'day3' }
   | { kind: 'autoClaim' };
 
 export type MissionKind = 'buy' | 'prep' | 'cook' | 'serve' | 'special' | 'newDish' | 'noLost' | 'profit' | 'stars';

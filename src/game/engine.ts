@@ -5,6 +5,7 @@ import { unlockedRoles } from './progression';
 import { expireTrend, trendSpawnMult } from './trend';
 import { newVendors, resetMarketDay, stockCapacity, stockUnits } from './market';
 import { autoClaimAll, emptyTally, rollMissions } from './missions';
+import { UNLOCK_DAY } from './unlocks';
 import {
   BANKRUPT_AT,
   burnAt,
@@ -173,6 +174,8 @@ function beginMarket(s: GameState, rng: Rng) {
   // Sổ tay chủ quán: nhiệm vụ + món đặc biệt hôm nay (sau cùng để không đổi dãy ngẫu nhiên phía trên).
   s.today = emptyTally();
   rollMissions(s, rng);
+  // Mở dần tính năng (src/game/unlocks.ts): Chú Tư báo đúng sáng hôm đó.
+  for (const u of UNLOCK_DAY) if (s.day === u.day) s.chefQueue.push({ kind: 'unlock', key: u.key });
   if (s.day === 2) s.chefQueue.push({ kind: 'notebook' });
 }
 

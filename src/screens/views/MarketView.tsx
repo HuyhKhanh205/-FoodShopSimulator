@@ -6,6 +6,8 @@ import HelpButton from '../../components/kid/HelpButton';
 import IconTile from '../../components/kid/IconTile';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
 import RiverPath from '../../components/kid/RiverPath';
+import { dayFlow } from '../../game/dayflow';
+import { shows } from '../../game/unlocks';
 import { NotebookButton } from '../../components/notebook/NotebookSheet';
 import { Button, ProgressBar, colors } from '../../components/ui';
 import { levelOf, levelProgress, mysteryRecipes } from '../../game/progression';
@@ -65,6 +67,8 @@ export default function MarketView() {
   const waiting = game.run?.customers.length ?? 0;
   const [showDebt, setShowDebt] = useState(false);
   const targets = useTutorialTargets();
+  /** Đã đủ đồ để mở cửa (đường sông gợi ý 🏮) — nút Mở cửa to lên. */
+  const ready = !midday && (dayFlow(game).next.target === 'market.open' || targets.includes('market.open'));
 
   const menuTiles = (
     <View style={styles.tiles}>
@@ -92,7 +96,13 @@ export default function MarketView() {
         <Text style={styles.heading} numberOfLines={1}>
           {midday ? '🛒 Chợ' : `☀️ Ngày ${game.day}`}
         </Text>
-        {has3D && (
+        {!midday && game.day === 1 && (
+          <Text style={styles.introChip} accessibilityLabel={`Ngày làm quen ${game.day} trên 3: khách ít, không có sự cố`}>
+            🐣 {game.day}/3
+          </Text>
+        )}
+        <View style={{ flex: 1 }} />
+        {has3D && shows(game, 'modeToggle') && (
           <Pressable
             onPress={() => setSceneMode(simple ? '3d' : 'simple')}
             style={styles.modeBtn}
@@ -102,9 +112,10 @@ export default function MarketView() {
             <Text style={styles.modeText}>{simple ? '🌴 3D' : '🔲 Đơn giản'}</Text>
           </Pressable>
         )}
-        <NotebookButton game={game} style={styles.nbBtn} />
+        {shows(game, 'notebook') && <NotebookButton game={game} style={styles.nbBtn} />}
         <HelpButton topic="market" />
       </View>
+      {game.tutorial.done && (
       <RiverPath
         game={game}
         compact
@@ -117,6 +128,7 @@ export default function MarketView() {
           }
         }}
       />
+      )}
       {simple ? (
         <StallGrid game={game} onStall={setStall} deals={deals} />
       ) : (
@@ -136,10 +148,20 @@ export default function MarketView() {
             </TutorialGlow>
           </View>
         )}
-        {!midday && game.day <= 3 && (
-          <View style={styles.intro} accessibilityLabel="Ngày làm quen: khách ít, không có sự cố">
-            <Text style={styles.introText}>🐣 Ngày làm quen {game.day}/3 · 👤 {game.day === 1 ? '·' : game.day === 2 ? '··' : '···'}</Text>
-          </View>
+        {/* 🏮 Mở cửa ở đầu: nổi bật khi đã đủ đồ, còn không thì là nút nhỏ (vẫn bấm được). */}
+        {!midday && (
+          <TutorialGlow on={targets.includes('market.open')} style={ready ? { alignSelf: 'stretch' } : { alignSelf: 'flex-start' }}>
+            <IconTile
+              icon="🏮"
+              label="Mở cửa"
+              name="Mở cửa bán hàng"
+              size={ready ? 'lg' : 'sm'}
+              tone={ready ? 'primary' : 'plain'}
+              onPress={() => act((s, rng) => openShop(s, rng))}
+              disabled={Boolean(game.activeEvent)}
+              style={ready ? styles.openBtn : undefined}
+            />
+          </TutorialGlow>
         )}
         {game.trend && trendHeat(game) > 0 && RECIPES[game.trend.recipeId] && (
           <View style={styles.trend} accessibilityLabel={`Món đang trend: ${RECIPES[game.trend.recipeId].name}`}>
@@ -162,6 +184,7 @@ export default function MarketView() {
         )}
 
         {/* Cấp độ + Bếp thử món */}
+        {shows(game, 'lab') && (
         <View style={styles.levelRow}>
           <Text style={styles.levelText}>⭐ {level}</Text>
           <View style={{ flex: 1 }}>
@@ -176,6 +199,7 @@ export default function MarketView() {
             onPress={() => navigation.navigate('Lab')}
           />
         </View>
+        )}
 
         {/* Món hôm nay: số trên hình = số bát nấu được */}
         {menuTiles}
@@ -185,6 +209,7 @@ export default function MarketView() {
             {expired > 0 && (
               <IconTile icon="🗑️" label="Đồ hỏng" name="Vứt đồ hỏng" badge={expired} tone="danger" onPress={() => act((s) => discardExpired(s))} />
             )}
+            {shows(game, 'manage') && (
             <IconTile
               icon="💳"
               label={game.debt > 0 ? formatMoney(game.debt) : '🎉'}
@@ -193,9 +218,12 @@ export default function MarketView() {
               selected={showDebt}
               onPress={() => setShowDebt((v) => !v)}
             />
-            <IconTile icon="👥" label="Người giúp" name="Nhân viên" badge={game.staff.length} onPress={() => navigation.navigate('Staff')} />
-            <IconTile icon="🔧" label="Nâng cấp" name="Nâng cấp" onPress={() => navigation.navigate('Upgrades')} />
-            <IconTile icon="🧑‍🍳" label="Chủ quán" name="Nhân vật" onPress={() => navigation.navigate('Character')} />
+            )}
+            {(shows(game, 'staff') || game.staff.length > 0) && (
+              <IconTile icon="👥" label="Người giúp" name="Nhân viên" badge={game.staff.length} onPress={() => navigation.navigate('Staff')} />
+            )}
+            {shows(game, 'manage') && <IconTile icon="🔧" label="Nâng cấp" name="Nâng cấp" onPress={() => navigation.navigate('Upgrades')} />}
+            {shows(game, 'manage') && <IconTile icon="🧑‍🍳" label="Chủ quán" name="Nhân vật" onPress={() => navigation.navigate('Character')} />}
             <IconTile icon="🏠" label="Menu" name="Về menu" onPress={() => navigation.navigate('Home')} />
           </View>
         )}
@@ -209,20 +237,6 @@ export default function MarketView() {
               <Button small variant="secondary" label="Trả hết có thể" disabled={game.debt <= 0 || game.money <= 0} onPress={() => act((s) => payDebt(s, s.money))} />
             </View>
           </View>
-        )}
-        {!midday && (
-          <TutorialGlow on={targets.includes('market.open')} style={{ alignSelf: 'stretch' }}>
-          <IconTile
-            icon="🏮"
-            label="Mở cửa"
-            name="Mở cửa bán hàng"
-            size="lg"
-            tone="primary"
-            onPress={() => act((s, rng) => openShop(s, rng))}
-            disabled={Boolean(game.activeEvent)}
-            style={styles.openBtn}
-          />
-          </TutorialGlow>
         )}
       </ScrollView>
       <BasketBar
@@ -246,7 +260,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: 12, paddingBottom: 40, gap: 12 },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 6, gap: 8 },
-  modeBtn: { marginLeft: 'auto', backgroundColor: colors.cream, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 2, borderColor: colors.chunkyShadow },
+  introChip: { fontSize: 13, fontWeight: '900', color: colors.primaryDark, backgroundColor: '#FFF8E1', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: colors.accent, overflow: 'hidden' },
+  modeBtn: { backgroundColor: colors.cream, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 2, borderColor: colors.chunkyShadow },
   modeText: { fontWeight: '900', color: colors.brown },
   nbBtn: { backgroundColor: colors.cream, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 2, borderColor: colors.chunkyShadow, flexDirection: 'row', gap: 4 },
   river: { marginHorizontal: 12, marginTop: 6 },

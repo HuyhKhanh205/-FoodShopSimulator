@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { STAGES, dayFlow } from '../../game/dayflow';
+import { dayFlow, stageSay } from '../../game/dayflow';
 import type { FlowNext } from '../../game/dayflow';
 import type { GameState } from '../../game/types';
 import { colors } from '../ui';
@@ -49,7 +49,7 @@ export default function RiverPath({
     onGo?.(flow.next);
   };
   const cur = flow.stages.find((s) => s.status === 'current')!;
-  const sayOf = (id: string) => STAGES.find((s) => s.id === id)?.say ?? '';
+  const sayOf = (id: (typeof flow.stages)[number]['id']) => stageSay(game, id);
 
   const goBtn = showGo && (
     <Pressable onPress={go} style={({ pressed }) => [styles.go, pressed && { transform: [{ translateY: 2 }] }]} accessibilityRole="button" accessibilityLabel={`Tiếp tục: ${flow.next.label}`}>

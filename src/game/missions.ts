@@ -173,7 +173,8 @@ export function claimMission(s: GameState, id: string): Mission['reward'] | null
 export function autoClaimAll(s: GameState): number {
   let n = 0;
   for (const m of todayMissions(s)) if (claimMission(s, m.id)) n += 1;
-  if (n > 0) s.chefQueue.push({ kind: 'autoClaim' });
+  // Hết ngày 1 thì sổ tay chưa mở: nhận âm thầm, sáng ngày 2 Chú Tư giới thiệu sổ tay luôn.
+  if (n > 0 && s.day > 1) s.chefQueue.push({ kind: 'autoClaim' });
   return n;
 }
 

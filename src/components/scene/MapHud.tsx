@@ -6,6 +6,7 @@ import { useGame, useGameState } from '../../game/GameContext';
 import { formatClock, formatMoney } from '../../game/helpers';
 import HelpButton from '../kid/HelpButton';
 import { colors } from '../ui';
+import { shows } from '../../game/unlocks';
 
 function Pill({ children, tone = 'plain' }: { children: React.ReactNode; tone?: 'plain' | 'warn' | 'bad' }) {
   return <View style={[styles.pill, tone === 'warn' && styles.pillWarn, tone === 'bad' && styles.pillBad]}>{children}</View>;
@@ -36,7 +37,7 @@ export default function MapHud({ canToggle = true, below }: { compact?: boolean;
   const dayRatio = Math.min(1, run.elapsed / DAY_MS);
   const clean = Math.round(game.cleanliness);
   // Món đặc biệt hôm nay (XP ×2).
-  const special = game.missions?.day === game.day && game.missions.special ? RECIPES[game.missions.special] : null;
+  const special = shows(game, 'notebook') && game.missions?.day === game.day && game.missions.special ? RECIPES[game.missions.special] : null;
   const warnings = [
     isPeak(run.elapsed) ? { text: '🔥 Đông khách', tone: 'warn' as const } : null,
     run.elapsed < run.powerOutUntil ? { text: '🔌 Cúp điện', tone: 'bad' as const } : null,
@@ -47,12 +48,12 @@ export default function MapHud({ canToggle = true, below }: { compact?: boolean;
     special ? { text: `🌟 ${special.emoji} ×2`, tone: 'warn' as const } : null,
   ].filter(Boolean) as { text: string; tone: 'warn' | 'bad' }[];
   // Hai tin mới nhất, hiện trong 6 giây.
-  const fresh = run.log.filter((l) => run.elapsed - l.t < 6000).slice(0, 2);
+  const fresh = run.log.filter((l) => run.elapsed - l.t < 6000).slice(0, 1);
 
   return (
     <View pointerEvents="box-none" style={styles.wrap}>
       <View style={styles.strip}>
-        <View style={styles.stats}>
+        <View style={[styles.stats, !canToggle && { paddingRight: 84 }]}>
           <View style={styles.stat} accessibilityLabel={`Giờ ${formatClock(run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)}`}>
             <Text style={styles.statText}>🕐 {formatClock(run.elapsed, DAY_MS, OPEN_HOUR, CLOSE_HOUR)}</Text>
             <View style={styles.dayTrack}>
@@ -63,9 +64,17 @@ export default function MapHud({ canToggle = true, below }: { compact?: boolean;
             💰 {formatMoney(game.money)}
           </Text>
           <Text style={[styles.statText, styles.stat, clean < 40 && { color: colors.bad }]} numberOfLines={1}>
-            <Text style={{ color: colors.accent }}>★</Text> {game.reputation.toFixed(1)} · 🧽 {clean}%
+            <Text style={{ color: colors.accent }}>★</Text> {game.reputation.toFixed(1)}
+            {shows(game, 'clean') ? ` · 🧽 ${clean}%` : ''}
           </Text>
         </View>
+        {!canToggle && (
+          <View style={[styles.controls, { position: 'absolute', right: 8, top: 5 }]}>
+            <IconButton size={36} label={paused ? '▶️' : '⏸️'} active={paused} onPress={() => setPaused(!paused)} />
+            <HelpButton topic="shop" style={{ width: 36, height: 36, borderRadius: 18 }} />
+          </View>
+        )}
+        {canToggle && (
         <View style={styles.controls}>
           {canToggle ? (
             <View style={styles.segment} accessibilityRole="radiogroup">
@@ -88,6 +97,7 @@ export default function MapHud({ canToggle = true, below }: { compact?: boolean;
           <IconButton size={btn} label={paused ? '▶️' : '⏸️'} active={paused} onPress={() => setPaused(!paused)} />
           <HelpButton topic="shop" style={{ width: btn, height: btn, borderRadius: btn / 2 }} />
         </View>
+        )}
       </View>
       {below}
       {warnings.length > 0 && (
