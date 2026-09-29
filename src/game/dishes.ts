@@ -138,6 +138,9 @@ export function syncDishes(s: GameState) {
  */
 export function resolveCombo(s: GameState, ids: IngredientId[]): { recipe: Recipe; noGarnish: boolean } {
   const set = [...new Set(ids)];
+  // Đúng tổ hợp là món chuẩn hoặc món đang bán (vd "Phở rau" khi menu có cả "Phở rau hành") → nấu đúng món đó.
+  const exact = dishFromCombo(set);
+  if (BASE_BY_KEY.has(comboKey(set)) || s.unlockedRecipes.includes(exact.id)) return { recipe: exact, noGarnish: false };
   if (!set.includes('hanh') && set.length >= 1) {
     const withH = dishFromCombo([...set, 'hanh']);
     if (withH.garnish === 'hanh' && (withH.kind === undefined || withH.kind === 'chuan' || s.unlockedRecipes.includes(withH.id))) {
@@ -153,4 +156,18 @@ export function chefComment(r: Recipe): string {
   if (kind === 'chuan') return 'Chuẩn vị! Khách nào cũng mê.';
   if (kind === 'la') return 'Lạ miệng đó! Khách có người thích, có người chê.';
   return 'Ối trời... món này quái dị quá! Khách dễ phàn nàn — nhưng biết đâu lại thành trend 🔥';
+}
+
+/**
+ * Món đã nấu có giao được cho đơn `orderId` không: đúng món, hoặc món "X + hành" nấu không hành
+ * cho đơn "X" (cùng nguyên liệu khi bỏ hành — bản lưu cũ có thể còn món nấu lệch như vậy).
+ */
+export function dishMatches(orderId: RecipeId, dish: { recipeId: RecipeId; noGarnish?: boolean }): boolean {
+  if (dish.recipeId === orderId) return true;
+  if (!dish.noGarnish) return false;
+  const made = RECIPES[dish.recipeId];
+  const order = RECIPES[orderId];
+  if (!made || !order || 'hanh' in order.ingredients) return false;
+  const withoutH = (Object.keys(made.ingredients) as IngredientId[]).filter((i) => i !== 'hanh');
+  return comboKey(withoutH) === comboKey(Object.keys(order.ingredients) as IngredientId[]);
 }

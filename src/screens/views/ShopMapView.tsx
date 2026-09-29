@@ -340,12 +340,12 @@ export default function ShopMapView() {
   const flow = dayFlow(game);
   const guideId = stationOf(flow.next)?.id ?? null;
   const nextAble = Boolean(flow.next.station || flow.next.target);
-  // Bong bóng Chú Tư đứng trên thì dời xuống dưới nút 👉 Làm tiếp.
+  // Bong bóng Chú Tư đứng trên thì dời xuống dưới nhãn gợi ý.
   useEffect(() => {
     tutorialUi.setTopInset(fp ? 0 : 42);
     return () => tutorialUi.setTopInset(0);
   }, [fp]);
-  // Nút 👉 Làm tiếp to nằm ngay dưới HUD (có cả lúc Chú Tư đang dẫn ngày đầu).
+  // Nhãn gợi ý nằm ngay dưới HUD (có cả lúc Chú Tư đang dẫn ngày đầu).
   const river = true;
   const toggle = has3D && shows(game, 'modeToggle');
   const RIVER_H = river ? 42 : 0;

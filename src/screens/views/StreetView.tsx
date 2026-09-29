@@ -51,7 +51,7 @@ export default function StreetView() {
     else setBank(true);
   };
 
-  // 👉 Làm tiếp: giờ bán thì về quán, chưa mở cửa thì ra chợ mua đồ.
+  // Nhãn gợi ý: giờ bán thì về quán, chưa mở cửa thì ra chợ mua đồ.
   const goal: StreetPlaceId = open ? 'shop' : 'market';
   const goalPlace = STREET_PLACES.find((p) => p.id === goal)!;
   const sceneH = Math.max(260, height - 310);

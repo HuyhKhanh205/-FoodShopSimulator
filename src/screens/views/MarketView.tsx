@@ -81,7 +81,7 @@ export default function MarketView() {
   /** Đã đủ đồ để mở cửa (đường sông gợi ý 🏮) — nút Mở cửa to lên. */
   const ready = !midday && (dayFlow(game).next.target === 'market.open' || targets.includes('market.open'));
   const quick = shows(game, 'quickBuy');
-  // Nút 👉 Làm tiếp: mua theo menu → 💳 trả tiền → 🏮 mở cửa (giữa giờ bán: 🏃 về quán).
+  // Nhãn gợi ý: mua theo menu → 💳 trả tiền → 🏮 mở cửa (giữa giờ bán: 🏃 về quán).
   // Lúc Chú Tư dẫn đi chào các sạp / mua tay ngày đầu thì ẩn, kẻo lẫn.
   const step = currentStep(game);
   const tutMarket = Boolean(step && (step.id === 'hello' || step.id === 'buy' || step.id === 'buy-hand' || step.id.startsWith('meet-')));

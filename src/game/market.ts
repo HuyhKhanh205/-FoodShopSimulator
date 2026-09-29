@@ -175,17 +175,17 @@ export function vendorCall(s: GameState, vendor: VendorId, k: number): string {
 
 /** Người bán chào chủ quán mới (buổi chợ đầu tiên, Chú Tư dẫn đi giới thiệu). */
 export const VENDOR_GREET: Record<VendorId, string> = {
-  thit: 'Chào con! Cần thịt tươi cứ ghé cô nha! 👋',
-  bot: 'Ờ chào cháu! Trứng gà ta, bánh mì nóng giòn nè! 👋',
-  rau: 'Chào con nghen! Hành, rau dì mới hái sáng nay! 👋',
-  nuoc: 'Chào chủ quán mới! Trà, cà phê, đá chú có đủ hết! 👋',
+  thit: 'Chào con! Cần thịt tươi cứ ghé cô nha!',
+  bot: 'Ờ chào cháu! Trứng gà ta, bánh mì nóng giòn nè!',
+  rau: 'Chào con nghen! Hành, rau dì mới hái sáng nay!',
+  nuoc: 'Chào chủ quán mới! Trà, cà phê, đá chú có đủ hết!',
 };
 
 /** Chủ quán chào lại người bán. */
 export function ownerGreet(v: VendorId): string {
   const who = VENDOR_MAP[v].name;
   const lower = who.charAt(0).toLowerCase() + who.slice(1);
-  return `Dạ con chào ${lower} ạ! 👋`;
+  return `Dạ con chào ${lower} ạ!`;
 }
 
 /** Chú Tư giới thiệu người bán (câu cố định, có giọng đọc). */

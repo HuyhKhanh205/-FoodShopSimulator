@@ -62,7 +62,7 @@ const prepSay = (s: Pick<GameState, 'starter'>) => {
   return `Đồ có 🔪 phải thái trước: ${list.map((i) => INGREDIENTS[i].emoji).join(' + ')}. Chạm từng ô bên dưới, rồi chạm thớt thật nhanh!`;
 };
 const cookSay = (s: Pick<GameState, 'starter'>) => `Giỏi! Bấm nút 🔥 Bếp để qua màn bếp, chạm ${firstRecipe(s).emoji} để bỏ đồ vào nồi, rồi bấm 🔥 Nấu.`;
-const serveSay = (s: Pick<GameState, 'starter'>) => `Bấm 🍽️➡ góc trên để ra quán, rồi chạm vào bàn khách đang chờ ${firstRecipe(s).emoji}.`;
+const serveSay = (s: Pick<GameState, 'starter'>) => `Bấm nút 🍽️ góc trên để ra quán, rồi chạm vào bàn khách đang chờ ${firstRecipe(s).emoji}.`;
 
 /** Câu hiển thị của một bước. */
 export function stepSay(step: TutorialStep, s: GameState): string {
@@ -82,7 +82,7 @@ const servedSomething = (s: GameState) =>
 export const TUTORIAL: TutorialStep[] = [
   {
     id: 'hello',
-    say: 'Chào chủ quán mới! Chú là Chú Tư bếp trưởng 👨‍🍳. Chú sẽ chỉ con bán món đầu tiên nhé!',
+    say: 'Chào chủ quán mới! Chú là Chú Tư bếp trưởng. Chú sẽ chỉ con bán món đầu tiên nhé!',
     at: 'bottom',
     tapToContinue: true,
     targets: () => [],
@@ -139,7 +139,7 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     id: 'take',
-    say: 'Chạm vào chảo để đảo cho mau chín. Chín ✅ thì bấm 🍽️ Lấy!',
+    say: 'Chạm vào chảo để đảo cho mau chín. Chín rồi thì bấm 🍽️ Lấy!',
     at: 'top',
     targets: () => ['kitchen.takeout'],
     done: (s) => Boolean(s.run && s.run.carrying.length > 0) || servedSomething(s),
@@ -153,7 +153,7 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     id: 'great',
-    say: 'Tuyệt vời! 🎉 Cứ thế phục vụ khách tới tối nhé. Phục vụ nhiều sẽ lên cấp ⭐, có nguyên liệu mới để sáng tạo món!',
+    say: 'Tuyệt vời! Cứ thế phục vụ khách tới tối nhé. Phục vụ nhiều sẽ lên cấp, có nguyên liệu mới để sáng tạo món!',
     at: 'bottom',
     tapToContinue: true,
     targets: () => [],
@@ -183,33 +183,33 @@ export function skipTutorial(s: GameState) {
 
 /** Câu Chú Tư giới thiệu nút mới sáng ngày 2 / 3 (có giọng đọc). */
 export const UNLOCK_SAY = {
-  day2: '🔓 Quen chợ rồi! Từ nay bấm 🧾 Mua theo menu là giỏ tự đủ đồ. Mở thêm 📒 Sổ tay, 📦 Kho, 🧽 Lau và 📖 Sổ món nha con!',
-  day3: '🔓 Mở thêm 🚶 Ra phố, 🔧 Nâng cấp (mua thêm bàn, bếp), 🧱 Bố trí, 📋 Bảng và 👥 Người giúp. Từ từ khám phá nha!',
+  day2: 'Quen chợ rồi! Từ nay bấm 🧾 Mua theo menu là giỏ tự đủ đồ. Mở thêm 📒 Sổ tay, 📦 Kho, 🧽 Lau và 📖 Sổ món nha con!',
+  day3: 'Mở thêm 🚶 Ra phố, 🔧 Nâng cấp (mua thêm bàn, bếp), 🧱 Bố trí, 📋 Bảng và 👥 Người giúp. Từ từ khám phá nha!',
 };
 
 /** Câu đầu bếp nói cho một ghi chú (lên cấp, món mới...). */
 export function noteText(n: ChefNote): string {
   if (n.kind === 'levelUp') {
     const items = ingredientsOfLevel(n.level).map((i) => INGREDIENTS[i].emoji).join(' ');
-    return `⭐ Lên cấp ${n.level}! Mở khoá ${items}. Vào 📖 Sổ món thử kết hợp nguyên liệu tạo món mới nhé!`;
+    return `Lên cấp ${n.level}! Mở khoá ${items}. Vào 📖 Sổ món thử kết hợp nguyên liệu tạo món mới nhé!`;
   }
   if (n.kind === 'newDish') {
     const r = RECIPES[n.recipeId];
-    return `🎉 ${r.emoji} ${r.name} lên menu rồi! Hôm nay khách sẽ gọi món mới nhiều hơn đó.`;
+    return `${r.emoji} ${r.name} lên menu rồi! Hôm nay khách sẽ gọi món mới nhiều hơn đó.`;
   }
   if (n.kind === 'trend') {
     const r = RECIPES[n.recipeId];
     const why = n.source === 'viral' ? 'Khách quay clip lên mạng' : n.source === 'reviewer' ? 'Food reviewer khen' : 'Món mới ra mắt gây sốt';
-    return `🔥 ${why}: ${r.emoji} ${r.name} thành TREND! 3 ngày tới giá +20%, khách đông gấp rưỡi. Nấu nhiều vào nhé!`;
+    return `${why}: ${r.emoji} ${r.name} thành TREND! 3 ngày tới giá +20%, khách đông gấp rưỡi. Nấu nhiều vào nhé!`;
   }
   if (n.kind === 'role') {
-    const role = n.role === 'prep' ? '🔪 phụ bếp' : n.role === 'cook' ? '👨‍🍳 đầu bếp' : '🍽️ phục vụ';
-    return `👥 Giờ con thuê được ${role} rồi! Có cả 🎓 sinh viên giá rẻ — nhưng coi chừng các em vụng về nha.`;
+    const role = n.role === 'prep' ? 'phụ bếp' : n.role === 'cook' ? 'đầu bếp' : 'phục vụ';
+    return `Giờ con thuê được ${role} ở nút 👥 Người rồi! Có cả sinh viên giá rẻ — nhưng coi chừng các em vụng về nha.`;
   }
   if (n.kind === 'news') return n.text;
   if (n.kind === 'unlock')
     return n.key === 'day2' ? UNLOCK_SAY.day2 : UNLOCK_SAY.day3;
-  if (n.kind === 'notebook') return '📒 Mở Sổ tay coi việc hôm nay nè! Xong việc có tiền, 🎟️ vé thưởng, việc khó còn có ⭐ sao hy vọng. Tối về nhớ viết nhật ký nha!';
-  if (n.kind === 'autoClaim') return '🎁 Hôm qua con quên nhận thưởng nhiệm vụ, chú bỏ vô túi cho con rồi đó!';
+  if (n.kind === 'notebook') return 'Mở 📒 Sổ tay coi việc hôm nay nè! Xong việc có tiền, vé thưởng, việc khó còn có sao hy vọng. Tối về nhớ viết nhật ký nha!';
+  if (n.kind === 'autoClaim') return 'Hôm qua con quên nhận thưởng nhiệm vụ, chú bỏ vô túi cho con rồi đó!';
   return 'Chọn 2–4 nguyên liệu bỏ vào nồi rồi bấm 🧪 Nấu thử!';
 }

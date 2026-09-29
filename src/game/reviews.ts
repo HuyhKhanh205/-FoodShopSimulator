@@ -155,7 +155,7 @@ export function replyHints(stars: number): string[] {
 }
 
 /** Câu Chú Tư lần đầu quán bị chê (có giọng đọc). */
-export const REPLY_TIP = '💬 Có khách chê kìa! Kéo xuống ⭐ Đánh giá, bấm ✏️ Trả lời: xin lỗi, nói lý do, mời khách quay lại nha con!';
+export const REPLY_TIP = 'Có khách chê kìa! Kéo xuống phần Đánh giá, bấm ✏️ Trả lời: xin lỗi, nói lý do, mời khách quay lại nha con!';
 
 /** Hết ngày: lần đầu có đánh giá ≤ 3★ thì Chú Tư nhắc cách trả lời. */
 export function queueReplyTip(s: GameState) {

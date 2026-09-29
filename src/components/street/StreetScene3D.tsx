@@ -99,7 +99,7 @@ export default function StreetScene3D({
   onEnter: (id: StreetPlaceId) => void;
   /** Yêu cầu đi bộ tới một nơi (từ hàng nút phía trên); `seq` đổi thì đi. */
   walkTo?: { id: StreetPlaceId; seq: number } | null;
-  /** Nơi cần tới tiếp theo (nút 👉 Làm tiếp): mũi tên vàng trước cửa. */
+  /** Nơi cần tới tiếp theo (nhãn gợi ý việc tiếp theo): mũi tên vàng trước cửa. */
   guide?: StreetPlaceId | null;
 }) {
   const { quality } = useSettings();

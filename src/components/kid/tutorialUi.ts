@@ -16,7 +16,7 @@ interface UiState {
   flowGlow: { target: string; until: number } | null;
   /** Phần đáy màn hình đang có nút quan trọng (vd thanh giỏ + 🏮 Mở cửa ở chợ): bong bóng Chú Tư đứng trên phần này. */
   bottomInset: number;
-  /** Phần trên cùng đang có nút 👉 Làm tiếp: bong bóng Chú Tư (đứng trên) dời xuống dưới nút. */
+  /** Phần trên cùng đang có nhãn gợi ý việc tiếp theo: bong bóng Chú Tư (đứng trên) dời xuống dưới nút. */
   topInset: number;
   /** Chợ: giỏ đang có gì (chưa trả tiền) + sạp đang mở — để hướng dẫn mua tay chỉ đúng chỗ. */
   basket: Record<string, number>;

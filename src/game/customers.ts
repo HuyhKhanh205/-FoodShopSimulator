@@ -1,3 +1,4 @@
+import { dishMatches } from './dishes';
 import { addXp } from './progression';
 import { orderWeight, startTrend, trendPriceMult, trendRepMult } from './trend';
 import { CUSTOMER_EMOJI, FIRST_NAMES, RECIPES, REGULARS, REVIEW_TEXTS } from './data';
@@ -268,14 +269,15 @@ export function serveDish(s: GameState, dishId: string, customerId: string, rng:
   const who = by ? `${by.name} mang` : 'Bạn mang';
   const recipe = RECIPES[dish.recipeId];
 
-  const candidates = c.items.filter((i) => !i.served && i.recipeId === dish.recipeId);
+  const candidates = c.items.filter((i) => !i.served && dishMatches(i.recipeId, dish));
   if (candidates.length === 0) {
     c.patience -= c.maxPatience * 0.2;
     s.report.wrongDishes += 1;
     log(s, `🙅 ${who} ${recipe.name} nhầm bàn — ${c.name}: "Tôi đâu có gọi món này!"`, 'bad');
     return false;
   }
-  const target = candidates.find((i) => i.noGarnish === dish.noGarnish) ?? candidates[0];
+  const exactHit = candidates.filter((i) => i.recipeId === dish.recipeId);
+  const target = exactHit.find((i) => i.noGarnish === dish.noGarnish) ?? exactHit[0] ?? candidates[0];
   run.pass = run.pass.filter((d) => d.id !== dish.id);
   run.carrying = run.carrying.filter((id) => id !== dish.id);
 

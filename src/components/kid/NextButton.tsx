@@ -4,8 +4,11 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { colors } from '../ui';
 import { tutorialUi } from './tutorialUi';
 
+/** Bỏ icon đầu câu (vd "🔪 Thái 🧅 hành lá" → "Thái 🧅 hành lá"); giữ icon món / nguyên liệu trong câu. */
+export const plain = (label: string) => label.replace(/^\p{Extended_Pictographic}[\uFE0F\u200D\p{Extended_Pictographic}]*\s+/u, '');
+
 /**
- * Nhãn gợi ý nhỏ "👉 việc tiếp theo" (từ `dayFlow` / `screenNext`): chỉ NÓI việc cần làm — người chơi tự làm.
+ * Nhãn gợi ý nhỏ "việc tiếp theo" (từ `dayFlow` / `screenNext`): chỉ NÓI việc cần làm — người chơi tự làm.
  * Chạm vào thì viền vàng chỗ cần bấm (`target`), không tự làm thay. Đứng yên lâu thì nhún nhẹ để nhắc.
  */
 export default function NextButton({
@@ -54,11 +57,10 @@ export default function NextButton({
         onPress={press}
         style={({ pressed }) => [styles.pill, disabled && styles.off, pressed && { opacity: 0.8 }]}
         accessibilityRole="button"
-        accessibilityLabel={`Việc tiếp theo: ${label}`}
+        accessibilityLabel={`Việc tiếp theo: ${plain(label)}`}
       >
         <Text style={[styles.text, disabled && { color: colors.brown }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-          {disabled ? '' : '👉 '}
-          {label}
+          {plain(label)}
         </Text>
       </Pressable>
     </Animated.View>

@@ -4,7 +4,7 @@ import { dishNeeds, suggestChop, usableQty } from './helpers';
 import type { GameState, IngredientId, RecipeId, Station } from './types';
 
 /**
- * Nút "👉 Làm tiếp" trong bếp (thớt + bếp, hoặc quầy pha chế): một việc cần làm ngay, bấm là làm.
+ * Nhãn gợi ý việc tiếp theo trong bếp (thớt + bếp, hoặc quầy pha chế): một việc cần làm ngay, bấm là làm.
  * Thứ tự: lấy món chín → mang món cho khách → thái nhanh (đang thái) → thái đồ còn thiếu → nấu món khách gọi → khuấy → chờ.
  */
 export type KitchenAction =

@@ -12,15 +12,15 @@ export type StageId = 'market' | 'prep' | 'cook' | 'serve' | 'summary';
 export type StageStatus = 'done' | 'current' | 'todo';
 
 export const STAGES: { id: StageId; icon: string; label: string; say: string }[] = [
-  { id: 'market', icon: '🛶', label: 'Chợ nổi', say: '🛶 Ra chợ mua đồ theo menu, rồi bấm 🏮 Mở cửa nha!' },
-  { id: 'prep', icon: '🔪', label: 'Sơ chế', say: '🔪 Đồ có dấu dao phải thái trước. Vào thớt sơ chế sẵn cho nhanh nè!' },
-  { id: 'cook', icon: '🍳', label: 'Nấu ăn', say: '🍳 Khách đang chờ! Vào bếp bỏ nguyên liệu vô nồi rồi nấu liền.' },
-  { id: 'serve', icon: '🍽️', label: 'Phục vụ', say: '🍽️ Món chín rồi! Cầm món mang ra đúng bàn khách nha.' },
-  { id: 'summary', icon: '🌙', label: 'Tổng kết', say: '🌙 Hết ngày rồi! Nhận thưởng nhiệm vụ, viết nhật ký rồi sang ngày mới.' },
+  { id: 'market', icon: '🛶', label: 'Chợ nổi', say: 'Ra chợ mua đồ theo menu, rồi bấm 🏮 Mở cửa nha!' },
+  { id: 'prep', icon: '🔪', label: 'Sơ chế', say: 'Đồ có dấu dao phải thái trước. Vào thớt sơ chế sẵn cho nhanh nè!' },
+  { id: 'cook', icon: '🍳', label: 'Nấu ăn', say: 'Khách đang chờ! Vào bếp bỏ nguyên liệu vô nồi rồi nấu liền.' },
+  { id: 'serve', icon: '🍽️', label: 'Phục vụ', say: 'Món chín rồi! Cầm món mang ra đúng bàn khách nha.' },
+  { id: 'summary', icon: '🌙', label: 'Tổng kết', say: 'Hết ngày rồi! Nhận thưởng nhiệm vụ, viết nhật ký rồi sang ngày mới.' },
 ];
 
 /** Câu gợi ý tổng kết khi chưa có sổ tay (ngày 1). */
-export const SUMMARY_FIRST_SAY = '🌙 Hết ngày rồi! Xem quán lời bao nhiêu, rồi bấm ☀️ Ngày mới nha.';
+export const SUMMARY_FIRST_SAY = 'Hết ngày rồi! Xem quán lời bao nhiêu, rồi bấm ☀️ Ngày mới nha.';
 
 /** Câu Chú Tư đọc cho một bến (tổng kết ngày 1 không nhắc tới sổ tay chưa mở). */
 export function stageSay(s: GameState, id: StageId): string {

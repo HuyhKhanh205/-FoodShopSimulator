@@ -222,7 +222,7 @@ export interface SceneProps {
   arrange?: boolean;
   /** Nhân viên đang chọn trong bảng 👥 (vòng vàng dưới chân). */
   selectedStaff?: string | null;
-  /** Trạm cần tới tiếp theo (nút 👉 Làm tiếp): mũi tên vàng nảy trên đầu. */
+  /** Trạm cần tới tiếp theo (nhãn gợi ý việc tiếp theo): mũi tên vàng nảy trên đầu. */
   guide?: string | null;
 }
 

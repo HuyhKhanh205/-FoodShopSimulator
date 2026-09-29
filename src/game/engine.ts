@@ -1,6 +1,6 @@
 import { answerEffect, tickChat } from './chat';
 import { introFactor } from './customers';
-import { registerDish, resolveCombo } from './dishes';
+import { dishMatches, registerDish, resolveCombo } from './dishes';
 import { releaseHeldXp, unlockedRoles } from './progression';
 import { expireTrend, trendSpawnMult } from './trend';
 import { newVendors, resetMarketDay, stockCapacity, stockUnits } from './market';
@@ -551,7 +551,7 @@ export function autoServeCarried(s: GameState, customerIds: string[], rng: Rng):
       if (!c) break;
       const dish = run.carrying
         .map((id) => run.pass.find((d) => d.id === id))
-        .find((d) => d && d.quality !== 'burnt' && c.items.some((i) => !i.served && i.recipeId === d.recipeId && (!i.noGarnish || d.noGarnish)));
+        .find((d) => d && d.quality !== 'burnt' && c.items.some((i) => !i.served && dishMatches(i.recipeId, d) && (!i.noGarnish || d.noGarnish)));
       if (!dish) break;
       serveDish(s, dish.id, cid, rng);
       served += 1;

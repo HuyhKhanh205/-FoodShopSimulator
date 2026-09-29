@@ -3,7 +3,7 @@ import type { Group, Mesh } from 'three';
 import { useFrame } from '../../three/fiber';
 
 /**
- * Mũi tên vàng nảy lên xuống + vòng sáng dưới sàn: chỉ chỗ cần tới tiếp theo (theo nút 👉 Làm tiếp).
+ * Mũi tên vàng nảy lên xuống + vòng sáng dưới sàn: chỉ chỗ cần tới tiếp theo (theo nhãn gợi ý việc tiếp).
  * (x, z): tâm chỗ cần chỉ; `r`: bán kính vòng; `h`: độ cao đầu mũi tên.
  */
 export default function GuideArrow({ x, z, r = 0.8, h = 2.1 }: { x: number; z: number; r?: number; h?: number }) {

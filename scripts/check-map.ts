@@ -7,6 +7,7 @@ import * as MG from '../src/game/migrate';
 import * as U from '../src/game/unlocks';
 import * as RV from '../src/game/reviews';
 import * as KF from '../src/game/kitchenFlow';
+import * as DI from '../src/game/dishes';
 type UF = U.UiFeature;
 import { VOICE } from '../src/assets/voice.generated';
 import { speechText, voiceLines } from '../src/game/voice';
@@ -1396,6 +1397,37 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
     g.activeEvent = null;
   }
   check(exited && g.run!.carrying.length > 0 && ['prep', 'cook', 'take', 'exit'].every((k) => seen.includes(k)), `bếp: chỉ bấm Làm tiếp là thái → nấu → lấy → mang ra (${seen.join(' → ')})`);
+}
+
+// ================= Món "X" và "X + hành" cùng trong menu: nấu đúng món khách gọi =================
+{
+  const g = E.newGame(seededRng(130));
+  g.activeEvent = null;
+  const a = DI.dishFromCombo(['banh_pho', 'rau']);
+  const b = DI.dishFromCombo(['banh_pho', 'rau', 'hanh']);
+  for (const r of [a, b]) {
+    DI.registerDish(g, r);
+    g.unlockedRecipes.push(r.id);
+  }
+  check(DI.resolveCombo(g, Object.keys(a.ingredients) as IngredientId[]).recipe.id === a.id, `chạm ô ${a.name} → nấu đúng ${a.name} (không thành ${b.name})`);
+  check(DI.resolveCombo(g, Object.keys(b.ingredients) as IngredientId[]).recipe.id === b.id, `chạm ô ${b.name} → đúng ${b.name}`);
+  const t = E.newGame(seededRng(131));
+  const nh = DI.resolveCombo(t, ['banh_mi', 'trung', 'pate']);
+  check(nh.recipe.id === 'banh_mi_trung' && nh.noGarnish, 'bỏ hành khỏi nồi bánh mì trứng → vẫn ra Bánh mì trứng không hành');
+  check(DI.dishMatches(a.id, { recipeId: b.id, noGarnish: true }) && !DI.dishMatches(a.id, { recipeId: b.id, noGarnish: false }), 'món lệch cũ (X + hành, không hành) giao được cho đơn X');
+  // Giao thật: khách gọi Phở rau, nấu ra đúng món, mang tới bàn là nhận.
+  for (const i of ['banh_pho', 'rau'] as IngredientId[]) E.buy(g, i, 5);
+  E.openShop(g, seededRng(132));
+  g.activeEvent = null;
+  const c = { id: 'cx', name: 'Khách thử', emoji: '🙂', kind: 'normal', size: 1, items: [{ recipeId: a.id, served: false }], patience: 1e9, maxPatience: 1e9, arrivedAt: 0, tableIndex: 0 } as unknown as NonNullable<typeof g.run>['customers'][number];
+  g.run!.customers.push(c);
+  g.run!.prepped.rau = 5;
+  const slot = g.run!.slots.find((x) => x.station === 'stove')!;
+  const err = E.playerCookCombo(g, Object.keys(a.ingredients) as IngredientId[], slot.id);
+  slot.job!.progress = slot.job!.cookTime;
+  E.playerTakeOut(g, slot.id, true);
+  const served = err === null && E.autoServeCarried(g, ['cx'], seededRng(133)) === 1;
+  check(served, `khách gọi ${a.name}: nấu xong mang ra, khách nhận món`);
 }
 
 process.exit(failed ? 1 : 0);

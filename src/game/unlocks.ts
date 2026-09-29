@@ -4,7 +4,7 @@ import type { GameState } from './types';
 
 /**
  * Lịch mở tính năng (3 ngày đầu ẩn bớt nút cho dễ chơi):
- * – ngày 1: chỉ 🛒 Chợ + 👉 Làm tiếp (ở chợ: sạp, giỏ, 💳, 🏮);
+ * – ngày 1: chỉ 🛒 Chợ + nhãn gợi ý (ở chợ: sạp, giỏ, 💳, 🏮);
  * – ngày 2: 📒 Sổ tay, 🧽 Lau, 📦 Kho, 🧾 Mua theo menu, 📋 ngăn Thêm, 📖 Sổ món;
  * – ngày 3: 🚶 Ra phố, 👥 Người, 📋 Bảng, 🧱 Bố trí, 🔲 Đổi chế độ, 🔧 Nâng cấp, 🧑‍🍳 Chủ quán, 💳 Nợ.
  * Một bảng duy nhất để chỉnh.
