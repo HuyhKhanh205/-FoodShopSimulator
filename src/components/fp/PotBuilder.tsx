@@ -31,7 +31,10 @@ export function usePotBuilder({
   slotIds,
   act,
   targets,
+  noChop = false,
 }: {
+  /** Thái chỉ làm ở màn Sơ chế: ở đây không có nút thái. */
+  noChop?: boolean;
   game: GameState;
   station: Station;
   /** Các bếp / ly ở màn này; 🔥 Nấu tự chọn cái trống đầu tiên. */
@@ -49,7 +52,7 @@ export function usePotBuilder({
   const freeSlot = slotIds.find((id) => !run.slots.find((x) => x.id === id)?.job);
   const preview = pot.length ? resolveCombo(game, pot) : null;
   const missing = pot.filter((i) => available(game, i) < 1);
-  const toChop = missing.find((i) => INGREDIENTS[i].needsPrep && usableQty(game, i) > 0);
+  const toChop = noChop ? undefined : missing.find((i) => INGREDIENTS[i].needsPrep && usableQty(game, i) > 0);
   const wrongStation = preview && preview.recipe.station !== station;
   const inMenu = preview ? game.unlockedRecipes.includes(preview.recipe.id) : false;
   const kind = preview?.recipe.kind ?? 'chuan';
@@ -128,7 +131,7 @@ export function usePotBuilder({
               {'  '}
               {DISH_KIND_LABEL[kind]}
               {inMenu ? '' : ' · ⚠️ ngoài menu'}
-              {missing.length ? ` · 🔪 thái ${missing.map((m) => INGREDIENTS[m].emoji).join('')} trước` : ''}
+              {missing.length ? ` · 🔪 thái ${missing.map((m) => INGREDIENTS[m].emoji).join('')} trước${noChop ? ' ở màn Sơ chế' : ''}` : ''}
               {wrongStation ? (preview.recipe.station === 'counter' ? ' · 🧋 làm ở quầy' : ' · 🔥 nấu trên bếp') : ''}
             </Text>
           </Text>
@@ -176,10 +179,10 @@ export function usePotBuilder({
           const ready = available(game, id);
           const raw = usableQty(game, id);
           // Cần thái mà chưa có phần thái sẵn: chạm = thái.
-          const mustChop = ing.needsPrep && ready < 1 && !pot.includes(id);
+          const mustChop = !noChop && ing.needsPrep && ready < 1 && !pot.includes(id);
           const choppingThis = run.playerPrep?.ingredientId === id;
           // Đã có phần thái sẵn: chạm ô = bỏ vào nồi; nút 🔪+ nhỏ bên dưới = thái thêm (thái được nhiều lần).
-          const canChopMore = ing.needsPrep && !mustChop && raw > 0;
+          const canChopMore = !noChop && ing.needsPrep && !mustChop && raw > 0;
           return (
             <View key={id} style={styles.ingCol}>
               <TutorialGlow on={targets.includes(`kitchen.prep:${id}`) && !toChop}>

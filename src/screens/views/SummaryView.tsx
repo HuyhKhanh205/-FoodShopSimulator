@@ -57,15 +57,7 @@ export default function SummaryView() {
           <HelpButton topic="summary" />
         </View>
         {!game.gameOver && (
-          <NextButton
-            label={next.label}
-            style={{ marginBottom: 12 }}
-            onPress={() => {
-              if (next.target === 'summary.missions') act((s) => missions.forEach((m) => void claimMission(s, m.id)));
-              else if (next.target === 'summary.diary') tutorialUi.openNotebook('diary');
-              else act((s, rng) => nextDay(s, rng));
-            }}
-          />
+          <NextButton label={next.label} target={next.target} style={{ marginBottom: 12 }} />
         )}
 
         {game.gameOver === 'bankrupt' && (

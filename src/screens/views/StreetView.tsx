@@ -68,11 +68,7 @@ export default function StreetView() {
           </Text>
         )}
       </View>
-      <NextButton
-        label={`${goalPlace.emoji} ${goalPlace.verb}`}
-        style={{ marginHorizontal: 10, marginBottom: 6 }}
-        onPress={() => (simple ? enter(goal) : setWalkTo({ id: goal, seq: Date.now() }))}
-      />
+      <NextButton label={`${goalPlace.emoji} ${goalPlace.verb}`} style={{ marginBottom: 6 }} />
       {!simple && (
         <View style={styles.places}>
           {STREET_PLACES.map((p) => (

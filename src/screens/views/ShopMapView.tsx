@@ -326,7 +326,7 @@ export default function ShopMapView() {
     [has3D, arrive]
   );
   const openUpgrades = () => navigation.navigate('Upgrades' as never);
-  /** Đường sông "▶ Tiếp tục": đi tới trạm cần làm (bàn đang chờ món trên tay, thớt, bếp, quầy ra món). */
+  /** Trạm cần tới tiếp theo (mũi tên 3D): bàn đang chờ món trên tay, thớt, bếp, quầy ra món. */
   const stationOf = useCallback(
     (next: FlowNext) =>
       !next.station
@@ -336,27 +336,19 @@ export default function ShopMapView() {
           : layout.stations.find((x) => x.id === next.station && x.active) ?? layout.stations.find((x) => x.kind === 'board'),
     [layout, wanted]
   );
-  const flowGo = useCallback(
-    (next: FlowNext) => {
-      const st = stationOf(next);
-      if (!st) return;
-      if (simple) tapStation(st);
-      else goToStation(st);
-    },
-    [stationOf, simple, tapStation, goToStation]
-  );
+
   const flow = dayFlow(game);
   const guideId = stationOf(flow.next)?.id ?? null;
   const nextAble = Boolean(flow.next.station || flow.next.target);
   // Bong bóng Chú Tư đứng trên thì dời xuống dưới nút 👉 Làm tiếp.
   useEffect(() => {
-    tutorialUi.setTopInset(fp ? 0 : 62);
+    tutorialUi.setTopInset(fp ? 0 : 42);
     return () => tutorialUi.setTopInset(0);
   }, [fp]);
   // Nút 👉 Làm tiếp to nằm ngay dưới HUD (có cả lúc Chú Tư đang dẫn ngày đầu).
   const river = true;
   const toggle = has3D && shows(game, 'modeToggle');
-  const RIVER_H = river ? 62 : 0;
+  const RIVER_H = river ? 42 : 0;
   // HUD giờ chỉ là 1 hàng nhãn nhỏ.
   const HUD_H = 50 + RIVER_H;
   const cleanReady = run.elapsed >= run.cleanReadyAt;
@@ -440,14 +432,7 @@ export default function ShopMapView() {
         ))}
       {!fp && <MapHud canToggle={toggle} below={
             river ? (
-              <NextButton
-                label={flow.next.label}
-                disabled={!nextAble}
-                onPress={() => {
-                  if (flow.next.target) tutorialUi.glow(flow.next.target);
-                  flowGo(flow.next);
-                }}
-              />
+              <NextButton label={flow.next.label} target={flow.next.target} disabled={!nextAble} />
             ) : null
           } />}
       {!fp && !paused && !staffOpen && actionBar}

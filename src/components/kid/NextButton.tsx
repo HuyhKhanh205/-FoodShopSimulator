@@ -2,12 +2,27 @@ import { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { colors } from '../ui';
+import { tutorialUi } from './tutorialUi';
 
 /**
- * Nút "👉 Làm tiếp" thật to: 1 việc cần làm ngay (từ `dayFlow(game).next`), bấm là làm / đi tới chỗ đó.
- * Đứng yên lâu (không đổi việc) thì nút nhún nhẹ để nhắc.
+ * Nhãn gợi ý nhỏ "👉 việc tiếp theo" (từ `dayFlow` / `screenNext`): chỉ NÓI việc cần làm — người chơi tự làm.
+ * Chạm vào thì viền vàng chỗ cần bấm (`target`), không tự làm thay. Đứng yên lâu thì nhún nhẹ để nhắc.
  */
-export default function NextButton({ label, onPress, disabled = false, style }: { label: string; onPress: () => void; disabled?: boolean; style?: StyleProp<ViewStyle> }) {
+export default function NextButton({
+  label,
+  target,
+  onPress,
+  disabled = false,
+  style,
+}: {
+  label: string;
+  /** Chỗ viền vàng khi chạm nhãn. */
+  target?: string | null;
+  /** Thay cho viền vàng (vd chuyển màn). */
+  onPress?: () => void;
+  disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     pulse.setValue(0);
@@ -18,29 +33,31 @@ export default function NextButton({ label, onPress, disabled = false, style }: 
         Animated.sequence([
           Animated.timing(pulse, { toValue: 1, duration: 450, useNativeDriver: true }),
           Animated.timing(pulse, { toValue: 0, duration: 450, useNativeDriver: true }),
-          Animated.delay(900),
+          Animated.delay(1500),
         ])
       );
       loop.start();
-    }, 6000);
+    }, 8000);
     return () => {
       clearTimeout(id);
       loop?.stop();
     };
   }, [label, disabled, pulse]);
-  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] });
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
+  const press = () => {
+    if (onPress) onPress();
+    else if (target) tutorialUi.glow(target);
+  };
   return (
     <Animated.View style={[styles.wrap, { transform: [{ scale }] }, style]}>
       <Pressable
-        onPress={onPress}
-        disabled={disabled}
-        style={({ pressed }) => [styles.btn, disabled && styles.off, pressed && { transform: [{ translateY: 3 }], borderBottomWidth: 2 }]}
+        onPress={press}
+        style={({ pressed }) => [styles.pill, disabled && styles.off, pressed && { opacity: 0.8 }]}
         accessibilityRole="button"
-        accessibilityLabel={`Làm tiếp: ${label}`}
-        accessibilityState={{ disabled }}
+        accessibilityLabel={`Việc tiếp theo: ${label}`}
       >
-        {!disabled && <Text style={styles.hand}>👉</Text>}
-        <Text style={[styles.text, disabled && { color: colors.brown }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        <Text style={[styles.text, disabled && { color: colors.brown }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+          {disabled ? '' : '👉 '}
           {label}
         </Text>
       </Pressable>
@@ -49,25 +66,18 @@ export default function NextButton({ label, onPress, disabled = false, style }: 
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignSelf: 'stretch' },
-  btn: {
-    minHeight: 54,
-    borderRadius: 20,
+  wrap: { alignSelf: 'center', maxWidth: '100%' },
+  pill: {
+    minHeight: 34,
+    borderRadius: 17,
     backgroundColor: '#43A047',
     borderWidth: 2,
     borderColor: '#1B5E20',
-    borderBottomWidth: 5,
-    flexDirection: 'row',
+    borderBottomWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 14,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
   },
   off: { backgroundColor: 'rgba(255,246,233,0.95)', borderColor: colors.chunkyShadow },
-  hand: { fontSize: 24 },
-  text: { fontSize: 20, fontWeight: '900', color: '#fff', flexShrink: 1 },
+  text: { fontSize: 15, fontWeight: '900', color: '#fff' },
 });

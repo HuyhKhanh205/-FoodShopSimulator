@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { maxDpr } from '../../game/settings';
 import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { burnGrace, INGREDIENTS, PLAYER_PREP_MS, RECIPES } from '../../game/data';
-import { MAX_CARRY, playerChop, playerCookCombo, playerPrep, playerStir, playerTakeOut } from '../../game/engine';
+import { MAX_CARRY, playerChop, playerPrep, playerStir, playerTakeOut } from '../../game/engine';
 import { SCREEN_LABEL, screenBusy, screenNext } from '../../game/kitchenFlow';
-import type { KitchenNext, KitchenScreen } from '../../game/kitchenFlow';
+import type { KitchenScreen } from '../../game/kitchenFlow';
 import NextButton from '../kid/NextButton';
 import { suggestChop, usableQty } from '../../game/helpers';
 import type { GameMutation } from '../../game/GameContext';
@@ -119,16 +119,17 @@ interface ScreenNav {
 }
 
 /** 3 nút chuyển màn: 🔪 Sơ chế | 🔥 Bếp | 🧋 Pha chế — chấm đỏ = màn đó đang có việc. */
-function ScreenTabs({ game, nav }: { game: GameState; nav: ScreenNav }) {
+function ScreenTabs({ game, nav, targets }: { game: GameState; nav: ScreenNav; targets: string[] }) {
   const busy = screenBusy(game, nav.stoveIds, nav.counterIds);
+  const want = new Set(targets.map(screenOfTarget).filter(Boolean));
   const list: KitchenScreen[] = nav.counterIds.length ? ['board', 'stove', 'counter'] : ['board', 'stove'];
   return (
     <View style={styles.tabs} accessibilityRole="tablist">
       {list.map((k) => {
         const on = nav.screen === k;
         return (
+          <TutorialGlow key={k} on={want.has(k) && !on} radius={12} style={{ flex: 1 }}>
           <Pressable
-            key={k}
             onPress={() => nav.setScreen(k)}
             style={[styles.tab, on && styles.tabOn]}
             accessibilityRole="tab"
@@ -140,6 +141,7 @@ function ScreenTabs({ game, nav }: { game: GameState; nav: ScreenNav }) {
             </Text>
             {busy[k] && !on && <View style={styles.tabDot} />}
           </Pressable>
+          </TutorialGlow>
         );
       })}
     </View>
@@ -223,14 +225,8 @@ function Pointer({ icon }: { icon: string }) {
   );
 }
 
-/** Viền vàng nút Làm tiếp khi hướng dẫn ngày đầu đang chỉ đúng việc này. */
-function nextGlow(next: KitchenNext, targets: string[]) {
-  const k = next.action.kind;
-  return targets.some((t) => t === next.key || (t === 'kitchen.cook' && k === 'cook') || (t === 'kitchen.board' && k === 'chop') || (t.startsWith('kitchen.prep:') && k === 'chop'));
-}
-
 /** Màn Sơ chế: các đồ cần thái của menu, số phần đã thái / còn trong kho; chạm = thái thêm 1 mẻ. */
-function PrepList({ game, onPrep }: { game: GameState; onPrep: (id: IngredientId) => void }) {
+function PrepList({ game, onPrep, targets }: { game: GameState; onPrep: (id: IngredientId) => void; targets: string[] }) {
   const run = game.run!;
   const ids = [...new Set(game.unlockedRecipes.flatMap((r) => Object.keys(RECIPES[r]?.ingredients ?? {}) as IngredientId[]))].filter((i) => INGREDIENTS[i].needsPrep);
   if (!ids.length) return <Text style={styles.customText}>Menu hôm nay không có đồ cần thái.</Text>;
@@ -240,8 +236,8 @@ function PrepList({ game, onPrep }: { game: GameState; onPrep: (id: IngredientId
         const raw = usableQty(game, i);
         const on = run.playerPrep?.ingredientId === i;
         return (
+          <TutorialGlow key={i} on={targets.includes(`kitchen.prep:${i}`) && !run.playerPrep} radius={14}>
           <Pressable
-            key={i}
             onPress={() => onPrep(i)}
             disabled={Boolean(run.playerPrep) || raw < 1}
             style={[styles.prepChip, on && styles.prepChipOn, (raw < 1 || (run.playerPrep && !on)) && { opacity: 0.45 }]}
@@ -253,26 +249,34 @@ function PrepList({ game, onPrep }: { game: GameState; onPrep: (id: IngredientId
               {on ? '⏳' : `🔪${run.prepped[i] ?? 0}`} · 📦{raw}
             </Text>
           </Pressable>
+          </TutorialGlow>
         );
       })}
     </View>
   );
 }
 
+/** Màn chứa việc mà hướng dẫn / nhãn gợi ý đang chỉ (để sáng nút chuyển màn). */
+function screenOfTarget(t: string): KitchenScreen | null {
+  if (t.startsWith('kitchen.tab:')) return t.slice(12) as KitchenScreen;
+  if (t.startsWith('kitchen.prep:') || t === 'kitchen.board') return 'board';
+  if (t.startsWith('kitchen.recipe:')) return RECIPES[t.slice(15)]?.station === 'counter' ? 'counter' : 'stove';
+  if (t === 'kitchen.cook' || t === 'kitchen.takeout') return 'stove';
+  return null;
+}
+
 /**
- * Phần điều khiển dưới cảnh bếp, gọn cho bé: nút to 👉 Làm tiếp (làm hết mọi việc), hàng nồi đang nấu,
- * và nút 🧪 Tự chọn (mở nồi 4 ô + nguyên liệu để tự sáng tạo món).
+ * Phần điều khiển dưới cảnh bếp — người chơi tự làm mọi việc:
+ * nút chuyển 3 màn, nhãn gợi ý nhỏ (chỉ nói việc tiếp theo, chạm để viền vàng chỗ cần bấm),
+ * Sơ chế: các ô đồ cần thái; Bếp / Pha chế: thẻ nồi + nồi 4 ô + món và nguyên liệu (luôn hiện).
  */
 function KitchenControls({
   nav,
   game,
-  station,
   slotIds,
   act,
   targets,
-  onExit,
   onTap,
-  onChop,
   onPrep,
   pot,
   icon,
@@ -280,55 +284,34 @@ function KitchenControls({
 }: {
   nav: ScreenNav;
   game: GameState;
-  station: Station;
   slotIds: string[];
   act: (fn: GameMutation) => void;
   targets: string[];
-  onExit: () => void;
   onTap: (slotId: string) => void;
-  onChop: () => void;
   onPrep: (id: IngredientId) => void;
   pot: { top: React.ReactNode; list: React.ReactNode; count: number };
   icon: string;
   label: string;
 }) {
-  const [custom, setCustom] = useState(false);
   const next = screenNext(game, nav.screen, nav.stoveIds, nav.counterIds);
-  const go = () => {
-    const a = next.action;
-    if (a.kind === 'switch') nav.setScreen(a.to);
-    else if (a.kind === 'take') act((s) => void playerTakeOut(s, a.slotId, true));
-    else if (a.kind === 'exit') onExit();
-    else if (a.kind === 'chop') onChop();
-    else if (a.kind === 'prep') onPrep(a.ingredient);
-    else if (a.kind === 'cook') act((s) => void playerCookCombo(s, Object.keys(RECIPES[a.recipeId].ingredients) as IngredientId[], a.slotId));
-    else if (a.kind === 'stir') onTap(a.slotId);
-  };
-  const run = game.run!;
-  const busy = slotIds.some((id) => run.slots.find((x) => x.id === id)?.job);
-  const open = custom || pot.count > 0;
-  // Bong bóng Chú Tư (đứng dưới) nằm trên phần nút này, không che nút xanh.
+  const hintTarget = next.action.kind === 'switch' ? `kitchen.tab:${next.action.to}` : next.key || null;
+  // Bong bóng Chú Tư (đứng dưới) nằm trên phần nút này.
   useEffect(() => () => tutorialUi.setBottomInset(0), []);
   return (
-    <View onLayout={(e) => tutorialUi.setBottomInset(Math.round(e.nativeEvent.layout.height) + 6)}>
+    <View style={nav.screen === 'board' ? undefined : styles.controlsWrap} onLayout={(e) => tutorialUi.setBottomInset(Math.min(260, Math.round(e.nativeEvent.layout.height)) + 6)}>
       <View style={styles.fixed}>
-        <ScreenTabs game={game} nav={nav} />
-        <TutorialGlow on={nextGlow(next, targets)} radius={20}>
-          <NextButton label={next.label} disabled={next.action.kind === 'wait'} onPress={go} />
-        </TutorialGlow>
+        <ScreenTabs game={game} nav={nav} targets={targets} />
+        <NextButton label={next.label} target={hintTarget} disabled={next.action.kind === 'wait'} />
         {nav.screen === 'board' ? (
-          <PrepList game={game} onPrep={onPrep} />
+          <PrepList game={game} onPrep={onPrep} targets={targets} />
         ) : (
           <>
-            {busy && <SlotCards game={game} slotIds={slotIds} act={act} targets={[]} onTap={onTap} icon={icon} label={label} />}
-            {open && pot.top}
-            <Pressable onPress={() => setCustom(!open)} style={styles.customBtn} accessibilityRole="button" accessibilityLabel={open ? 'Đóng tự chọn nguyên liệu' : 'Tự chọn nguyên liệu'}>
-              <Text style={styles.customText}>{open ? '▲ Thu gọn' : '🧪 Tự chọn nguyên liệu ▼'}</Text>
-            </Pressable>
+            <SlotCards game={game} slotIds={slotIds} act={act} targets={targets} onTap={onTap} icon={icon} label={label} />
+            {pot.top}
           </>
         )}
       </View>
-      {open && nav.screen !== 'board' && (
+      {nav.screen !== 'board' && (
         <ScrollView style={styles.controls} contentContainerStyle={styles.controlsContent}>
           {pot.list}
         </ScrollView>
@@ -358,7 +341,7 @@ function KitchenView({ stations, game, act, onExit, nav }: Props) {
   useEffect(() => {
     if (prep) setLastPrep(prep.ingredientId);
   }, [prep]);
-  const pot = usePotBuilder({ game, station: 'stove', slotIds, act, targets });
+  const pot = usePotBuilder({ game, station: 'stove', slotIds, act, targets, noChop: true });
 
   /** Chạm thớt: đang thái thì thái nhanh hơn; đang rảnh thì bắt đầu thái thêm món cần nhất (thái được nhiều lần). */
   const chop = () => {
@@ -489,13 +472,10 @@ function KitchenView({ stations, game, act, onExit, nav }: Props) {
       <KitchenControls
         nav={nav!}
         game={game}
-        station="stove"
         slotIds={slotIds}
         act={act}
         targets={targets}
-        onExit={onExit}
         onTap={tapStove}
-        onChop={chop}
         onPrep={(id) => {
           setLastPrep(id);
           act((s) => void playerPrep(s, id));
@@ -601,7 +581,8 @@ function CounterView({ station, game, act, onExit, nav }: Props) {
   const slot = station.slotId ? run.slots.find((s) => s.id === station.slotId) : undefined;
   const info = slotInfo(run, slot);
   const slotIds = slot ? [slot.id] : [];
-  const pot = usePotBuilder({ game, station: 'counter', slotIds, act, targets: [] });
+  const targets = useTutorialTargets();
+  const pot = usePotBuilder({ game, station: 'counter', slotIds, act, targets });
 
   const tap = () => {
     pulse.current = now();
@@ -626,21 +607,7 @@ function CounterView({ station, game, act, onExit, nav }: Props) {
         <Header game={game} onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="counter" lines={info.job ? [{ text: `🧋  ${slotStatus(game, info)}`, bar: slotBar(info) }] : []} />
         {info.mine && !info.done && <Pointer icon="👆🧋" />}
       </View>
-      <KitchenControls
-        nav={nav!}
-        game={game}
-        station="counter"
-        slotIds={slotIds}
-        act={act}
-        targets={[]}
-        onExit={onExit}
-        onTap={tap}
-        onChop={() => {}}
-        onPrep={() => {}}
-        pot={pot}
-        icon="🧋"
-        label="Quầy"
-      />
+      <KitchenControls nav={nav!} game={game} slotIds={slotIds} act={act} targets={targets} onTap={tap} onPrep={() => {}} pot={pot} icon="🧋" label="Quầy" />
     </View>
   );
 }
@@ -704,6 +671,7 @@ const styles = StyleSheet.create({
   chipWarn: { borderColor: colors.bad },
   chipText: { color: colors.text, fontWeight: '700', fontSize: 12 },
   chipTextOn: { color: colors.primaryDark, fontWeight: '900' },
+  controlsWrap: { maxHeight: '58%' },
   tabs: { flexDirection: 'row', gap: 6 },
   tab: { flex: 1, paddingVertical: 7, borderRadius: 12, backgroundColor: '#FFF3E0', borderWidth: 2, borderColor: colors.chunkyShadow, alignItems: 'center' },
   tabOn: { backgroundColor: colors.brown, borderColor: colors.brown },
