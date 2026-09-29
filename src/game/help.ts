@@ -74,7 +74,8 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
   kitchen: {
     title: 'Trong bếp',
     steps: [
-      { icon: '👉', text: 'Cứ bấm nút xanh to: nó tự thái, nấu, khuấy, lấy món cho con.' },
+      { icon: '🔀', text: 'Bếp có 3 màn: 🔪 Sơ chế, 🔥 Bếp, 🧋 Pha chế. Chấm đỏ là màn đó đang có việc.' },
+      { icon: '👉', text: 'Cứ bấm nút xanh to: nó tự thái, nấu, khuấy, lấy món, hoặc dẫn con qua màn cần làm.' },
       { icon: '👆', text: 'Đang thái thì chạm thớt thật nhiều cho nhanh.' },
       { icon: '✅', text: 'Món chín thì nút xanh đổi thành Lấy ra, rồi Mang món cho khách.' },
       { icon: '🧪', text: 'Muốn tự sáng tạo món thì bấm Tự chọn nguyên liệu.' },

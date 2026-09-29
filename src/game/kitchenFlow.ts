@@ -14,6 +14,7 @@ export type KitchenAction =
   | { kind: 'prep'; ingredient: IngredientId }
   | { kind: 'cook'; recipeId: RecipeId; slotId: string }
   | { kind: 'stir'; slotId: string }
+  | { kind: 'switch'; to: 'board' | 'stove' | 'counter' }
   | { kind: 'wait' };
 
 export interface KitchenNext {
@@ -68,4 +69,43 @@ export function kitchenNext(s: GameState, station: Station, slotIds: string[]): 
     if (pre && (run.prepped[pre] ?? 0) < 6) return { label: `🔪 Thái sẵn ${INGREDIENTS[pre].emoji} ${INGREDIENTS[pre].name.toLowerCase()}`, key: `kitchen.prep:${pre}`, action: { kind: 'prep', ingredient: pre } };
   }
   return { label: '👀 Chờ khách gọi món', key: '', action: { kind: 'wait' } };
+}
+
+/** Ba màn trong bếp: mỗi màn một việc. */
+export type KitchenScreen = 'board' | 'stove' | 'counter';
+export const SCREEN_LABEL: Record<KitchenScreen, string> = { board: '🔪 Sơ chế', stove: '🔥 Bếp', counter: '🧋 Pha chế' };
+
+const onBoard = (n: KitchenNext) => n.action.kind === 'prep' || n.action.kind === 'chop';
+const onStove = (n: KitchenNext) => n.action.kind === 'cook' || n.action.kind === 'stir' || n.action.kind === 'take';
+
+/** Việc của từng màn (để chấm đỏ trên nút chuyển màn). */
+export function screenBusy(s: GameState, stoveIds: string[], counterIds: string[]): Record<KitchenScreen, boolean> {
+  const k = kitchenNext(s, 'stove', stoveIds);
+  const c = counterIds.length ? kitchenNext(s, 'counter', counterIds) : null;
+  return { board: onBoard(k), stove: onStove(k), counter: Boolean(c && c.action.kind !== 'wait' && c.action.kind !== 'exit') };
+}
+
+/**
+ * Nút Làm tiếp của một màn: việc thuộc màn này thì làm luôn; việc ở màn khác thì nút ghi "Qua … : việc đó" và bấm là chuyển màn.
+ * Mang món cho khách thì màn nào cũng làm được.
+ */
+export function screenNext(s: GameState, screen: KitchenScreen, stoveIds: string[], counterIds: string[]): KitchenNext {
+  const k = kitchenNext(s, 'stove', stoveIds);
+  const c = counterIds.length ? kitchenNext(s, 'counter', counterIds) : null;
+  const go = (to: KitchenScreen, n: KitchenNext): KitchenNext => ({ label: `${SCREEN_LABEL[to].split(' ')[0]} Qua ${SCREEN_LABEL[to].split(' ').slice(1).join(' ')}: ${n.label.replace(/^\S+\s/, '')}`, key: n.key, action: { kind: 'switch', to } });
+  if (screen === 'counter' && c?.action.kind === 'take') return c;
+  // Đang cầm món: mang cho khách (màn nào cũng được).
+  if (k.action.kind === 'exit' || c?.action.kind === 'exit') return k.action.kind === 'exit' ? k : c!;
+  if (screen === 'counter') {
+    if (c && c.action.kind !== 'wait') return c;
+    if (onStove(k)) return go('stove', k);
+    if (onBoard(k)) return go('board', k);
+    return c ?? k;
+  }
+  const mine = screen === 'board' ? onBoard(k) : onStove(k);
+  if (mine) return k;
+  if (screen === 'board' && onStove(k)) return go('stove', k);
+  if (screen === 'stove' && onBoard(k)) return go('board', k);
+  if (c && c.action.kind !== 'wait') return go('counter', c);
+  return k;
 }

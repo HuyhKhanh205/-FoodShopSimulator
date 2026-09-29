@@ -61,7 +61,7 @@ const prepSay = (s: Pick<GameState, 'starter'>) => {
   if (list.length === 1 && list[0] === 'hanh') return 'Hành 🧅 phải thái trước. Bấm nút xanh 👉 Thái, rồi chạm thớt thật nhanh!';
   return `Đồ có 🔪 phải thái trước: ${list.map((i) => INGREDIENTS[i].emoji).join(' + ')}. Bấm nút xanh 👉 Thái, rồi chạm thớt thật nhanh!`;
 };
-const cookSay = (s: Pick<GameState, 'starter'>) => `Giỏi! Giờ bấm nút xanh 👉 🔥 Nấu ${firstRecipe(s).emoji} là đồ tự vào nồi.`;
+const cookSay = (s: Pick<GameState, 'starter'>) => `Giỏi! Bấm nút xanh 👉 qua màn 🔥 Bếp, rồi bấm Nấu ${firstRecipe(s).emoji} là đồ tự vào nồi.`;
 const serveSay = (s: Pick<GameState, 'starter'>) => `Bấm nút xanh 👉 Mang món cho khách, rồi chạm vào bàn khách đang chờ ${firstRecipe(s).emoji}.`;
 
 /** Câu hiển thị của một bước. */
