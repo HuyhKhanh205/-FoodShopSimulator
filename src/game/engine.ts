@@ -1,7 +1,7 @@
 import { answerEffect, tickChat } from './chat';
 import { introFactor } from './customers';
 import { registerDish, resolveCombo } from './dishes';
-import { unlockedRoles } from './progression';
+import { releaseHeldXp, unlockedRoles } from './progression';
 import { expireTrend, trendSpawnMult } from './trend';
 import { newVendors, resetMarketDay, stockCapacity, stockUnits } from './market';
 import { autoClaimAll, emptyTally, rollMissions } from './missions';
@@ -1128,6 +1128,7 @@ export function nextDay(s: GameState, rng: Rng) {
   autoClaimAll(s);
   s.day += 1;
   beginMarket(s, rng);
+  releaseHeldXp(s);
 }
 
 export function currentEvent(s: GameState) {

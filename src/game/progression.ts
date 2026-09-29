@@ -42,6 +42,13 @@ export function unlockedRoles(s: GameState): StaffRole[] {
 /** Cộng điểm kinh nghiệm; lên cấp thì báo đầu bếp. */
 export function addXp(s: GameState, n: number) {
   const before = levelOf(s.xp);
+  // Ngày 1: chưa lên cấp (chưa mở nguyên liệu mới) — XP dư giữ lại, sáng ngày 2 mới cộng.
+  if (s.day <= 1 && n > 0) {
+    const cap = Math.max(s.xp, LEVEL_XP[1] - 1);
+    const room = Math.max(0, cap - s.xp);
+    s.xpHeld = (s.xpHeld ?? 0) + Math.max(0, n - room);
+    n = Math.min(n, room);
+  }
   s.xp += n;
   const after = levelOf(s.xp);
   for (let lv = before + 1; lv <= after; lv += 1) {
@@ -111,4 +118,12 @@ export function mysteryRecipes(s: GameState): RecipeId[] {
 export function xpForRecipes(ids: RecipeId[]): number {
   const lv = Math.max(1, ...ids.filter((id) => RECIPES[id]).map(recipeLevel));
   return LEVEL_XP[lv - 1];
+}
+
+/** Sáng ngày 2: cộng XP đã giữ từ ngày 1 (lên cấp, mở nguyên liệu mới như thường). */
+export function releaseHeldXp(s: GameState) {
+  const held = s.xpHeld ?? 0;
+  if (held <= 0 || s.day <= 1) return;
+  s.xpHeld = 0;
+  addXp(s, held);
 }

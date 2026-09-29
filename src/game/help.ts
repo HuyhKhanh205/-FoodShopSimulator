@@ -41,7 +41,7 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
     steps: [
       { icon: '🏪', text: 'Chợ có 4 sạp: 🥩 thịt tôm (Cô Bảy), 🥚 trứng bột (Bà Năm), 🥬 rau hành (Dì Sáu), 🧋 đồ uống (Chú Ba).', target: 'market.stall:thit' },
       { icon: '👆', text: 'Chạm tên sạp: chủ quán đi tới, bảng hàng của sạp mở ra.', target: 'market.stall:bot' },
-      { icon: '➕', text: 'Bấm + để bỏ 1 phần vào giỏ, +5 để bỏ 5 phần, bấm − để bớt. Xong bấm ✓ Xong.' },
+      { icon: '➕', text: 'Bấm +5 để bỏ 5 phần vào giỏ, + để thêm 1, − để bớt, hoặc chạm ô số để gõ số phần. Xong bấm ✓ Xong.' },
       { icon: '🤝', text: 'Trong sạp có nút 🤝 Trả giá: mỗi sạp trả giá 2 lần mỗi ngày. Người bán vui thì bớt tiền cả sạp hôm đó.' },
       { icon: '💳', text: 'Bấm 💳 Trả tiền. Nút mờ là kho hết chỗ 📦 hoặc không đủ tiền.', target: 'market.pay' },
       { icon: '🏮', text: 'Mua xong bấm 🏮 Mở cửa để về quán đón khách. Lười chọn thì bấm 🧾 Theo menu cho giỏ tự đủ đồ.', target: 'market.open' },
@@ -74,11 +74,10 @@ export const HELP: Record<HelpTopic, { title: string; steps: HelpStep[]; more?: 
   kitchen: {
     title: 'Trong bếp',
     steps: [
-      { icon: '🔪', text: 'Ô nguyên liệu có 🔪 là phải thái: chạm vào để thái.' },
-      { icon: '👆', text: 'Chạm thớt thật nhiều để thái nhanh.' },
-      { icon: '🍲', text: 'Chạm món khách gọi (có ×số) để bỏ vào nồi, rồi bấm 🔥 Nấu. Bếp trống tự được chọn.' },
-      { icon: '🥄', text: 'Chạm vào nồi để khuấy.' },
-      { icon: '✅', text: 'Chín rồi thì bấm 🍽️ Lấy trên thẻ bếp, hoặc chạm vào nồi.' },
+      { icon: '👉', text: 'Cứ bấm nút xanh to: nó tự thái, nấu, khuấy, lấy món cho con.' },
+      { icon: '👆', text: 'Đang thái thì chạm thớt thật nhiều cho nhanh.' },
+      { icon: '✅', text: 'Món chín thì nút xanh đổi thành Lấy ra, rồi Mang món cho khách.' },
+      { icon: '🧪', text: 'Muốn tự sáng tạo món thì bấm Tự chọn nguyên liệu.' },
       { icon: '⚠️', text: 'Để lâu quá sẽ cháy!' },
     ],
     more: [{ icon: '⏳', text: 'Món của khách đang nấu thì khách chờ thong thả hơn.' }, { icon: '1️⃣', text: 'Phím 1, 2... khuấy hoặc lấy món ở bếp tương ứng.' }],

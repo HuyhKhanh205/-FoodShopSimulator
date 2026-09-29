@@ -458,6 +458,8 @@ export interface GameState {
   unlockedRecipes: RecipeId[];
   /** Điểm kinh nghiệm: phục vụ khách để lên cấp, mở khoá nguyên liệu mới. */
   xp: number;
+  /** XP kiếm được ngày 1 vượt cấp 1 (sáng ngày 2 mới cộng, để ngày đầu chưa mở nguyên liệu mới). */
+  xpHeld?: number;
   /** Lời đầu bếp chờ nói. */
   chefQueue: ChefNote[];
   /** Hướng dẫn từng bước ngày đầu. */

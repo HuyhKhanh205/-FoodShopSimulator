@@ -212,7 +212,7 @@ export function usePotBuilder({
     </View>
   );
 
-  return { top, list };
+  return { top, list, count: pot.length };
 }
 
 const styles = StyleSheet.create({

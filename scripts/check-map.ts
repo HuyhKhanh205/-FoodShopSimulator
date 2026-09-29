@@ -6,6 +6,7 @@ import * as MS from '../src/game/dayflow';
 import * as MG from '../src/game/migrate';
 import * as U from '../src/game/unlocks';
 import * as RV from '../src/game/reviews';
+import * as KF from '../src/game/kitchenFlow';
 type UF = U.UiFeature;
 import { VOICE } from '../src/assets/voice.generated';
 import { speechText, voiceLines } from '../src/game/voice';
@@ -252,8 +253,16 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check(addToMenu(g, 'banh_mi_pate', () => 0.9) && g.unlockedRecipes.includes('banh_mi_pate'), 'thêm vào menu');
   check(experiment(g, ['banh_mi', 'pate']).kind === 'known', 'thử lại món đã có → đã có');
   check(experiment(g, ['gao', 'trung']).kind === 'nothing', 'chưa mở gạo thì không thử được');
+  const xp0 = g.xp;
   addXp(g, 60);
-  check(levelOf(g.xp) === 2 && g.chefQueue.some((n) => n.kind === 'levelUp' && n.level === 2), 'đủ 60 XP lên cấp 2 và báo đầu bếp');
+  check(levelOf(g.xp) === 1 && g.xp === 59 && (g.xpHeld ?? 0) === xp0 + 1 && !unlockedIngredients(g).includes('gao'), 'ngày 1: đủ XP vẫn chưa lên cấp, chưa mở nguyên liệu mới (giữ XP dư)');
+  g.phase = 'summary';
+  g.activeEvent = null;
+  E.nextDay(g, r10);
+  g.activeEvent = null;
+  check(levelOf(g.xp) === 2 && g.xp === xp0 + 60 && !g.xpHeld && g.chefQueue.some((n) => n.kind === 'levelUp' && n.level === 2), 'sáng ngày 2: cộng XP giữ lại, lên cấp 2 và báo đầu bếp');
+  addXp(g, 5);
+  check(g.xp === xp0 + 65 && !g.xpHeld, 'từ ngày 2: XP cộng như cũ');
   const r3 = experiment(g, ['gao', 'trung', 'hanh']);
   check(r3.kind === 'new' && r3.recipeId === 'com_chien_trung', 'gạo + trứng + hành → Cơm chiên trứng');
   addToMenu(g, 'com_chien_trung', () => 0.9);
@@ -729,13 +738,13 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
         }
         ui.stall = stall;
         let t2 = buyStep.targets(g, ui);
-        while (t2[0]?.startsWith('stall.add:')) {
-          basket[t2[0].slice(10)] = 1;
+        while (t2[0]?.startsWith('stall.add5:')) {
+          basket[t2[0].slice(11)] = 5;
           t2 = buyStep.targets(g, { ...ui, basket: { ...basket } });
         }
         if (t2[0] !== 'stall.done') ok = false;
       }
-      check(ok && need.every((i) => basket[i] === 1) && buyStep.done(g, { fpOpen: false, basket, stall: null }), `${st.id}: mua tay theo viền vàng đủ ${need.length} món rồi xong bước`);
+      check(ok && need.every((i) => basket[i] === 5) && buyStep.done(g, { fpOpen: false, basket, stall: null }), `${st.id}: mua tay theo viền vàng (+5) đủ ${need.length} món rồi xong bước`);
       const payStep = TUTORIAL.find((x) => x.id === 'pay')!;
       check(payStep.targets(g, { fpOpen: false, basket, stall: null }).join() === 'market.pay', `${st.id}: sau đó chỉ vào 💳`);
     }
@@ -1355,6 +1364,38 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
     look();
   }
   check(ok && labels.size >= 3, `nhãn Làm tiếp ngắn, trạm có thật (${[...labels].slice(0, 6).join(' | ')})`);
+}
+
+// ================= Bếp: bấm 👉 Làm tiếp liên tục là nấu xong món cho khách =================
+{
+  const g = E.newGame(seededRng(120));
+  g.activeEvent = null;
+  M.checkout(g, M.suggestBasket(g));
+  E.openShop(g, seededRng(121));
+  g.activeEvent = null;
+  const lay = buildLayout(g.upgrades);
+  const stoves = lay.stations.filter((x) => x.kind === 'stove' && x.active && x.slotId).map((x) => x.slotId!);
+  let guard = 0;
+  while (g.run && !g.run.customers.some((c) => c.tableIndex !== undefined) && guard++ < 300) {
+    E.tick(g, 200, seededRng(guard));
+    g.activeEvent = null;
+  }
+  const seen: string[] = [];
+  let exited = false;
+  for (let i = 0; i < 400 && g.run && !exited; i += 1) {
+    const n = KF.kitchenNext(g, 'stove', stoves);
+    if (!seen.includes(n.action.kind)) seen.push(n.action.kind);
+    const a = n.action;
+    if (a.kind === 'prep') E.playerPrep(g, a.ingredient);
+    else if (a.kind === 'chop') E.playerChop(g);
+    else if (a.kind === 'cook') E.playerCookCombo(g, Object.keys(RECIPES[a.recipeId].ingredients) as IngredientId[], a.slotId);
+    else if (a.kind === 'stir') E.playerStir(g, a.slotId);
+    else if (a.kind === 'take') E.playerTakeOut(g, a.slotId, true);
+    else if (a.kind === 'exit') exited = true;
+    E.tick(g, 150, seededRng(1000 + i));
+    g.activeEvent = null;
+  }
+  check(exited && g.run!.carrying.length > 0 && ['prep', 'cook', 'take', 'exit'].every((k) => seen.includes(k)), `bếp: chỉ bấm Làm tiếp là thái → nấu → lấy → mang ra (${seen.join(' → ')})`);
 }
 
 process.exit(failed ? 1 : 0);

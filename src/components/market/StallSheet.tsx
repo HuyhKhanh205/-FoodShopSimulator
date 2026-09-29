@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { INGREDIENTS } from '../../game/data';
 import { returnableQty, unbuy } from '../../game/engine';
 import type { GameMutation } from '../../game/GameContext';
@@ -109,15 +109,29 @@ export default function StallSheet({
                     >
                       <Text style={styles.qText}>−</Text>
                     </Pressable>
-                    <Text style={styles.qNum}>{q}</Text>
+                    <TextInput
+                      value={q ? String(q) : ''}
+                      placeholder="0"
+                      placeholderTextColor="#B8A58F"
+                      onChangeText={(t) => setQty(id, Math.min(999, parseInt(t.replace(/[^0-9]/g, ''), 10) || 0))}
+                      keyboardType="number-pad"
+                      inputMode="numeric"
+                      maxLength={3}
+                      selectTextOnFocus
+                      editable={!unavailable}
+                      style={styles.qNum}
+                      accessibilityLabel={`Số ${ing.name} trong giỏ`}
+                    />
                     <TutorialGlow on={targets.includes(`stall.add:${id}`)} radius={10}>
                       <Pressable onPress={() => setQty(id, q + 1)} disabled={unavailable} style={[styles.qBtn, unavailable && { opacity: 0.3 }]} accessibilityRole="button" accessibilityLabel={`Thêm 1 ${ing.name} vào giỏ`}>
                         <Text style={styles.qText}>+</Text>
                       </Pressable>
                     </TutorialGlow>
-                    <Pressable onPress={() => setQty(id, q + 5)} disabled={unavailable} style={[styles.qBtn, styles.q5, unavailable && { opacity: 0.3 }]} accessibilityRole="button" accessibilityLabel={`Thêm 5 ${ing.name} vào giỏ`}>
-                      <Text style={[styles.qText, { color: '#fff', fontSize: 14 }]}>+5</Text>
-                    </Pressable>
+                    <TutorialGlow on={targets.includes(`stall.add5:${id}`)} radius={10}>
+                      <Pressable onPress={() => setQty(id, q + 5)} disabled={unavailable} style={[styles.qBtn, styles.q5, unavailable && { opacity: 0.3 }]} accessibilityRole="button" accessibilityLabel={`Thêm 5 ${ing.name} vào giỏ`}>
+                        <Text style={[styles.qText, { color: '#fff', fontSize: 14 }]}>+5</Text>
+                      </Pressable>
+                    </TutorialGlow>
                   </View>
                 </View>
               );
@@ -159,7 +173,7 @@ const styles = StyleSheet.create({
   qBtn: { width: 34, height: 34, borderRadius: 12, backgroundColor: '#FFF3E0', borderWidth: 2, borderColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   q5: { backgroundColor: colors.primary, borderColor: colors.primaryDark, width: 38 },
   qText: { fontSize: 18, fontWeight: '900', color: colors.primaryDark },
-  qNum: { minWidth: 22, textAlign: 'center', fontSize: 16, fontWeight: '900', color: colors.brown },
+  qNum: { width: 46, height: 34, textAlign: 'center', fontSize: 16, fontWeight: '900', color: colors.brown, backgroundColor: '#fff', borderWidth: 2, borderColor: colors.chunkyShadow, borderRadius: 10, padding: 0 },
   foot: { flexDirection: 'row', gap: 8 },
   haggle: { flex: 1, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 12, alignItems: 'center', borderWidth: 2, borderColor: colors.chunkyShadow, borderBottomWidth: 4 },
   haggleText: { fontSize: 15, fontWeight: '900', color: colors.brown },
