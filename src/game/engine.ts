@@ -58,6 +58,7 @@ import {
 } from './helpers';
 import { DEFAULT_PROFILE } from './profile';
 import type {
+  Dish,
   CookJob,
   CookSlot,
   Customer,
@@ -468,12 +469,72 @@ export function playerTakeOut(s: GameState, slotId: string, toHand = false) {
   if (toHand && run.carrying.length < MAX_CARRY) run.carrying.push(run.pass[run.pass.length - 1].id);
 }
 
+// ---------- Gửi món từ bếp ra bàn ----------
+
+/** Thời gian món đi từ ô cửa ra món tới bàn khách. */
+export const SEND_MS = 3_000;
+
+/** Món này giao được cho khách (đúng món, không cháy, không đưa món có hành cho khách dặn "không hành"). */
+function fitsCustomer(c: Customer, d: Dish): boolean {
+  return d.quality !== 'burnt' && !d.sendTo && c.items.some((i) => !i.served && dishMatches(i.recipeId, d) && (!i.noGarnish || d.noGarnish));
+}
+
+/** Món sẵn sàng gửi cho khách: trên tay → trên quầy ra món (chưa ai mang) → nồi / ly của mình đã chín (`slotIds`). */
+export function sendableFor(s: GameState, customerId: string, slotIds: string[] = []): { dishId?: string; slotId?: string } | null {
+  const run = s.run;
+  const c = run?.customers.find((x) => x.id === customerId);
+  if (!run || !c) return null;
+  const byStaff = new Set(s.staff.map((x) => x.task?.dishId).filter(Boolean));
+  const hand = run.carrying.map((id) => run.pass.find((d) => d.id === id)).find((d) => d && fitsCustomer(c, d));
+  if (hand) return { dishId: hand.id };
+  const pass = run.pass.find((d) => !run.carrying.includes(d.id) && !byStaff.has(d.id) && fitsCustomer(c, d));
+  if (pass) return { dishId: pass.id };
+  for (const id of slotIds) {
+    const job = run.slots.find((x) => x.id === id)?.job;
+    if (!job || job.by !== 'player' || job.progress < job.cookTime) continue;
+    const probe: Dish = { id: '', recipeId: job.recipeId, quality: 'perfect', noGarnish: job.noGarnish, by: 'Bạn' };
+    if (fitsCustomer(c, probe)) return { slotId: id };
+  }
+  return null;
+}
+
+/** Gửi món từ bếp ra bàn: vài giây sau khách nhận (như mang tay). Trả về lỗi ngắn nếu chưa có món hợp. */
+export function sendDish(s: GameState, customerId: string, slotIds: string[] = []): string | null {
+  const run = s.run;
+  if (!run) return 'Quán chưa mở cửa';
+  const found = sendableFor(s, customerId, slotIds);
+  if (!found) return 'Chưa có món của bàn này';
+  let dishId = found.dishId;
+  if (found.slotId) {
+    playerTakeOut(s, found.slotId, false);
+    dishId = run.pass[run.pass.length - 1]?.id;
+  }
+  const dish = run.pass.find((d) => d.id === dishId);
+  if (!dish) return 'Chưa có món của bàn này';
+  dish.sendTo = customerId;
+  dish.sendAt = run.elapsed + SEND_MS;
+  run.carrying = run.carrying.filter((id) => id !== dish.id);
+  return null;
+}
+
+/** Món gửi đã tới bàn: khách còn thì nhận; khách đã đi thì món nằm lại quầy ra món. */
+function deliverSent(s: GameState, rng: Rng) {
+  const run = s.run!;
+  for (const d of run.pass.filter((x) => x.sendTo && (x.sendAt ?? 0) <= run.elapsed)) {
+    const cid = d.sendTo!;
+    d.sendTo = undefined;
+    d.sendAt = undefined;
+    if (run.customers.some((c) => c.id === cid)) serveDish(s, d.id, cid, rng);
+  }
+}
+
 // ---------- Cầm món trên tay (chế độ bản đồ) ----------
 
 export function pickUpDish(s: GameState, dishId: string): string | null {
   const run = s.run;
   if (!run || !run.pass.some((d) => d.id === dishId) || run.carrying.includes(dishId)) return null;
   if (run.carrying.length >= MAX_CARRY) return 'Hai tay đã cầm đầy món!';
+  if (run.pass.find((d) => d.id === dishId)?.sendTo) return 'Món này đang được gửi ra bàn';
   const busy = s.staff.some((st) => st.task?.dishId === dishId);
   if (busy) return 'Nhân viên đang mang món này đi rồi';
   run.carrying.push(dishId);
@@ -655,7 +716,7 @@ function startStaffTask(s: GameState, st: Staff, rng: Rng) {
   const taken = new Set([...s.staff.map((x) => x.task?.dishId).filter(Boolean), ...run.carrying]);
   const waiting = [...run.customers].sort((a, b) => a.arrivedAt - b.arrivedAt);
   for (const dish of run.pass) {
-    if (taken.has(dish.id)) continue;
+    if (taken.has(dish.id) || dish.sendTo) continue;
     const target = waiting.find((c) => c.items.some((i) => !i.served && i.recipeId === dish.recipeId && i.noGarnish === dish.noGarnish))
       ?? waiting.find((c) => c.items.some((i) => !i.served && i.recipeId === dish.recipeId));
     if (!target) continue;
@@ -959,6 +1020,7 @@ export function tick(s: GameState, dt: number, rng: Rng) {
   if (s.phase !== 'open' || !run || s.activeEvent || s.eventResult) return;
   run.elapsed += dt;
   const t = run.elapsed;
+  deliverSent(s, rng);
 
   // Bếp & quầy
   const stoveBlocked = t < run.powerOutUntil || t < run.gasOutUntil;

@@ -1,16 +1,22 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RECIPES } from '../../game/data';
 import type { GameState } from '../../game/types';
 import { dishNeeds, handledCustomers } from '../../game/helpers';
 import { trendHeat } from '../../game/trend';
+import { SEND_MS, sendDish, sendableFor } from '../../game/engine';
+import type { GameMutation } from '../../game/GameContext';
+import TutorialGlow, { useTutorialTargets } from '../kid/TutorialGlow';
 import { colors, patienceColor } from '../ui';
 
 /**
  * Thanh phiếu order trong màn bếp: món khách đang chờ (bàn gấp nhất lên trước) và
  * tổng số món còn phải nấu (đã trừ món đang nấu, trên quầy ra món và trên tay).
+ * Phiếu có món sẵn sàng thì có nút "📤 Gửi": món đi qua ô cửa ra món, vài giây sau tới bàn (🛵 đang mang).
  */
-export default function OrderRail({ game }: { game: GameState }) {
+export default function OrderRail({ game, act, slotIds = [] }: { game: GameState; act?: (fn: GameMutation) => void; slotIds?: string[] }) {
   const run = game.run!;
+  const targets = useTutorialTargets();
+  const glowSend = targets.includes('kitchen.send');
   const customers = [...run.customers]
     .filter((c) => c.items.some((i) => !i.served))
     .sort((a, b) => a.patience / a.maxPatience - b.patience / b.maxPatience);
@@ -46,10 +52,12 @@ export default function OrderRail({ game }: { game: GameState }) {
         const ratio = Math.max(0, c.patience / c.maxPatience);
         const where = c.tableIndex !== undefined ? `🪑${c.tableIndex + 1}` : c.kind === 'delivery' ? '🛵' : '🚪';
         const open = c.items.filter((i) => !i.served);
+        const can = act ? sendableFor(game, c.id, slotIds) : null;
+        const going = run.pass.find((d) => d.sendTo === c.id);
         return (
           <View
             key={c.id}
-            style={[styles.ticket, ratio < 0.3 && styles.urgent]}
+            style={[styles.ticket, ratio < 0.3 && styles.urgent, can && styles.ready]}
             accessibilityLabel={`${where.replace('🪑', 'Bàn ')} ${c.name}: ${open.map((i) => RECIPES[i.recipeId].name + (i.noGarnish ? ' không hành' : '')).join(', ')}`}
           >
             <Text style={styles.where}>
@@ -68,6 +76,27 @@ export default function OrderRail({ game }: { game: GameState }) {
             <View style={styles.track}>
               <View style={{ width: `${ratio * 100}%`, height: '100%', backgroundColor: handled.has(c.id) ? colors.info : patienceColor(ratio) }} />
             </View>
+            {going && (
+              <View style={styles.going} accessibilityLabel={`Đang mang ${RECIPES[going.recipeId]?.name ?? ''} ra`}>
+                <Text style={styles.goingText}>🛵</Text>
+                <View style={[styles.track, { flex: 1 }]}>
+                  <View style={{ width: `${Math.min(1, 1 - ((going.sendAt ?? 0) - run.elapsed) / SEND_MS) * 100}%`, height: '100%', backgroundColor: colors.good }} />
+                </View>
+              </View>
+            )}
+            {can && act && (
+              <TutorialGlow on={glowSend} radius={10}>
+                <Pressable
+                  onPress={() => act((s) => void sendDish(s, c.id, slotIds))}
+                  onPressIn={() => {}}
+                  style={({ pressed }) => [styles.send, pressed && { transform: [{ translateY: 2 }] }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Gửi món cho ${where.replace('🪑', 'bàn ')} ${c.name}`}
+                >
+                  <Text style={styles.sendText}>📤 Gửi</Text>
+                </Pressable>
+              </TutorialGlow>
+            )}
           </View>
         );
       })}
@@ -90,6 +119,11 @@ const styles = StyleSheet.create({
     minWidth: 58,
     gap: 2,
   },
+  ready: { borderColor: colors.good, borderTopColor: colors.good, backgroundColor: '#F1F8E9' },
+  going: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  goingText: { fontSize: 12 },
+  send: { backgroundColor: colors.good, borderRadius: 8, paddingVertical: 3, paddingHorizontal: 6, alignItems: 'center', borderBottomWidth: 3, borderColor: '#1B5E20', marginTop: 2 },
+  sendText: { color: '#fff', fontWeight: '900', fontSize: 13 },
   urgent: { borderTopColor: colors.bad, borderColor: colors.bad },
   todo: { flexDirection: 'row', alignItems: 'center', gap: 4, borderTopColor: colors.primary, backgroundColor: '#FFF3E0' },
   todoTitle: { fontSize: 16 },

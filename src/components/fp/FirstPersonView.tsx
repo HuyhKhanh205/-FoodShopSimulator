@@ -155,7 +155,12 @@ function Header({
   game,
   topic,
   lines,
+  act,
+  slotIds,
 }: {
+  act?: (fn: GameMutation) => void;
+  /** Bếp + quầy (để gửi món chín thẳng từ nồi). */
+  slotIds?: string[];
   onExit: () => void;
   carrying: number;
   /** Số khách đang chờ chủ quán trả lời câu hỏi. */
@@ -200,7 +205,7 @@ function Header({
         )}
         <HelpButton topic={topic} />
       </View>
-      <OrderRail game={game} />
+      <OrderRail game={game} act={act} slotIds={slotIds} />
     </View>
   );
 }
@@ -466,7 +471,7 @@ function KitchenView({ stations, game, act, onExit, nav }: Props) {
           </group>
           )}
         </Canvas>
-        <Header game={game} onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="kitchen" lines={onBoardScreen && (prep || lastPrep) ? [prepLine] : []} />
+        <Header game={game} onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="kitchen" lines={onBoardScreen && (prep || lastPrep) ? [prepLine] : []} act={act} slotIds={[...nav!.stoveIds, ...nav!.counterIds]} />
         {hint && <Pointer icon={hint} />}
       </View>
       <KitchenControls
@@ -604,7 +609,7 @@ function CounterView({ station, game, act, onExit, nav }: Props) {
           <CounterScene recipeId={info.job?.recipeId ?? null} drink={info.recipe?.drink ?? true} progress={Math.min(1, info.cookRatio)} pulse={pulse} />
         </Canvas>
         <Pressable accessibilityLabel="Lắc" onPress={tap} style={StyleSheet.absoluteFill} />
-        <Header game={game} onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="counter" lines={info.job ? [{ text: `🧋  ${slotStatus(game, info)}`, bar: slotBar(info) }] : []} />
+        <Header game={game} onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="counter" lines={info.job ? [{ text: `🧋  ${slotStatus(game, info)}`, bar: slotBar(info) }] : []} act={act} slotIds={[...nav!.stoveIds, ...nav!.counterIds]} />
         {info.mine && !info.done && <Pointer icon="👆🧋" />}
       </View>
       <KitchenControls nav={nav!} game={game} slotIds={slotIds} act={act} targets={targets} onTap={tap} onPrep={() => {}} pot={pot} icon="🧋" label="Quầy" />

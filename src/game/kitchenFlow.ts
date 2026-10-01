@@ -1,13 +1,14 @@
 import { INGREDIENTS, RECIPES } from './data';
-import { MAX_CARRY } from './engine';
+import { MAX_CARRY, sendableFor } from './engine';
 import { dishNeeds, suggestChop, usableQty } from './helpers';
 import type { GameState, IngredientId, RecipeId, Station } from './types';
 
 /**
- * Nhãn gợi ý việc tiếp theo trong bếp (thớt + bếp, hoặc quầy pha chế): một việc cần làm ngay, bấm là làm.
- * Thứ tự: lấy món chín → mang món cho khách → thái nhanh (đang thái) → thái đồ còn thiếu → nấu món khách gọi → khuấy → chờ.
+ * Nhãn gợi ý việc tiếp theo trong bếp (thớt + bếp, hoặc quầy pha chế): chỉ nói việc cần làm, người chơi tự làm.
+ * Thứ tự: gửi món chín cho khách → lấy món dư → mang món trên tay → thái nhanh (đang thái) → thái đồ còn thiếu → nấu món khách gọi → khuấy → chờ.
  */
 export type KitchenAction =
+  | { kind: 'send'; customerId: string }
   | { kind: 'take'; slotId: string }
   | { kind: 'exit' }
   | { kind: 'chop' }
@@ -24,6 +25,20 @@ export interface KitchenNext {
   action: KitchenAction;
 }
 
+/** Khách (gấp nhất trước) đang có món sẵn sàng gửi: trên tay, trên quầy ra món, hoặc nồi chín trong `slotIds`. */
+function sendNext(s: GameState, slotIds: string[]): KitchenNext | null {
+  const run = s.run!;
+  const list = [...run.customers].sort((a, b) => a.patience / a.maxPatience - b.patience / b.maxPatience);
+  for (const c of list) {
+    const f = sendableFor(s, c.id, slotIds);
+    if (!f) continue;
+    const recipeId = f.dishId ? run.pass.find((d) => d.id === f.dishId)!.recipeId : run.slots.find((x) => x.id === f.slotId)!.job!.recipeId;
+    const where = c.tableIndex !== undefined ? `bàn ${c.tableIndex + 1}` : c.kind === 'delivery' ? 'khách giao hàng' : 'khách ở cửa';
+    return { label: `📤 Gửi ${RECIPES[recipeId]?.emoji ?? ''} cho ${where}`, key: 'kitchen.send', action: { kind: 'send', customerId: c.id } };
+  }
+  return null;
+}
+
 /** Đồ bỏ nồi được ngay (đồ cần thái thì tính phần đã thái). */
 const ready = (s: GameState, i: IngredientId) => (INGREDIENTS[i].needsPrep ? s.run?.prepped[i] ?? 0 : usableQty(s, i));
 
@@ -34,6 +49,8 @@ export function kitchenNext(s: GameState, station: Station, slotIds: string[]): 
   const mine = slots.filter((sl) => sl.job?.by === 'player');
   const done = mine.find((sl) => sl.job!.progress >= sl.job!.cookTime);
   const full = run.carrying.length >= MAX_CARRY;
+  const send = sendNext(s, slotIds);
+  if (send) return send;
   if (done && !full) {
     const r = RECIPES[done.job!.recipeId];
     return { label: `🍽️ Lấy ${r?.emoji ?? ''} ra`, key: 'kitchen.takeout', action: { kind: 'take', slotId: done.id } };
@@ -93,6 +110,9 @@ export function screenNext(s: GameState, screen: KitchenScreen, stoveIds: string
   const k = kitchenNext(s, 'stove', stoveIds);
   const c = counterIds.length ? kitchenNext(s, 'counter', counterIds) : null;
   const go = (to: KitchenScreen, n: KitchenNext): KitchenNext => ({ label: `${SCREEN_LABEL[to].split(' ')[0]} Qua ${SCREEN_LABEL[to].split(' ').slice(1).join(' ')}: ${n.label.replace(/^\S+\s/, '')}`, key: n.key, action: { kind: 'switch', to } });
+  // Gửi món: phiếu khách hiện ở cả 3 màn nên màn nào cũng gửi được.
+  const send = sendNext(s, [...stoveIds, ...counterIds]);
+  if (send) return send;
   if (screen === 'counter' && c?.action.kind === 'take') return c;
   // Đang cầm món: mang cho khách (màn nào cũng được).
   if (k.action.kind === 'exit' || c?.action.kind === 'exit') return k.action.kind === 'exit' ? k : c!;

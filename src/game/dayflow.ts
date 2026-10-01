@@ -76,7 +76,7 @@ function currentStage(s: GameState): { current: StageId; next: FlowNext } {
   if (run.ownerAway) return { current: 'market', next: { label: '🏃 Về quán', target: 'market.back' } };
 
   // Có món chín (trên tay / ở quầy ra món) → mang cho khách.
-  const ready = run.pass.some((d) => d.quality !== 'burnt' && !run.carrying.includes(d.id));
+  const ready = run.pass.some((d) => d.quality !== 'burnt' && !d.sendTo && !run.carrying.includes(d.id));
   if (run.carrying.length > 0) {
     const held = new Set(run.pass.filter((d) => run.carrying.includes(d.id)).map((d) => d.recipeId));
     const c = run.customers.find((x) => x.tableIndex !== undefined && x.items.some((i) => !i.served && held.has(i.recipeId)));
@@ -84,8 +84,8 @@ function currentStage(s: GameState): { current: StageId; next: FlowNext } {
   }
   // Món mình nấu đã chín trên bếp → lấy ra.
   const mine = run.slots.find((sl) => sl.job?.by === 'player');
-  if (mine?.job && mine.job.progress >= mine.job.cookTime) return { current: 'serve', next: { label: '🍽️ Lấy món ra', target: 'shop.board', station: mine.id } };
-  if (ready) return { current: 'serve', next: { label: '🛎️ Lấy món ở quầy', target: 'shop.pass', station: 'pass' } };
+  if (mine?.job && mine.job.progress >= mine.job.cookTime) return { current: 'serve', next: { label: '📤 Vào bếp gửi món', target: 'shop.board', station: mine.id } };
+  if (ready) return { current: 'serve', next: { label: '📤 Vào bếp gửi món', target: 'shop.board', station: 'board' } };
   if (mine) return { current: 'cook', next: { label: '🍳 Canh bếp', target: 'shop.board', station: mine.id } };
   if (run.playerPrep) return { current: 'prep', next: { label: '🔪 Đang sơ chế', target: 'shop.board', station: 'board' } };
   // Khách đang chờ món mà thiếu đồ sơ chế → sơ chế; đủ thì nấu.

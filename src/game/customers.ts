@@ -9,6 +9,8 @@ const QUALITY_SCORE = { perfect: 1, raw: 0.35, burnt: 0.05 } as const;
 
 /** Hệ số kéo dài thời gian chờ của mọi khách. */
 const PATIENCE_BONUS = 1.95;
+/** Gửi món thẳng từ bếp dễ hơn nên khách kém kiên nhẫn hơn 10%. */
+export const PATIENCE_SEND_FACTOR = 0.9;
 /** Mỗi món mang ra hồi lại chừng này kiên nhẫn. */
 export const SERVE_REFILL = 0.15;
 
@@ -111,7 +113,7 @@ export function makeCustomer(s: GameState, rng: Rng, forced?: CustomerKind, grou
   }
 
   const patience =
-    (BASE_PATIENCE[kind] + 15_000 * Math.min(5, items.length - 1)) * PATIENCE_BONUS * (1 + 0.2 * s.upgrades.aircon) * (1 + 0.5 * (1 - introFactor(s.day)));
+    (BASE_PATIENCE[kind] + 15_000 * Math.min(5, items.length - 1)) * PATIENCE_BONUS * PATIENCE_SEND_FACTOR * (1 + 0.2 * s.upgrades.aircon) * (1 + 0.5 * (1 - introFactor(s.day)));
   return {
     id: nextId(s, 'c'),
     name,

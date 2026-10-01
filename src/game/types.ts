@@ -241,6 +241,9 @@ export interface Dish {
   quality: DishQuality;
   noGarnish: boolean;
   by: string;
+  /** Đang gửi từ bếp ra bàn cho khách này (tới nơi lúc `sendAt`). */
+  sendTo?: string;
+  sendAt?: number;
 }
 
 export interface CookJob {

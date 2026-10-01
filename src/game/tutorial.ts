@@ -62,7 +62,6 @@ const prepSay = (s: Pick<GameState, 'starter'>) => {
   return `Đồ có 🔪 phải thái trước: ${list.map((i) => INGREDIENTS[i].emoji).join(' + ')}. Chạm từng ô bên dưới, rồi chạm thớt thật nhanh!`;
 };
 const cookSay = (s: Pick<GameState, 'starter'>) => `Giỏi! Bấm nút 🔥 Bếp để qua màn bếp, chạm ${firstRecipe(s).emoji} để bỏ đồ vào nồi, rồi bấm 🔥 Nấu.`;
-const serveSay = (s: Pick<GameState, 'starter'>) => `Bấm nút 🍽️ góc trên để ra quán, rồi chạm vào bàn khách đang chờ ${firstRecipe(s).emoji}.`;
 
 /** Câu hiển thị của một bước. */
 export function stepSay(step: TutorialStep, s: GameState): string {
@@ -138,17 +137,10 @@ export const TUTORIAL: TutorialStep[] = [
     done: (s) => cookingOrHolding(s) || servedSomething(s),
   },
   {
-    id: 'take',
-    say: 'Chạm vào chảo để đảo cho mau chín. Chín rồi thì bấm 🍽️ Lấy!',
-    at: 'top',
-    targets: () => ['kitchen.takeout'],
-    done: (s) => Boolean(s.run && s.run.carrying.length > 0) || servedSomething(s),
-  },
-  {
-    id: 'serve',
-    say: serveSay,
+    id: 'send',
+    say: 'Chạm vào chảo để đảo cho mau chín. Chín rồi thì chạm nút 📤 Gửi trên phiếu của khách ở trên cùng, món sẽ ra tới bàn!',
     at: 'bottom',
-    targets: () => ['kitchen.exit', 'shop.table'],
+    targets: () => ['kitchen.send'],
     done: (s) => servedSomething(s),
   },
   {

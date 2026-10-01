@@ -8,6 +8,7 @@ import * as U from '../src/game/unlocks';
 import * as RV from '../src/game/reviews';
 import * as KF from '../src/game/kitchenFlow';
 import * as DI from '../src/game/dishes';
+import * as CU from '../src/game/customers';
 type UF = U.UiFeature;
 import { VOICE } from '../src/assets/voice.generated';
 import { speechText, voiceLines } from '../src/game/voice';
@@ -320,11 +321,10 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check(stepId() === 'cook', 'thái hành → bước nấu');
   E.playerCook(g, 'banh_mi_trung', false);
   pump();
-  check(stepId() === 'take', 'nấu → bước lấy món');
+  check(stepId() === 'send' && tutorialTargets(g).includes('kitchen.send'), 'nấu → bước gửi món (chỉ vào nút Gửi)');
   for (let i = 0; i < 100; i += 1) E.playerStir(g, g.run!.slots[0].id);
-  E.playerTakeOut(g, g.run!.slots[0].id, true);
-  pump();
-  check(stepId() === 'serve', 'lấy món → bước mang cho khách');
+  // Để lâu sẽ cháy: nhấc ra quầy ra món (không cầm) rồi chờ khách.
+  E.playerTakeOut(g, g.run!.slots[0].id, false);
   let tries = 0;
   while (g.run && g.run.customers.length === 0 && tries++ < 200) {
     E.tick(g, 200, r11);
@@ -332,9 +332,14 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   }
   check(g.run!.elapsed < 15_000, `khách đầu tiên tới sớm (${Math.round(g.run!.elapsed / 1000)} giây)`);
   const c = g.run!.customers[0];
-  E.playerServe(g, g.run!.carrying[0], c.id, r11);
+  check(Boolean(E.sendableFor(g, c.id, [g.run!.slots[0].id])?.dishId), 'món chín trên quầy ra món gửi được cho khách');
+  check(E.sendDish(g, c.id, [g.run!.slots[0].id]) === null && g.run!.pass.some((d) => d.sendTo === c.id), 'gửi món: món đang trên đường ra bàn');
   pump();
-  check(stepId() === 'great', 'mang món → bước khen');
+  check(stepId() === 'send', 'đang mang (chưa tới bàn) → vẫn chờ');
+  E.tick(g, E.SEND_MS + 50, r11);
+  if (g.activeEvent) g.activeEvent = null;
+  pump();
+  check(stepId() === 'great', 'món tới bàn → bước khen');
   advanceTutorial(g);
   check(g.tutorial.done, 'hoàn thành hướng dẫn');
 }
@@ -485,7 +490,7 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   run.customers = [a, b];
   let one = makeCustomer(g, r)!;
   for (let i = 0; i < 50 && one.kind !== 'normal'; i += 1) one = makeCustomer(g, r)!;
-  check(one.kind === 'normal' && one.maxPatience >= 75_000 * 1.9, `kiên nhẫn gốc tăng (khách thường ${Math.round(one.maxPatience / 1000)} giây)`);
+  check(one.kind === 'normal' && one.maxPatience >= 75_000 * 1.9 * CU.PATIENCE_SEND_FACTOR, `kiên nhẫn gốc tăng (khách thường ${Math.round(one.maxPatience / 1000)} giây)`);
   // Bàn a có 2 trà đá đang pha / đã xong → được lo; bàn b thì chưa.
   run.pass.push({ id: 'p1', recipeId: 'tra_da', quality: 'perfect', noGarnish: false, by: 'Bạn' });
   run.pass.push({ id: 'p2', recipeId: 'tra_da', quality: 'perfect', noGarnish: false, by: 'Bạn' });
@@ -1392,11 +1397,18 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
     else if (a.kind === 'cook') E.playerCookCombo(g, Object.keys(RECIPES[a.recipeId].ingredients) as IngredientId[], a.slotId);
     else if (a.kind === 'stir') E.playerStir(g, a.slotId);
     else if (a.kind === 'take') E.playerTakeOut(g, a.slotId, true);
+    else if (a.kind === 'send') {
+      E.sendDish(g, a.customerId, stoves);
+      exited = true;
+    }
     else if (a.kind === 'exit') exited = true;
     E.tick(g, 150, seededRng(1000 + i));
     g.activeEvent = null;
   }
-  check(exited && g.run!.carrying.length > 0 && ['prep', 'cook', 'take', 'exit'].every((k) => seen.includes(k)), `bếp: chỉ bấm Làm tiếp là thái → nấu → lấy → mang ra (${seen.join(' → ')})`);
+  check(exited && g.run!.pass.some((d) => d.sendTo) && ['prep', 'cook', 'send'].every((k) => seen.includes(k)), `bếp: làm theo gợi ý là thái → nấu → gửi món (${seen.join(' → ')})`);
+  const served0 = g.report.served;
+  E.tick(g, E.SEND_MS + 50, seededRng(77));
+  check(g.report.served === served0 + 1, 'món gửi tới bàn sau 3 giây, khách nhận');
 }
 
 // ================= Món "X" và "X + hành" cùng trong menu: nấu đúng món khách gọi =================
@@ -1428,6 +1440,66 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   E.playerTakeOut(g, slot.id, true);
   const served = err === null && E.autoServeCarried(g, ['cx'], seededRng(133)) === 1;
   check(served, `khách gọi ${a.name}: nấu xong mang ra, khách nhận món`);
+}
+
+// ================= Gửi món từ bếp: luật =================
+{
+  const mk = () => {
+    const g = E.newGame(seededRng(140));
+    g.activeEvent = null;
+    for (const i of ['banh_mi', 'trung', 'pate', 'hanh'] as IngredientId[]) E.buy(g, i, 10);
+    E.openShop(g, seededRng(141));
+    g.activeEvent = null;
+    g.run!.customers = [];
+    const c = { id: 'c1', name: 'Khách', emoji: '🙂', kind: 'normal', size: 1, items: [{ recipeId: 'banh_mi_trung', served: false }], patience: 1e9, maxPatience: 1e9, arrivedAt: 0, tableIndex: 0 } as unknown as NonNullable<typeof g.run>['customers'][number];
+    g.run!.customers.push(c);
+    g.run!.prepped.hanh = 5;
+    return g;
+  };
+  const dish = (g: ReturnType<typeof mk>, extra: Partial<{ quality: 'perfect' | 'burnt'; noGarnish: boolean; recipeId: string }> = {}) => {
+    const d = { id: `d${g.run!.pass.length}`, recipeId: 'banh_mi_trung', quality: 'perfect' as const, noGarnish: false, by: 'Bạn', ...extra };
+    g.run!.pass.push(d as never);
+    return d.id;
+  };
+  let g = mk();
+  const onHand = dish(g);
+  g.run!.carrying.push(onHand);
+  check(E.sendableFor(g, 'c1')?.dishId === onHand && E.sendDish(g, 'c1') === null && !g.run!.carrying.includes(onHand), 'gửi món trên tay (tay rảnh lại)');
+  g = mk();
+  const onPass = dish(g);
+  check(E.sendableFor(g, 'c1')?.dishId === onPass, 'gửi món trên quầy ra món');
+  g = mk();
+  dish(g, { quality: 'burnt' });
+  dish(g, { recipeId: 'tra_da' });
+  check(E.sendableFor(g, 'c1') === null && E.sendDish(g, 'c1') !== null, 'không gửi món cháy / món khác');
+  g = mk();
+  g.run!.customers[0].items[0].noGarnish = true;
+  dish(g);
+  check(E.sendableFor(g, 'c1') === null, 'không gửi món có hành cho khách dặn không hành');
+  dish(g, { noGarnish: true });
+  check(Boolean(E.sendableFor(g, 'c1')), 'món không hành thì gửi được');
+  // Nồi chín gửi thẳng (không cần bấm Lấy).
+  g = mk();
+  const st = g.run!.slots.find((x) => x.station === 'stove')!;
+  E.playerCook(g, 'banh_mi_trung', false, st.id);
+  st.job!.progress = st.job!.cookTime;
+  check(E.sendableFor(g, 'c1', [st.id])?.slotId === st.id && E.sendDish(g, 'c1', [st.id]) === null && !st.job && g.run!.pass.some((d) => d.sendTo === 'c1'), 'nồi chín gửi thẳng cho khách (không cần Lấy)');
+  g = mk();
+  const left = dish(g);
+  E.sendDish(g, 'c1');
+  g.run!.customers = [];
+  E.tick(g, E.SEND_MS + 50, seededRng(142));
+  const back = g.run!.pass.find((d) => d.id === left);
+  check(Boolean(back) && !back!.sendTo, 'khách bỏ đi giữa chừng: món nằm lại quầy ra món');
+  g = mk();
+  const sent = dish(g);
+  E.sendDish(g, 'c1');
+  check(E.pickUpDish(g, sent) !== null, 'món đang gửi thì không cầm lên được');
+  const money0 = g.money;
+  E.tick(g, E.SEND_MS + 50, seededRng(143));
+  check(g.report.served === 1 && g.money > money0, 'món gửi tới bàn: khách nhận và trả tiền');
+  // Kiên nhẫn giảm 10%.
+  check(CU.PATIENCE_SEND_FACTOR === 0.9, 'khách kém kiên nhẫn 10% (gửi món từ bếp dễ hơn)');
 }
 
 process.exit(failed ? 1 : 0);
