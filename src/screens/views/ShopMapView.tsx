@@ -11,10 +11,12 @@ import SceneOverlay from '../../components/scene/SceneOverlay';
 import ChatPrompt from '../../components/kid/ChatPrompt';
 import { tutorialUi } from '../../components/kid/tutorialUi';
 import NextButton from '../../components/kid/NextButton';
+import NewBadge from '../../components/kid/NewBadge';
 import { NotebookButton } from '../../components/notebook/NotebookSheet';
 import { dayFlow } from '../../game/dayflow';
 import type { FlowNext } from '../../game/dayflow';
-import { shows } from '../../game/unlocks';
+import { guideOn, isNew, markSeen, shows } from '../../game/unlocks';
+import type { UiFeature } from '../../game/unlocks';
 import ShopScene3D from '../../components/scene/ShopScene3D';
 import { ISO_YAW, fitCamera, makeCamera, screenDirToTile } from '../../components/scene/camera';
 import { colors } from '../../components/ui';
@@ -340,13 +342,15 @@ export default function ShopMapView() {
   const flow = dayFlow(game);
   const guideId = stationOf(flow.next)?.id ?? null;
   const nextAble = Boolean(flow.next.station || flow.next.target);
+  // Hướng dẫn dắt tay (nhãn gợi ý, mũi tên 3D) chỉ trong ngày đầu.
+  const guide = guideOn(game);
   // Bong bóng Chú Tư đứng trên thì dời xuống dưới nhãn gợi ý.
   useEffect(() => {
-    tutorialUi.setTopInset(fp ? 0 : 42);
+    tutorialUi.setTopInset(fp || !guide ? 0 : 42);
     return () => tutorialUi.setTopInset(0);
-  }, [fp]);
-  // Nhãn gợi ý nằm ngay dưới HUD (có cả lúc Chú Tư đang dẫn ngày đầu).
-  const river = true;
+  }, [fp, guide]);
+  // Nhãn gợi ý nằm ngay dưới HUD (chỉ ngày đầu).
+  const river = guide;
   const toggle = has3D && shows(game, 'modeToggle');
   const RIVER_H = river ? 42 : 0;
   // HUD giờ chỉ là 1 hàng nhãn nhỏ.
@@ -359,6 +363,8 @@ export default function ShopMapView() {
   const BAR_H = barRows * BTN + (barRows - 1) * BAR_GAP + 10;
   const barW = Math.min(barCount, BAR_PER_ROW) * BTN + (Math.min(barCount, BAR_PER_ROW) - 1) * BAR_GAP;
 
+  // Nút vừa mở mà chưa bấm thử: nhãn "MỚI"; bấm là hết.
+  const seen = (f: UiFeature) => act((s) => markSeen(s, f));
   const actionBar = (
     <View style={[styles.bar, { width: barW }]}>
       {/* Chỉ hiện nút đã mở (src/game/unlocks.ts): ngày đầu gần như chỉ còn 🛒 Chợ. */}
@@ -369,17 +375,61 @@ export default function ShopMapView() {
           label="Người"
           active={staffOpen}
           badge={game.staff.some((st) => st.mood < 30)}
+          fresh={isNew(game, 'staff')}
           onPress={() => {
+            seen('staff');
             setStaffOpen(!staffOpen);
             setStaffSel(null);
           }}
         />
       )}
-      {shows(game, 'clean') && <BarButton icon="🧽" label={cleanReady ? 'Lau' : 'Lau ⏳'} disabled={!cleanReady} onPress={() => act((s) => playerClean(s))} />}
-      {shows(game, 'stock') && <BarButton icon="📦" label="Kho" onPress={() => setStockOpen(true)} />}
-      {shows(game, 'panel') && <BarButton icon="📋" label="Bảng" onPress={() => setViewMode('panel')} />}
-      {shows(game, 'notebook') && <NotebookButton game={game} style={styles.barBtn} />}
-      {!simple && shows(game, 'arrange') && <BarButton icon="🧱" label="Bố trí" active={arrange} onPress={() => setArrange(!arrange)} />}
+      {shows(game, 'clean') && (
+        <BarButton
+          icon="🧽"
+          label={cleanReady ? 'Lau' : 'Lau ⏳'}
+          disabled={!cleanReady}
+          fresh={isNew(game, 'clean')}
+          onPress={() => act((s) => {
+            markSeen(s, 'clean');
+            playerClean(s);
+          })}
+        />
+      )}
+      {shows(game, 'stock') && (
+        <BarButton
+          icon="📦"
+          label="Kho"
+          fresh={isNew(game, 'stock')}
+          onPress={() => {
+            seen('stock');
+            setStockOpen(true);
+          }}
+        />
+      )}
+      {shows(game, 'panel') && (
+        <BarButton
+          icon="📋"
+          label="Bảng"
+          fresh={isNew(game, 'panel')}
+          onPress={() => {
+            seen('panel');
+            setViewMode('panel');
+          }}
+        />
+      )}
+      {shows(game, 'notebook') && <NotebookButton game={game} style={styles.barBtn} fresh={isNew(game, 'notebook')} onOpen={() => seen('notebook')} />}
+      {!simple && shows(game, 'arrange') && (
+        <BarButton
+          icon="🧱"
+          label="Bố trí"
+          active={arrange}
+          fresh={isNew(game, 'arrange')}
+          onPress={() => {
+            seen('arrange');
+            setArrange(!arrange);
+          }}
+        />
+      )}
     </View>
   );
 
@@ -412,7 +462,7 @@ export default function ShopMapView() {
               cutaway={cutaway}
               arrange={arrange}
               selectedStaff={staffOpen ? staffSel : null}
-              guide={guideId}
+              guide={guide ? guideId : null}
             />
             <SceneOverlay game={game} layout={layout} cam={baseCam} w={size.w} h={size.h} pan={overlayPan} onQuestion={setAskId} arrange={arrange} onPlus={openUpgrades} onStation={goToStation} nearId={walkingTo ?? hereId} />
             {/* Xoay theo nấc 90° và zoom 2 mức */}
@@ -575,7 +625,7 @@ const BAR_GAP = 6;
 const BAR_PER_ROW = 3;
 
 /** Nút tròn nhỏ có nhãn trên cụm hành động (chunky). */
-function BarButton({ icon, label, onPress, disabled, active, badge }: { icon: string; label: string; onPress: () => void; disabled?: boolean; active?: boolean; badge?: boolean }) {
+function BarButton({ icon, label, onPress, disabled, active, badge, fresh }: { icon: string; label: string; onPress: () => void; disabled?: boolean; active?: boolean; badge?: boolean; fresh?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
@@ -589,6 +639,7 @@ function BarButton({ icon, label, onPress, disabled, active, badge }: { icon: st
         {label}
       </Text>
       {badge && <View style={styles.barBadge} />}
+      {fresh && <NewBadge />}
     </Pressable>
   );
 }

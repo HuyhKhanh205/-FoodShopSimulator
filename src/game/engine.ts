@@ -166,7 +166,8 @@ export function newGame(rng: Rng, opts: NewGameOptions = {}): GameState {
     eventResult: null,
     buffs: [],
     pending: [],
-    flags: {},
+    // Game mới: nút "MỚI" tính từ đầu (không cần đánh dấu nút cũ như bản lưu cũ).
+    flags: { seenMigrated: 1 },
     eventSeen: {},
     miniBest: {},
     street: false,

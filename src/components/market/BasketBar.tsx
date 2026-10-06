@@ -3,6 +3,7 @@ import { INGREDIENTS } from '../../game/data';
 import { VENDORS, basketTotal, fmt, friendLevel, stockCapacity, stockUnits, vendorState } from '../../game/market';
 import type { Basket, VendorId } from '../../game/market';
 import type { GameState, IngredientId } from '../../game/types';
+import NewBadge from '../kid/NewBadge';
 import TutorialGlow, { useTutorialTargets } from '../kid/TutorialGlow';
 import { GROUP, colors } from '../ui';
 
@@ -13,6 +14,7 @@ export function BasketBar({
   game,
   basket,
   onMenu,
+  freshMenu,
   onPay,
   onClear,
   error,
@@ -22,6 +24,8 @@ export function BasketBar({
   basket: Basket;
   /** Không truyền = ẩn nút 🧾 Theo menu (ngày đầu mua tay). */
   onMenu?: () => void;
+  /** Nút Theo menu vừa mở: nhãn "MỚI". */
+  freshMenu?: boolean;
   onPay: () => void;
   onClear: () => void;
   error: string | null;
@@ -59,6 +63,7 @@ export function BasketBar({
           <TutorialGlow on={targets.includes('market.menu') && units === 0} radius={14}>
             <Pressable onPress={onMenu} style={styles.menu} accessibilityRole="button" accessibilityLabel="Mua theo menu">
               <Text style={styles.menuText}>🧾 Theo menu</Text>
+              {freshMenu && <NewBadge />}
             </Pressable>
           </TutorialGlow>
         )}

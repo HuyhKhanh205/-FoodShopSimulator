@@ -175,8 +175,8 @@ export function skipTutorial(s: GameState) {
 
 /** Câu Chú Tư giới thiệu nút mới sáng ngày 2 / 3 (có giọng đọc). */
 export const UNLOCK_SAY = {
-  day2: 'Quen chợ rồi! Từ nay bấm 🧾 Mua theo menu là giỏ tự đủ đồ. Mở thêm 📒 Sổ tay, 📦 Kho, 🧽 Lau và 📖 Sổ món nha con!',
-  day3: 'Mở thêm 🚶 Ra phố, 🔧 Nâng cấp (mua thêm bàn, bếp), 🧱 Bố trí, 📋 Bảng và 👥 Người giúp. Từ từ khám phá nha!',
+  day2: 'Quen chợ rồi! Từ nay bấm 🧾 Mua theo menu là giỏ tự đủ đồ. Nút nào có chữ MỚI là vừa mở: 📒 Sổ tay, 📦 Kho, 🧽 Lau, 📖 Sổ món. Bấm thử nha con!',
+  day3: 'Mở thêm 🚶 Ra phố, 🔧 Nâng cấp (mua thêm bàn, bếp), 🧱 Bố trí, 📋 Bảng và 👥 Người giúp. Nút có chữ MỚI là vừa mở, bấm thử nha!',
 };
 
 /** Câu đầu bếp nói cho một ghi chú (lên cấp, món mới...). */

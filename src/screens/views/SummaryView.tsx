@@ -9,7 +9,7 @@ import { dayFlow } from '../../game/dayflow';
 import ReviewReplies from '../../components/ReviewReplies';
 import TutorialGlow, { useTutorialTargets } from '../../components/kid/TutorialGlow';
 import { tutorialUi } from '../../components/kid/tutorialUi';
-import { shows } from '../../game/unlocks';
+import { guideOn, shows } from '../../game/unlocks';
 import { claimMission, claimableCount, missionProgress, missionText, rewardText, todayMissions } from '../../game/missions';
 import { Panel, Stars, colors } from '../../components/ui';
 import { nextDay } from '../../game/engine';
@@ -56,7 +56,7 @@ export default function SummaryView() {
           <Text style={styles.heading}>🌙 Ngày {r.day}</Text>
           <HelpButton topic="summary" />
         </View>
-        {!game.gameOver && (
+        {!game.gameOver && guideOn(game) && (
           <NextButton label={next.label} target={next.target} style={{ marginBottom: 12 }} />
         )}
 

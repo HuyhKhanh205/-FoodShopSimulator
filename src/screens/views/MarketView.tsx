@@ -10,7 +10,7 @@ import NextButton from '../../components/kid/NextButton';
 import { dayFlow } from '../../game/dayflow';
 import { currentStep } from '../../game/tutorial';
 import { basketTotal } from '../../game/market';
-import { shows } from '../../game/unlocks';
+import { guideOn, isNew, markSeen, shows } from '../../game/unlocks';
 import { NotebookButton } from '../../components/notebook/NotebookSheet';
 import { HudChip, RoundButton, hud } from '../../components/HudBits';
 import { Button, ProgressBar, colors } from '../../components/ui';
@@ -90,7 +90,7 @@ export default function MarketView() {
   // Nhãn gợi ý việc tiếp theo (chỉ nói, người chơi tự làm): mua → 💳 trả tiền → 🏮 mở cửa (giữa giờ bán: 🏃 về quán).
   // Lúc Chú Tư dẫn đi chào các sạp / mua tay ngày đầu thì ẩn, kẻo lẫn.
   const nextBtn = ((): { label: string; target: string | null; off?: boolean } | null => {
-    if (tutMarket) return null;
+    if (tutMarket || !guideOn(game)) return null;
     if (midday && units === 0) return { label: '🏃 Về quán', target: 'market.back' };
     if (units > 0) return { label: `💳 Trả tiền ${formatMoney(basketTotal(game, basket).cost)}`, target: 'market.pay' };
     if (dayFlow(game).next.target === 'market.open') return { label: '🏮 Mở cửa', target: 'market.open' };
@@ -176,7 +176,7 @@ export default function MarketView() {
               {has3D && shows(game, 'modeToggle') && (
                 <RoundButton label={simple ? '🌴' : '🔲'} name={simple ? 'Chợ 3D' : 'Chợ đơn giản'} onPress={() => setSceneMode(simple ? '3d' : 'simple')} />
               )}
-              {shows(game, 'notebook') && <NotebookButton game={game} style={[hud.round, styles.nb]} label="" />}
+              {shows(game, 'notebook') && <NotebookButton game={game} style={[hud.round, styles.nb]} label="" fresh={isNew(game, 'notebook')} onOpen={() => act((s) => markSeen(s, 'notebook'))} />}
               {!shows(game, 'more') && <RoundButton label="🏠" name="Về menu" onPress={() => navigation.navigate('Home')} />}
               <HelpButton topic="market" />
             </View>
@@ -186,8 +186,8 @@ export default function MarketView() {
 
         {/* Góc phải dưới: 🏮 Mở cửa (to khi đã đủ đồ) / 🏃 Về quán, 🚶 Ra phố, 📋 Thêm */}
         <View pointerEvents="box-none" style={styles.cluster}>
-          {(shows(game, 'more') || midday) && <RoundButton label="📋" name="Thêm: cấp, món, nhân viên, nâng cấp, nợ" onPress={() => setMore(!more)} active={more} dot={moreDot} />}
-          {shows(game, 'street') && <RoundButton label="🚶" name="Ra khu phố" onPress={() => act((s) => goStreet(s, 'market'))} />}
+          {(shows(game, 'more') || midday) && <RoundButton label="📋" name="Thêm: cấp, món, nhân viên, nâng cấp, nợ" onPress={() => { act((s) => markSeen(s, 'more')); setMore(!more); }} active={more} dot={moreDot} fresh={isNew(game, 'more') || isNew(game, 'manage') || isNew(game, 'lab')} />}
+          {shows(game, 'street') && <RoundButton label="🚶" name="Ra khu phố" fresh={isNew(game, 'street')} onPress={() => act((s) => { markSeen(s, 'street'); goStreet(s, 'market'); })} />}
           {midday ? (
             <TutorialGlow on={targets.includes('market.back')} radius={24}>
               <Pressable onPress={() => act((s) => returnToShop(s))} style={[styles.big, styles.bigOn]} accessibilityRole="button" accessibilityLabel="Về quán">
@@ -249,8 +249,11 @@ export default function MarketView() {
             label="Sổ món"
             name="Sổ món và menu"
             size="sm"
-            badge={mysteryRecipes(game).length || undefined}
-            onPress={() => navigation.navigate('Lab')}
+            badge={isNew(game, 'lab') ? 'MỚI' : mysteryRecipes(game).length || undefined}
+            onPress={() => {
+              act((s) => markSeen(s, 'lab'));
+              navigation.navigate('Lab');
+            }}
           />
         </View>
         )}
@@ -276,7 +279,18 @@ export default function MarketView() {
             {(shows(game, 'staff') || game.staff.length > 0) && (
               <IconTile icon="👥" label="Người giúp" name="Nhân viên" badge={game.staff.length} onPress={() => navigation.navigate('Staff')} />
             )}
-            {shows(game, 'manage') && <IconTile icon="🔧" label="Nâng cấp" name="Nâng cấp" onPress={() => navigation.navigate('Upgrades')} />}
+            {shows(game, 'manage') && (
+              <IconTile
+                icon="🔧"
+                label="Nâng cấp"
+                name="Nâng cấp"
+                badge={isNew(game, 'manage') ? 'MỚI' : undefined}
+                onPress={() => {
+                  act((s) => markSeen(s, 'manage'));
+                  navigation.navigate('Upgrades');
+                }}
+              />
+            )}
             {shows(game, 'manage') && <IconTile icon="🧑‍🍳" label="Chủ quán" name="Nhân vật" onPress={() => navigation.navigate('Character')} />}
             <IconTile icon="🏠" label="Menu" name="Về menu" onPress={() => navigation.navigate('Home')} />
           </View>
@@ -291,9 +305,11 @@ export default function MarketView() {
         basket={basket}
         targets={targets}
         error={payError}
+        freshMenu={isNew(game, 'quickBuy')}
         onMenu={
           quick
             ? () => {
+                act((s) => markSeen(s, 'quickBuy'));
                 setPayError(null);
                 setBasket(suggestBasket(game));
               }

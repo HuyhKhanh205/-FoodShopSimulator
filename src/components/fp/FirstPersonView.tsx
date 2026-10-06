@@ -14,6 +14,7 @@ import { Canvas } from '../../three/fiber';
 import type { ThreeEvent } from '../../three/fiber';
 import HelpButton from '../kid/HelpButton';
 import { tutorialUi } from '../kid/tutorialUi';
+import { guideOn } from '../../game/unlocks';
 import OrderRail from './OrderRail';
 import { usePotBuilder } from './PotBuilder';
 import TutorialGlow, { useTutorialTarget, useTutorialTargets } from '../kid/TutorialGlow';
@@ -306,7 +307,7 @@ function KitchenControls({
     <View style={nav.screen === 'board' ? undefined : styles.controlsWrap} onLayout={(e) => tutorialUi.setBottomInset(Math.min(260, Math.round(e.nativeEvent.layout.height)) + 6)}>
       <View style={styles.fixed}>
         <ScreenTabs game={game} nav={nav} targets={targets} />
-        <NextButton label={next.label} target={hintTarget} disabled={next.action.kind === 'wait'} />
+        {guideOn(game) && <NextButton label={next.label} target={hintTarget} disabled={next.action.kind === 'wait'} />}
         {nav.screen === 'board' ? (
           <PrepList game={game} onPrep={onPrep} targets={targets} />
         ) : (
@@ -472,7 +473,7 @@ function KitchenView({ stations, game, act, onExit, nav }: Props) {
           )}
         </Canvas>
         <Header game={game} onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="kitchen" lines={onBoardScreen && (prep || lastPrep) ? [prepLine] : []} act={act} slotIds={[...nav!.stoveIds, ...nav!.counterIds]} />
-        {hint && <Pointer icon={hint} />}
+        {hint && guideOn(game) && <Pointer icon={hint} />}
       </View>
       <KitchenControls
         nav={nav!}
@@ -610,7 +611,7 @@ function CounterView({ station, game, act, onExit, nav }: Props) {
         </Canvas>
         <Pressable accessibilityLabel="Lắc" onPress={tap} style={StyleSheet.absoluteFill} />
         <Header game={game} onExit={onExit} carrying={run.carrying.length} asking={run.customers.filter((c) => c.question).length} topic="counter" lines={info.job ? [{ text: `🧋  ${slotStatus(game, info)}`, bar: slotBar(info) }] : []} act={act} slotIds={[...nav!.stoveIds, ...nav!.counterIds]} />
-        {info.mine && !info.done && <Pointer icon="👆🧋" />}
+        {info.mine && !info.done && guideOn(game) && <Pointer icon="👆🧋" />}
       </View>
       <KitchenControls nav={nav!} game={game} slotIds={slotIds} act={act} targets={targets} onTap={tap} onPrep={() => {}} pot={pot} icon="🧋" label="Quầy" />
     </View>

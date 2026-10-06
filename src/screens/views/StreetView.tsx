@@ -12,6 +12,7 @@ import { shopClosed, streetGo } from '../../game/engine';
 import { useGame, useGameState } from '../../game/GameContext';
 import { formatClock } from '../../game/helpers';
 import { STREET_PLACES } from '../../game/street';
+import { guideOn } from '../../game/unlocks';
 import type { StreetPlaceId } from '../../game/street';
 import { hasWebGL } from '../../three/webgl';
 
@@ -54,6 +55,9 @@ export default function StreetView() {
   // Nhãn gợi ý: giờ bán thì về quán, chưa mở cửa thì ra chợ mua đồ.
   const goal: StreetPlaceId = open ? 'shop' : 'market';
   const goalPlace = STREET_PLACES.find((p) => p.id === goal)!;
+  // Nhãn gợi ý chỉ trong ngày đầu; mũi tên 3D thêm lần đầu ra phố (tính năng vừa mở).
+  const guide = guideOn(game);
+  const firstStreet = game.flags?.streetIntro === game.day;
   const sceneH = Math.max(260, height - 310);
   return (
     <View style={styles.flex}>
@@ -68,7 +72,7 @@ export default function StreetView() {
           </Text>
         )}
       </View>
-      <NextButton label={`${goalPlace.emoji} ${goalPlace.verb}`} style={{ marginBottom: 6 }} />
+      {guide && <NextButton label={`${goalPlace.emoji} ${goalPlace.verb}`} style={{ marginBottom: 6 }} />}
       {!simple && (
         <View style={styles.places}>
           {STREET_PLACES.map((p) => (
@@ -88,7 +92,7 @@ export default function StreetView() {
           ))}
         </View>
       ) : (
-        <StreetScene3D game={game} from={from} width={width} height={sceneH} onEnter={enter} walkTo={walkTo} guide={goal} />
+        <StreetScene3D game={game} from={from} width={width} height={sceneH} onEnter={enter} walkTo={walkTo} guide={guide || firstStreet ? goal : null} />
       )}
       {/* Đi tắt: về quán / vào chợ */}
       <View style={styles.bar}>

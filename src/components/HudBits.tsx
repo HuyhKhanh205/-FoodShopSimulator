@@ -1,3 +1,4 @@
+import NewBadge from './kid/NewBadge';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from './ui';
 
@@ -11,7 +12,7 @@ export function HudChip({ children, tone = 'plain', label }: { children: React.R
 }
 
 /** Nút tròn nhỏ trên HUD (⏸ ❗ 📒…); `dot` = chấm đỏ báo có việc. */
-export function RoundButton({ label, name, onPress, active, dot }: { label: string; name: string; onPress: () => void; active?: boolean; dot?: boolean }) {
+export function RoundButton({ label, name, onPress, active, dot, fresh }: { label: string; name: string; onPress: () => void; active?: boolean; dot?: boolean; fresh?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
@@ -21,6 +22,7 @@ export function RoundButton({ label, name, onPress, active, dot }: { label: stri
     >
       <Text style={hud.roundText}>{label}</Text>
       {dot && <View style={hud.dot} />}
+      {fresh && <NewBadge />}
     </Pressable>
   );
 }

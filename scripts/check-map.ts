@@ -1502,4 +1502,29 @@ check(tables.every((t) => t !== undefined) && new Set(tables).size === tables.le
   check(CU.PATIENCE_SEND_FACTOR === 0.9, 'khách kém kiên nhẫn 10% (gửi món từ bếp dễ hơn)');
 }
 
+// ================= Hướng dẫn chỉ ngày đầu; nút mới mở có nhãn "MỚI" =================
+{
+  const g = E.newGame(seededRng(150));
+  g.activeEvent = null;
+  check(U.guideOn(g), 'ngày 1 (đang hướng dẫn): bật hướng dẫn');
+  g.tutorial.done = true;
+  check(U.guideOn(g), 'ngày 1 (xong hướng dẫn): vẫn bật hướng dẫn');
+  g.phase = 'summary';
+  E.nextDay(g, seededRng(151));
+  g.activeEvent = null;
+  check(!U.guideOn(g), 'ngày 2: tắt nhãn gợi ý / mũi tên / ngón tay');
+  const d2: UF[] = ['notebook', 'stock', 'clean', 'quickBuy', 'more'];
+  check(d2.every((f) => U.isNew(g, f)) && !U.isNew(g, 'street') && !U.isNew(g, 'manage'), 'ngày 2: Sổ tay, Kho, Lau, Theo menu, Thêm là MỚI');
+  U.markSeen(g, 'notebook');
+  check(!U.isNew(g, 'notebook') && U.isNew(g, 'stock'), 'bấm thử Sổ tay → hết MỚI (nút khác vẫn MỚI)');
+  g.phase = 'summary';
+  E.nextDay(g, seededRng(152));
+  g.activeEvent = null;
+  check(U.isNew(g, 'street') && U.isNew(g, 'manage') && U.isNew(g, 'arrange') && !U.isNew(g, 'notebook'), 'ngày 3: Ra phố, Nâng cấp, Bố trí MỚI; Sổ tay đã bấm thì không');
+  const old = MG.migrateSave(JSON.parse(JSON.stringify({ ...g, day: 10, flags: {}, run: null })));
+  const all: UF[] = ['notebook', 'lab', 'stock', 'clean', 'quickBuy', 'more', 'staff', 'manage', 'panel', 'arrange', 'street'];
+  check(all.every((f) => !U.isNew(old, f)), 'bản lưu cũ ngày 10: không có nhãn MỚI');
+  check(!U.guideOn(old), 'bản lưu cũ ngày 10: không có hướng dẫn dắt tay');
+}
+
 process.exit(failed ? 1 : 0);

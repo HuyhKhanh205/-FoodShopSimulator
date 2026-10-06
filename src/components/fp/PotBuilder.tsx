@@ -6,6 +6,7 @@ import { playerCookCombo, playerPrep } from '../../game/engine';
 import type { GameMutation } from '../../game/GameContext';
 import { dishNeeds, usableQty } from '../../game/helpers';
 import { unlockedIngredients } from '../../game/progression';
+import { guideOn } from '../../game/unlocks';
 import { trendHeat } from '../../game/trend';
 import type { GameState, IngredientId, Station } from '../../game/types';
 import IconTile from '../kid/IconTile';
@@ -137,7 +138,7 @@ export function usePotBuilder({
           </Text>
         </View>
       ) : (
-        <Text style={styles.empty}>👇 Chạm món khách gọi để bỏ nguyên liệu vào nồi</Text>
+        guideOn(game) && <Text style={styles.empty}>👇 Chạm món khách gọi để bỏ nguyên liệu vào nồi</Text>
       )}
       {error && <Text style={styles.error}>⚠️ {error}</Text>}
     </View>

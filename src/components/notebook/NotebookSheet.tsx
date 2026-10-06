@@ -1,3 +1,4 @@
+import NewBadge from '../kid/NewBadge';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RECIPES } from '../../game/data';
@@ -35,11 +36,14 @@ const TABS: { id: NotebookTab; icon: string; label: string }[] = [
 ];
 
 /** Nút 📒 Sổ có chấm đỏ khi có thưởng chờ nhận. */
-export function NotebookButton({ game, style, label = 'Sổ' }: { game: GameState; style?: object; label?: string }) {
+export function NotebookButton({ game, style, label = 'Sổ', fresh, onOpen }: { game: GameState; style?: object; label?: string; fresh?: boolean; onOpen?: () => void }) {
   const n = claimableCount(game);
   return (
     <Pressable
-      onPress={() => tutorialUi.openNotebook('tasks')}
+      onPress={() => {
+        onOpen?.();
+        tutorialUi.openNotebook('tasks');
+      }}
       style={({ pressed }) => [styles.nbBtn, style, pressed && { transform: [{ translateY: 2 }] }]}
       accessibilityRole="button"
       accessibilityLabel={n ? `Sổ tay, ${n} phần thưởng chờ nhận` : 'Sổ tay chủ quán'}
@@ -53,6 +57,7 @@ export function NotebookButton({ game, style, label = 'Sổ' }: { game: GameStat
           <Text style={styles.nbDotText}>{n}</Text>
         </View>
       )}
+      {fresh && <NewBadge />}
     </Pressable>
   );
 }

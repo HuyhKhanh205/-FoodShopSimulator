@@ -60,3 +60,44 @@ export const UNLOCK_DAY: { day: number; key: 'day2' | 'day3' }[] = [
   { day: 2, key: 'day2' },
   { day: 3, key: 'day3' },
 ];
+
+/**
+ * Hướng dẫn dắt tay (nhãn gợi ý việc tiếp theo, mũi tên 3D, ngón tay chỉ) chỉ bật trong ngày đầu
+ * hoặc khi Chú Tư còn đang dẫn. Các ngày sau người chơi tự chơi; cần thì bấm ❗ trợ giúp.
+ */
+export function guideOn(s: GameState): boolean {
+  return !s.tutorial.done || s.day <= 1;
+}
+
+/** Ngày một nút được mở (để biết nút nào "MỚI"). */
+const NEW_DAY: Partial<Record<UiFeature, number>> = {
+  notebook: 2,
+  lab: 2,
+  stock: 2,
+  clean: 2,
+  quickBuy: 2,
+  more: 2,
+  staff: 3,
+  manage: 3,
+  panel: 3,
+  arrange: 3,
+  street: 3,
+};
+
+/** Nút vừa mở mà bé chưa bấm thử lần nào → hiện nhãn "MỚI". */
+export function isNew(s: GameState, f: UiFeature): boolean {
+  return f in NEW_DAY && s.day >= 2 && s.tutorial.done && shows(s, f) && !s.flags?.[`seen_${f}`];
+}
+
+/** Bé đã bấm thử nút này: bỏ nhãn "MỚI". */
+export function markSeen(s: GameState, f: UiFeature) {
+  if (s.flags?.[`seen_${f}`]) return;
+  s.flags = { ...(s.flags ?? {}), [`seen_${f}`]: s.day };
+}
+
+/** Bản lưu cũ: nút đã mở từ những ngày trước coi như đã biết (không hiện "MỚI" hàng loạt). */
+export function markOldFeaturesSeen(s: GameState) {
+  if (s.flags?.seenMigrated) return;
+  s.flags = { ...(s.flags ?? {}), seenMigrated: s.day };
+  for (const [f, day] of Object.entries(NEW_DAY) as [UiFeature, number][]) if (day < s.day) s.flags[`seen_${f}`] = s.day;
+}

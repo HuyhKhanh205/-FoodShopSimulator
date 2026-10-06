@@ -1,5 +1,6 @@
 import { RECIPES, START_UPGRADES, UPGRADES } from './data';
 import { DEFAULT_PROFILE } from './profile';
+import { markOldFeaturesSeen } from './unlocks';
 import { syncDishes } from './dishes';
 import { xpForRecipes } from './progression';
 import { newVendors } from './market';
@@ -59,6 +60,8 @@ export function migrateSave(data: GameState): GameState {
     diary: data.diary ?? [],
     missions: data.missions ?? { day: 0, special: null, list: [] },
   };
+  // Bản lưu cũ đã qua mấy ngày đầu: nút mở từ trước không hiện nhãn "MỚI".
+  if (state.day > 1) markOldFeaturesSeen(state);
   // Bản lưu trước khi có sổ tay: sinh nhiệm vụ cho ngày đang chơi, Chú Tư giới thiệu sổ tay.
   if (!data.missions) {
     rollMissions(state, defaultRng);
